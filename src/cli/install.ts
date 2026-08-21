@@ -9,6 +9,7 @@ import {
   upsertTestWiringInConfig,
 } from './discover-test';
 import { injectJestHooks, resolveJestConfigPath, unwrapDaxtaTestScript } from './jest-hooks';
+import { runTreeWizard } from './tree';
 import { banner, box, c, nextSteps, sleep, step } from './ui';
 
 type PackageJson = {
@@ -323,10 +324,15 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
     await step('Attach test hooks', () => 'skipped', { paceMs });
   }
 
+  if (!dryRun) {
+    await runTreeWizard({ embedded: true, yes: Boolean(options.yes) });
+  }
+
   box('Done', [
     `${c.green('✔')} DAxTA wired for ${c.bold(project)}`,
     `${c.dim('env')} ${c.cyan('DAXTA_DOCS=true')} or ${c.cyan('false')}`,
     `${c.dim('tests')} run your usual script — Docs ready prints when Jest finishes`,
+    `${c.dim('sidebar')} ${c.cyan('daxta tree')} anytime to re-arrange folders`,
   ]);
 
   const wired = testScript && pkg.scripts?.[testScript] ? testScript : null;

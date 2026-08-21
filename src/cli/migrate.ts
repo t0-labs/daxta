@@ -180,6 +180,7 @@ export type MigrateResult = {
 /**
  * Migrate only when package version ≠ daxta.config `daxtaVersion`
  * (or when `daxtaVersion` is missing). Otherwise no-op.
+ * Interactive sidebar prompts run from `daxta migrate` / `daxta install` (CLI), not here.
  */
 export function migrateProject(cwd = process.cwd(), options: { force?: boolean } = {}): MigrateResult {
   const toVersion = packageVersion();

@@ -1,8 +1,41 @@
 import { getConfig } from './config';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const NUMERIC_ID_RE = /^\d{5,}$/;
+const NUMERIC_ID_RE = /^-?\d+(\.\d+)?$/;
 const TOKENISH_RE = /^[A-Za-z0-9_-]{16,}$/;
+const BOOLISH_RE = /^(true|false|null|undefined)$/i;
+const ENCODED_RE = /%[0-9A-Fa-f]{2}/;
+const LITERAL_PARAM_RE = /^\{[^}]+\}$/;
+
+/** Path segments that are real route actions/resources, not id-like test values. */
+const STATIC_SEGMENTS = new Set([
+  'lock',
+  'unlock',
+  'pay',
+  'complete',
+  'cancel',
+  'confirm',
+  'status',
+  'start',
+  'stop',
+  'retry',
+  'approve',
+  'reject',
+  'search',
+  'export',
+  'import',
+  'me',
+  'admin',
+  'device',
+  'devices',
+  'basket',
+  'baskets',
+  'user',
+  'users',
+  'health',
+  'ready',
+  'live',
+]);
 
 export function toOpenApiTemplate(path: string): string {
   return path.replace(/:([A-Za-z_][A-Za-z0-9_]*)/g, '{$1}');
@@ -23,10 +56,36 @@ export function pathMatchesTemplate(template: string, actual: string): boolean {
   return templateParts.every((part, index) => /^\{.+\}$/.test(part) || part === actualParts[index]);
 }
 
-function isDynamicSegment(segment: string, previous?: string): boolean {
-  if (UUID_RE.test(segment)) return true;
-  if (NUMERIC_ID_RE.test(segment)) return true;
-  if (TOKENISH_RE.test(segment) && previous && !/^v\d+$/i.test(previous)) return true;
+function safeDecode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+function looksLikeCollection(segment: string): boolean {
+  if (!segment || /^v\d+$/i.test(segment) || /^\{.+\}$/.test(segment)) return false;
+  const lower = segment.toLowerCase();
+  if (STATIC_SEGMENTS.has(lower) && !lower.endsWith('s')) return false;
+  return /s$/i.test(segment) || /list|items|records/i.test(segment);
+}
+
+function looksLikeStaticSegment(segment: string): boolean {
+  return STATIC_SEGMENTS.has(safeDecode(segment).toLowerCase());
+}
+
+export function isDynamicSegment(segment: string, previous?: string): boolean {
+  const decoded = safeDecode(segment);
+  if (UUID_RE.test(decoded)) return true;
+  if (NUMERIC_ID_RE.test(decoded)) return true;
+  if (BOOLISH_RE.test(decoded)) return true;
+  if (LITERAL_PARAM_RE.test(decoded)) return true;
+  if (ENCODED_RE.test(segment)) return true;
+  if (/^(\[\]|\{\}|\[.*\]|\{.*\})$/.test(decoded.replace(/\s/g, ''))) return true;
+  if (TOKENISH_RE.test(decoded) && previous && !/^v\d+$/i.test(previous)) return true;
+  // After a collection, only known actions/resources stay literal — test junk becomes {id}
+  if (previous && looksLikeCollection(previous) && !looksLikeStaticSegment(decoded)) return true;
   return false;
 }
 
@@ -59,7 +118,7 @@ function paramName(previous: string, used: Set<string>): string {
   return uniqueParamName(base, used);
 }
 
-function heuristicTemplatize(pathname: string): string {
+export function heuristicTemplatize(pathname: string): string {
   const parts = pathname.split('/').filter(Boolean);
   const used = new Set<string>();
   const templated = parts.map((part, index) => {
@@ -71,15 +130,41 @@ function heuristicTemplatize(pathname: string): string {
   return `/${templated.join('/')}`;
 }
 
-export function templatize(pathname: string, test?: string): string | null {
+function matchAgainstControllers(pathname: string, method?: string): { matched: string } | { skip: true } | { none: true } {
+  try {
+    // Lazy require avoids circular init with dto-fields → path.util
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const dto = require('./fields/dto-fields') as {
+      matchControllerTemplate: (pathname: string, method?: string) => string | null;
+      controllerRouteCount: () => number;
+    };
+    const matched = dto.matchControllerTemplate(pathname, method);
+    if (matched) return { matched };
+    if (dto.controllerRouteCount() > 0) return { skip: true };
+  } catch {
+    // controllers unavailable
+  }
+  return { none: true };
+}
+
+/**
+ * Map a concrete (or already-templated) path onto an OpenAPI template.
+ * Returns null when the hit should not be recorded (unknown vs Nest controllers).
+ */
+export function templatize(pathname: string, test?: string, method?: string): string | null {
   const trimmed = (pathname.split('?')[0] || '/').replace(/\/+$/, '') || '/';
   if (trimmed === '/') return null;
 
   const custom = getConfig().templatize?.(trimmed, test);
   if (custom) return custom;
+  if (custom === null) return null;
 
   const declared = templateFromTestName(test);
   if (declared && pathMatchesTemplate(declared, trimmed)) return declared;
+
+  const controller = matchAgainstControllers(trimmed, method);
+  if ('matched' in controller) return controller.matched;
+  if ('skip' in controller) return null;
 
   return heuristicTemplatize(trimmed);
 }
@@ -100,4 +185,12 @@ export function extractPathParams(pathTemplate: string, actualPath: string): Rec
   }
 
   return params;
+}
+
+/** Fill `{param}` slots so a stored template can be re-matched / re-heuristic'd. */
+export function materializePath(pathTemplate: string, pathParams?: Record<string, string>): string {
+  return pathTemplate.replace(/\{([^}]+)\}/g, (_, name: string) => {
+    const value = pathParams?.[name];
+    return value != null && value !== '' ? encodeURIComponent(value) : name;
+  });
 }

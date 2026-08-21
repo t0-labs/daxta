@@ -13,6 +13,7 @@ import { getMetadataStorage } from 'class-validator';
 import * as ts from 'typescript';
 
 import { getConfig } from '../config';
+import { pathMatchesTemplate } from '../path.util';
 
 type ValidationMeta = {
   propertyName: string;
@@ -252,9 +253,79 @@ function getRoutes(): RouteBinding[] {
   return routeCache;
 }
 
+export function controllerRouteCount(): number {
+  return getRoutes().length;
+}
+
+/** Unique Nest controller path templates (may omit URI version prefix). */
+export function listControllerPathTemplates(): string[] {
+  const seen = new Set<string>();
+  for (const route of getRoutes()) {
+    seen.add(route.pathTemplate);
+    if (!/^\/v\d+/i.test(route.pathTemplate)) {
+      seen.add(`/v1${route.pathTemplate.startsWith('/') ? route.pathTemplate : `/${route.pathTemplate}`}`);
+    }
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b));
+}
+
+function scoreTemplate(template: string): number {
+  const parts = template.split('/').filter(Boolean);
+  const params = parts.filter((part) => /^\{.+\}$/.test(part)).length;
+  return parts.length * 10 - params;
+}
+
+function ensureVersionPrefix(template: string, actual: string): string {
+  if (/^\/v\d+/i.test(template) || !/^\/v\d+/i.test(actual)) return template;
+  const version = actual.match(/^\/(v\d+)/i)?.[1] ?? 'v1';
+  return `/${version}${template.startsWith('/') ? template : `/${template}`}`;
+}
+
+/**
+ * Map a concrete request path onto a Nest controller OpenAPI template.
+ * Prefers the most specific declared route (longest path, fewest params).
+ */
+export function matchControllerTemplate(pathname: string, method?: string): string | null {
+  const routes = getRoutes();
+  if (!routes.length) return null;
+
+  const actual = (pathname.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+  const stripped = actual.replace(/^\/v\d+(?=\/|$)/i, '') || '/';
+  const methodKey = method?.toLowerCase();
+
+  let best: { template: string; score: number } | null = null;
+
+  for (const route of routes) {
+    if (methodKey && route.method !== 'all' && route.method !== methodKey) continue;
+
+    const base = route.pathTemplate;
+    const versioned = ensureVersionPrefix(base, actual);
+    const candidates = [...new Set([base, versioned])];
+
+    for (const template of candidates) {
+      const ok =
+        pathMatchesTemplate(template, actual) ||
+        pathMatchesTemplate(base, stripped) ||
+        pathMatchesTemplate(template, stripped);
+      if (!ok) continue;
+
+      const resolved =
+        pathMatchesTemplate(template, actual) ? template : ensureVersionPrefix(base, actual);
+      const score = scoreTemplate(resolved);
+      if (!best || score > best.score) best = { template: resolved, score };
+    }
+  }
+
+  return best?.template ?? null;
+}
+
 function findRoute(method: string, pathTemplate: string): RouteBinding | undefined {
   const keyMethod = method.toLowerCase();
-  return getRoutes().find((route) => route.method === keyMethod && route.pathTemplate === pathTemplate);
+  const routes = getRoutes();
+  return (
+    routes.find((route) => route.method === keyMethod && route.pathTemplate === pathTemplate) ||
+    routes.find((route) => route.method === keyMethod && ensureVersionPrefix(route.pathTemplate, pathTemplate) === pathTemplate)
+  );
 }
 
 function isOptionalMetas(metas: ValidationMeta[]): boolean {

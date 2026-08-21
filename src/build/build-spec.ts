@@ -4,11 +4,33 @@ import * as path from 'path';
 import { caseGroup, caseName, declaredMethods, defaultTitle, type FieldDoc, type OperationDoc, operationTag, STATUS_TEXT, treePathSegments, viewerTreeConfig } from '../catalog';
 import { getConfig } from '../config';
 import { dtoRequired } from '../fields/dto-fields';
-import { extractPathParams, pathParamNames } from '../path.util';
+import { extractPathParams, materializePath, pathParamNames, templatize } from '../path.util';
 import type { RecordedHit } from '../recorder';
 import { getFaviconAssetPath, getHitsJsonPath, getHtmlPath, getOutDir, getSpecJsonPath, getViewerAssetPath } from '../serve/paths';
 
 const METHOD_RANK: Record<string, number> = { get: 0, post: 1, put: 2, patch: 3, delete: 4 };
+
+/** Re-map old/mis-templated hits onto Nest routes (or stronger heuristics). */
+function canonicalizeHit(hit: RecordedHit): RecordedHit | null {
+  const concrete = hit.path.includes('{') ? materializePath(hit.path, hit.pathParams) : hit.path;
+  const nextPath = templatize(concrete, hit.test, hit.method);
+  if (!nextPath) return null;
+
+  const pathParams =
+    concrete !== nextPath || !hit.pathParams || !Object.keys(hit.pathParams).length
+      ? extractPathParams(nextPath, concrete)
+      : hit.pathParams;
+
+  return {
+    ...hit,
+    path: nextPath,
+    pathParams: Object.keys(pathParams).length ? pathParams : hit.pathParams,
+  };
+}
+
+function canonicalizeHits(hits: RecordedHit[]): RecordedHit[] {
+  return hits.map(canonicalizeHit).filter((hit): hit is RecordedHit => hit != null);
+}
 
 type JsonSchema = {
   type?: string;
@@ -379,22 +401,24 @@ export function loadHits(): RecordedHit[] {
   if (!existsSync(getOutDir())) return [];
   const workerFiles = readdirSync(getOutDir()).filter((fileName) => fileName.startsWith('hits-w') && fileName.endsWith('.json'));
   if (workerFiles.length) {
-    return workerFiles.flatMap((fileName) => {
-      try {
-        const parsed = JSON.parse(readFileSync(path.join(getOutDir(), fileName), 'utf8')) as RecordedHit[];
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (error) {
-        console.error(`DAxTA: skipped corrupt hits file ${fileName}:`, error);
-        return [];
-      }
-    });
+    return canonicalizeHits(
+      workerFiles.flatMap((fileName) => {
+        try {
+          const parsed = JSON.parse(readFileSync(path.join(getOutDir(), fileName), 'utf8')) as RecordedHit[];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          console.error(`DAxTA: skipped corrupt hits file ${fileName}:`, error);
+          return [];
+        }
+      }),
+    );
   }
 
   // Fallback after workers were cleaned — rebuild from last merged hits.json
   try {
     if (!existsSync(getHitsJsonPath())) return [];
     const parsed = JSON.parse(readFileSync(getHitsJsonPath(), 'utf8')) as RecordedHit[];
-    return Array.isArray(parsed) ? parsed : [];
+    return canonicalizeHits(Array.isArray(parsed) ? parsed : []);
   } catch (error) {
     console.error('DAxTA: skipped corrupt hits.json:', error);
     return [];

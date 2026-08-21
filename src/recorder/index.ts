@@ -60,7 +60,7 @@ function recordFromSuperagent(
   const rawUrl = request.url || '';
   const url = new URL(rawUrl, 'http://localhost');
   const test = currentTestName();
-  const pathTemplate = templatize(url.pathname, test);
+  const pathTemplate = templatize(url.pathname, test, (request.method || 'GET').toLowerCase());
   if (!pathTemplate) return;
 
   const query = Object.fromEntries(url.searchParams.entries());

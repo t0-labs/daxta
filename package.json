@@ -1,8 +1,16 @@
 {
   "name": "@t0.labs/daxta",
-  "version": "0.3.7",
+  "version": "0.4.4",
   "description": "DAxTA \u2014 docs from Nest integration traffic + DTO field CLI / Try-it",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/t0-labs/daxta.git"
+  },
+  "homepage": "https://github.com/t0-labs/daxta#readme",
+  "bugs": {
+    "url": "https://github.com/t0-labs/daxta/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

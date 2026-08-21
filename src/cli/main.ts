@@ -6,6 +6,7 @@ import { serveApiDocs } from '../serve';
 import { installDaxta } from './install';
 import { migrateProject, reportMigration } from './migrate';
 import { runDaxtaTest } from './test';
+import { runTreeWizard } from './tree';
 
 function usage() {
   console.log(`DAxTA CLI (@t0.labs/daxta)
@@ -13,10 +14,11 @@ function usage() {
 Usage:
   daxta install [--dry-run] [--skip-dep] [--skip-main] [--yes] [--main <path>] [--fast]
   daxta init                 (alias of install)
-  daxta migrate              (force project upgrade)
+  daxta migrate [--yes]      (force upgrade + sidebar prompts)
   daxta test [--script <name>] [--config <jest.json>] [--serve] [--port <n>] [--yes]
   daxta build
   daxta serve [--port <n>]
+  daxta tree [PATH] [--layout resource-first|url-order]
   daxta fields [METHOD] [PATH] [--out <file>]
   daxta call [METHOD] [PATH] [--fields <file>] [--header k:v ...]
   daxta call --file <values.json> [--header k:v ...]
@@ -26,6 +28,7 @@ One-shot setup:
   npx @t0.labs/daxta install
 
 daxta test = forwards to your package script (Jest stays parent; DAxTA is a plugin)
+daxta tree = choose how paths appear in the /docs sidebar
 `);
 }
 
@@ -40,7 +43,7 @@ function parseArgs(argv: string[]) {
   for (let i = 0; i < rest.length; i += 1) {
     const token = rest[i];
     if (token === '--') break;
-    if (token === '--port' || token === '--out' || token === '--fields' || token === '--file' || token === '--main') {
+    if (token === '--port' || token === '--out' || token === '--fields' || token === '--file' || token === '--main' || token === '--layout') {
       flags[token.slice(2)] = rest[++i];
     } else if (token === '--header') {
       const raw = rest[++i] ?? '';
@@ -72,6 +75,7 @@ async function main() {
     } else {
       reportMigration({ ...migration, skipped: false });
     }
+    await runTreeWizard({ embedded: true, yes: Boolean(flags.yes) });
     return;
   }
 
@@ -107,6 +111,14 @@ async function main() {
   if (command === 'serve') {
     const port = flags.port ? Number(flags.port) : undefined;
     serveApiDocs({ port });
+    return;
+  }
+
+  if (command === 'tree') {
+    await runTreeWizard({
+      path: positional[0],
+      layout: typeof flags.layout === 'string' ? flags.layout : undefined,
+    });
     return;
   }
 
