@@ -1,0 +1,1896 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DAxTA</title>
+    <link rel="icon" type="image/png" href="__FAVICON_DATA_URI__" />
+    <link rel="apple-touch-icon" href="__FAVICON_DATA_URI__" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --canvas: #e8e8e8;
+        --sidebar: #f2f2f2;
+        --nav: #f7f7f7;
+        --paper: #f4f4f4;
+        --white: #ffffff;
+        --inset: #f0f0f0;
+        --hairline: #d6d6d6;
+        --line: #c3c3c3;
+        --smoke: #7a7a7a;
+        --stone: #5c5c5c;
+        --charcoal: #333333;
+        --obsidian: #171717;
+        --sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+        --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        --radius: 6px;
+        --ring: 0 0 0 1px #cfcfcf;
+        --ghost: 0 0 0 1px #cfcfcf;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--obsidian);
+        font: 15px/1.55 var(--sans);
+      }
+      button, input { font: inherit; color: inherit; }
+
+      .topnav {
+        height: 56px;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 16px;
+        padding: 0 20px;
+        background: var(--nav);
+        border-bottom: 1px solid var(--hairline);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+      body.searching .topnav { z-index: 30; }
+      .brand-wrap { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: start; }
+      .workspace {
+        flex: none;
+        font: 500 11px/1 var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 5px 8px;
+        border-radius: 9999px;
+        background: var(--obsidian);
+        color: var(--white);
+      }
+      .brand { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .nav-tools { display: flex; align-items: center; gap: 8px; justify-self: end; }
+      .nav-tools .btn {
+        height: 36px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+      .nav-tools .btn.icon {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+      }
+      .nav-tools .btn.icon svg { width: 16px; height: 16px; }
+      .btn[data-tip] { position: relative; }
+      .btn[data-tip]::after {
+        content: attr(data-tip);
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%) translateY(4px);
+        background: var(--obsidian);
+        color: var(--white);
+        font-size: 11px;
+        font-weight: 500;
+        padding: 6px 8px;
+        border-radius: var(--radius);
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.12s ease, transform 0.12s ease;
+        z-index: 50;
+      }
+      .btn[data-tip]:hover::after {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      .search-wrap {
+        justify-self: center;
+        position: relative;
+        width: min(420px, 46vw);
+        z-index: 30;
+      }
+      .search {
+        width: 100%;
+        height: 36px;
+        border: 0;
+        border-radius: var(--radius);
+        box-shadow: var(--ghost);
+        background: var(--white);
+        padding: 0 12px;
+      }
+      .search::placeholder { color: var(--smoke); }
+      .search-wrap.open .search {
+        box-shadow: 0 0 0 1px var(--obsidian);
+        border-radius: var(--radius) var(--radius) 0 0;
+      }
+      .search-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(232, 232, 232, 0.72);
+        backdrop-filter: blur(2px);
+        z-index: 25;
+      }
+      body.searching .search-backdrop { display: block; }
+      .search-panel {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: min(420px, calc(100vh - 90px));
+        overflow: auto;
+        background: var(--white);
+        border-radius: 0 0 var(--radius) var(--radius);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14), var(--ring);
+        z-index: 31;
+        padding: 6px;
+      }
+      .search-wrap.open .search-panel { display: block; }
+      .search-hit {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 10px 10px;
+        border-radius: var(--radius);
+        cursor: pointer;
+        color: var(--charcoal);
+      }
+      .search-hit:hover,
+      .search-hit.active { background: var(--inset); }
+      .search-hit-path {
+        min-width: 0;
+        font: 12px/1.35 var(--mono);
+        color: var(--obsidian);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .search-hit mark {
+        background: transparent;
+        color: var(--obsidian);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 2px;
+      }
+      .search-empty {
+        padding: 18px 12px;
+        color: var(--stone);
+        font-size: 13px;
+        text-align: center;
+      }
+      .env-wrap { position: relative; flex: none; }
+      .env-wrap.open .env-pop { display: block; }
+      .env-trigger {
+        flex: none;
+        width: 220px;
+        height: 36px;
+        border: 0;
+        border-radius: var(--radius);
+        box-shadow: var(--ghost);
+        background: var(--white);
+        padding: 0 32px 0 12px;
+        font: 500 12px/1 var(--mono);
+        color: var(--obsidian);
+        cursor: pointer;
+        position: relative;
+        white-space: nowrap;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .env-trigger::after {
+        content: "";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        border-right: 1px solid var(--obsidian);
+        border-bottom: 1px solid var(--obsidian);
+        transform: translateY(-70%) rotate(45deg);
+      }
+      .env-wrap.open .env-trigger::after { transform: translateY(-20%) rotate(225deg); }
+      .env-pop {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        width: min(420px, calc(100vw - 48px));
+        max-height: min(520px, calc(100vh - 120px));
+        overflow: auto;
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), var(--ring);
+        padding: 16px;
+        z-index: 40;
+      }
+      .env-block { margin-bottom: 20px; }
+      .env-block:last-child { margin-bottom: 0; }
+      .env-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--stone);
+        margin-bottom: 8px;
+      }
+      .env-cell {
+        width: 100%;
+        min-width: 0;
+        height: 32px;
+        border: 0;
+        border-radius: var(--radius);
+        background: var(--inset);
+        padding: 0 10px;
+        font: 12px/1 var(--mono);
+        color: var(--obsidian);
+      }
+      .env-kv {
+        display: grid;
+        grid-template-columns: 1fr 1fr 28px;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .ghost-btn {
+        border: 0;
+        background: transparent;
+        color: var(--stone);
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        line-height: 1;
+      }
+      .ghost-btn:hover { color: var(--obsidian); }
+      .ghost-btn:disabled { opacity: 0.35; cursor: default; }
+      .ghost-btn:disabled:hover { color: var(--stone); }
+      .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
+      .chip-btn {
+        border: 0;
+        background: var(--inset);
+        box-shadow: var(--ghost);
+        border-radius: 9999px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--charcoal);
+      }
+      .chip-btn.on {
+        background: var(--obsidian);
+        color: var(--white);
+        box-shadow: none;
+      }
+      .env-add {
+        height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .btn.primary {
+        background: var(--obsidian);
+        color: var(--white);
+        box-shadow: none;
+      }
+      .btn.primary:hover { opacity: 0.92; color: var(--white); }
+      .btn.primary:disabled { opacity: 0.45; cursor: default; }
+      .live-err { color: #8a2e2e; font-size: 13px; padding: 8px 0; white-space: pre-wrap; }
+
+      .app {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        height: calc(100vh - 56px);
+      }
+      .sidebar, .workbench { height: 100%; overflow: auto; }
+      .sidebar {
+        padding: 16px 12px 48px;
+        background: var(--sidebar);
+        border-right: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .tree-root { display: flex; flex-direction: column; gap: 2px; }
+      .tree-folder { display: flex; flex-direction: column; gap: 2px; }
+      .tree-folder-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 6px 8px;
+        border-radius: var(--radius);
+        cursor: pointer;
+        color: var(--charcoal);
+        font: 500 12px/1.4 var(--mono);
+      }
+      .tree-folder-toggle:hover { background: var(--white); color: var(--obsidian); }
+      .tree-folder-toggle .chev {
+        width: 10px;
+        height: 10px;
+        flex: none;
+        position: relative;
+        opacity: 0.55;
+      }
+      .tree-folder-toggle .chev::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 1px;
+        width: 5px;
+        height: 5px;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(-45deg);
+        transition: transform 0.15s ease;
+      }
+      .tree-folder.open > .tree-folder-toggle .chev::before { transform: rotate(45deg); top: 0; }
+      .tree-folder-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tree-children {
+        display: none;
+        margin-left: 14px;
+        padding-left: 8px;
+        border-left: 1px solid var(--hairline);
+      }
+      .tree-folder.open > .tree-children { display: flex; flex-direction: column; gap: 2px; }
+      .tree-empty {
+        padding: 24px 12px;
+        color: var(--stone);
+        font-size: 13px;
+        text-align: center;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 7px 8px;
+        border-radius: var(--radius);
+        cursor: pointer;
+      }
+      .nav-item:hover { background: var(--white); }
+      .nav-item.active { background: var(--white); box-shadow: var(--ring); }
+      .nav-title {
+        font-size: 12px;
+        color: var(--charcoal);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .nav-item.active .nav-title { color: var(--obsidian); }
+
+      .method {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 9999px;
+        font: 500 11px/1 var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        box-shadow: var(--ghost);
+        background: var(--white);
+      }
+      .method.post, .method.put, .method.patch {
+        background: var(--obsidian);
+        color: var(--white);
+        box-shadow: none;
+      }
+      .method.get { background: var(--inset); color: var(--obsidian); }
+      .method.delete { background: var(--white); color: var(--charcoal); }
+
+      .workbench { padding: 28px 36px 96px; background: var(--paper); }
+      .head-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .title { font-size: 28px; letter-spacing: -1px; line-height: 1.15; margin: 0; font-weight: 400; min-width: 0; }
+      .meta-line { color: var(--stone); font: 12px/1.4 var(--mono); margin: 8px 0 0; }
+
+      .dd { position: relative; min-width: min(100%, 420px); }
+      .dd-toggle {
+        width: 100%;
+        min-height: 40px;
+        border: 0;
+        border-radius: var(--radius);
+        box-shadow: var(--ghost);
+        background: var(--white);
+        padding: 8px 36px 8px 12px;
+        text-align: left;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+      }
+      .dd-toggle::after {
+        content: "";
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        border-right: 1px solid var(--obsidian);
+        border-bottom: 1px solid var(--obsidian);
+        transform: translateY(-70%) rotate(45deg);
+      }
+      .dd.open .dd-toggle::after { transform: translateY(-20%) rotate(225deg); }
+      .dd-menu {
+        display: none;
+        position: absolute;
+        z-index: 30;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        max-height: 320px;
+        overflow: auto;
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--ring);
+        padding: 6px 0;
+      }
+      .dd.open .dd-menu { display: block; }
+      .dd-group {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--stone);
+        padding: 10px 12px 6px;
+      }
+      .dd-item {
+        display: block;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 8px 12px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .dd-item:hover, .dd-item.on { background: var(--inset); }
+
+      .urlbar {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+        margin-bottom: 16px;
+      }
+      .url {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--ring);
+        padding: 10px 14px;
+        font-family: var(--mono);
+        font-size: 13px;
+        word-break: break-all;
+      }
+      .url .method { flex: none; }
+      .btn {
+        border: 0;
+        background: var(--white);
+        box-shadow: var(--ghost);
+        border-radius: var(--radius);
+        padding: 0 14px;
+        height: 44px;
+        cursor: pointer;
+        color: var(--charcoal);
+        white-space: nowrap;
+      }
+      .btn:hover { color: var(--obsidian); }
+      .btn.sm { height: 32px; padding: 0 10px; font-size: 12px; }
+      .btn.icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--stone);
+      }
+      .btn.icon:hover:not(:disabled) { color: var(--obsidian); }
+      .btn.icon svg { width: 15px; height: 15px; display: block; }
+      .btn:disabled { opacity: 0.4; cursor: default; }
+
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(12px);
+        background: var(--obsidian);
+        color: var(--white);
+        font-size: 13px;
+        padding: 10px 16px;
+        border-radius: var(--radius);
+        box-shadow: var(--ring);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 100;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+        align-items: start;
+      }
+      .card {
+        background: var(--white);
+        border-radius: var(--radius);
+        box-shadow: var(--ring);
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        max-width: 100%;
+      }
+      .card.response-card {
+        overflow: hidden;
+      }
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--hairline);
+        flex: none;
+      }
+      .card-head h2 { margin: 0; font-size: 14px; font-weight: 500; }
+      .card-head-actions { display: flex; align-items: center; gap: 8px; }
+      .card-body {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      #response-body {
+        overflow: auto;
+      }
+      #response-body pre {
+        max-height: none;
+      }
+      .meta-block {
+        padding: 14px 16px;
+        border-top: 1px solid var(--hairline);
+      }
+      .meta-block:first-child { border-top: 0; }
+      .meta-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .meta-label {
+        font: 600 11px/1 var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--obsidian);
+      }
+      .meta-source { color: var(--smoke); font: 11px/1 var(--mono); }
+      .meta-empty { color: var(--smoke); font-size: 12px; padding: 2px 0; }
+      .kv {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        min-width: 0;
+      }
+      .kv:last-child { margin-bottom: 0; }
+      .kname {
+        flex: none;
+        width: 120px;
+        color: var(--stone);
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .kval {
+        flex: 1;
+        min-width: 0;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--obsidian);
+        padding: 8px 10px;
+        background: var(--inset);
+        border-radius: var(--radius);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      pre {
+        margin: 0;
+        padding: 12px;
+        background: var(--inset);
+        border-radius: var(--radius);
+        overflow: auto;
+        font: 12px/1.5 var(--mono);
+      }
+      .k { color: #1f4e79; }
+      .s { color: #2e6b2e; }
+      .n { color: #8a4b12; }
+      .p { color: #6b3fa0; }
+      .empty { color: var(--stone); font-size: 13px; padding: 8px 0; }
+      .code {
+        font: 500 12px/1 var(--mono);
+        padding: 4px 8px;
+        border-radius: 9999px;
+        background: var(--inset);
+      }
+      .code.ok { background: #e5f2e8; color: #297a3a; }
+      .code-text { color: var(--stone); font-size: 12px; }
+
+      .fields { margin-top: 16px; }
+      .fields > h2 {
+        font-size: 14px;
+        font-weight: 500;
+        margin: 0 0 4px;
+        color: var(--obsidian);
+      }
+      .fields-section { padding: 14px 0 2px; }
+      .fields-section-title {
+        font: 500 11px/1 var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--stone);
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1.2fr 0.7fr 1fr;
+        gap: 12px;
+        padding: 8px 0;
+        font-size: 13px;
+      }
+      .row .name { font-family: var(--mono); font-size: 12px; color: var(--obsidian); }
+      .row .name.nested { color: var(--ink, var(--obsidian)); }
+      .row .type { color: var(--stone); font-family: var(--mono); font-size: 12px; }
+      .flag { margin-top: 4px; font-size: 11px; color: var(--smoke); }
+      .flag.req { color: #8a2e2e; }
+
+      @media (max-width: 960px) {
+        .app { grid-template-columns: 1fr; height: auto; }
+        .sidebar { max-height: 40vh; }
+        .pair { grid-template-columns: 1fr; }
+        .search-wrap { width: min(280px, 70vw); }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topnav">
+      <div class="brand-wrap">
+        <span class="workspace" id="workspace">workspace</span>
+        <div class="brand" id="brand">API Docs</div>
+      </div>
+      <div class="search-wrap" id="search-wrap">
+        <input class="search" id="search" placeholder="Search endpoints" autocomplete="off" spellcheck="false" />
+        <div class="search-panel" id="search-panel" role="listbox"></div>
+      </div>
+      <div class="nav-tools">
+        <button class="btn icon" id="export-openapi" type="button" data-tip="Export OpenAPI" aria-label="Export OpenAPI">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <div class="env-wrap" id="env-wrap">
+          <button class="env-trigger" id="env-trigger" type="button">local · —</button>
+          <div class="env-pop" id="env-pop"></div>
+        </div>
+      </div>
+    </header>
+    <div class="search-backdrop" id="search-backdrop"></div>
+    <div class="app">
+      <aside class="sidebar" id="nav"></aside>
+      <main class="workbench" id="main"></main>
+    </div>
+    <script>
+      window.__SPEC__ = __SPEC_JSON__;
+    </script>
+    <script>
+      const spec = window.__SPEC__ || {};
+      const viewer = spec["x-viewer"] || {};
+      const workspace = (spec.info && spec.info["x-workspace"]) || viewer.workspace || "";
+      const defaultBaseUrlFromSpec = String((viewer.baseUrl || (spec.servers && spec.servers[0] && spec.servers[0].url) || "http://localhost:3000")).replace(/\/$/, "");
+      const docsPathSuffix = String(viewer.docsPath || "/docs").replace(/\/$/, "") || "/docs";
+
+      const inferBaseUrlFromLocation = () => {
+        if (typeof location === "undefined") return null;
+        if (location.protocol !== "http:" && location.protocol !== "https:") return null;
+        let pathname = (location.pathname || "/").replace(/\/$/, "") || "";
+        if (pathname === docsPathSuffix) return location.origin.replace(/\/$/, "");
+        if (pathname.endsWith(docsPathSuffix)) {
+          const prefix = pathname.slice(0, -docsPathSuffix.length).replace(/\/$/, "");
+          return (location.origin + prefix).replace(/\/$/, "");
+        }
+        const idx = pathname.indexOf(docsPathSuffix + "/");
+        if (idx >= 0) {
+          const prefix = pathname.slice(0, idx).replace(/\/$/, "");
+          return (location.origin + prefix).replace(/\/$/, "");
+        }
+        return null;
+      };
+
+      const locationBaseUrl = inferBaseUrlFromLocation();
+      // Prefer the URL that is serving the viewer (strip /docs), else fall back to spec.
+      const defaultBaseUrl = locationBaseUrl || defaultBaseUrlFromSpec;
+      const title = (spec.info && spec.info.title) || "API Docs";
+      const STORE_KEY = "openapi-docs-env:" + (workspace || "default");
+
+      let liveResult = null;
+
+      const escapeAttr = (value) =>
+        String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;");
+
+      const varNameFromHeader = (header) => {
+        const parts = String(header).replace(/^x-/, "").split("-").filter(Boolean);
+        if (!parts.length) return String(header).replace(/[^a-zA-Z0-9]/g, "");
+        return parts[0] + parts.slice(1).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
+      };
+
+      /** Pull try-it defaults from recorded success traffic + parameter examples. */
+      const collectDefaultHeaderValues = () => {
+        const byHeader = {};
+        const take = (header, value, prefer) => {
+          if (value == null || value === "") return;
+          const key = String(header).toLowerCase();
+          if (!byHeader[key] || prefer) byHeader[key] = String(value);
+        };
+        for (const pathItem of Object.values(spec.paths || {})) {
+          for (const op of Object.values(pathItem || {})) {
+            if (!op || typeof op !== "object") continue;
+            for (const param of op.parameters || []) {
+              if (param && param.in === "header" && param.name && param.example != null) {
+                take(param.name, param.example, false);
+              }
+            }
+            for (const scenario of op["x-scenarios"] || []) {
+              const success = scenario.status >= 200 && scenario.status < 300;
+              for (const [header, value] of Object.entries(scenario.headers || {})) {
+                if (!String(header).toLowerCase().startsWith("x-")) continue;
+                take(header, value, success);
+              }
+            }
+          }
+        }
+        return byHeader;
+      };
+
+      const defaultHeaderValues = collectDefaultHeaderValues();
+
+      const buildDefaultStore = () => {
+        const schemes = (spec.components && spec.components.securitySchemes) || {};
+        const variables = [{ key: "baseUrl", value: defaultBaseUrl }];
+        const varKeys = new Set(["baseUrl"]);
+        const headerGroups = {};
+        for (const [schemeId, scheme] of Object.entries(schemes)) {
+          if (!scheme || scheme.in !== "header" || !scheme.name) continue;
+          const header = scheme.name;
+          const varName = varNameFromHeader(header);
+          if (!varKeys.has(varName)) {
+            const seeded = defaultHeaderValues[String(header).toLowerCase()] || "";
+            variables.push({ key: varName, value: seeded });
+            varKeys.add(varName);
+          }
+          headerGroups[schemeId] = [
+            { key: header, value: "{{" + varName + "}}" },
+            { key: "content-type", value: "application/json" },
+          ];
+        }
+        // Pre-build merged groups for operations that need multiple schemes together.
+        const seenCombos = new Set();
+        for (const pathItem of Object.values(spec.paths || {})) {
+          for (const op of Object.values(pathItem || {})) {
+            if (!op || typeof op !== "object") continue;
+            const ids = [];
+            for (const requirement of op.security || []) {
+              if (!requirement || typeof requirement !== "object") continue;
+              for (const id of Object.keys(requirement)) {
+                if (headerGroups[id]) ids.push(id);
+              }
+            }
+            const unique = [...new Set(ids)];
+            if (unique.length < 2) continue;
+            const comboKey = unique.slice().sort().join("+");
+            if (seenCombos.has(comboKey)) continue;
+            seenCombos.add(comboKey);
+            const byKey = {};
+            for (const id of unique) {
+              for (const row of headerGroups[id] || []) {
+                if (!row.key) continue;
+                byKey[row.key] = { key: row.key, value: row.value };
+              }
+            }
+            if (!byKey["content-type"]) byKey["content-type"] = { key: "content-type", value: "application/json" };
+            headerGroups[comboKey] = Object.values(byKey);
+          }
+        }
+
+        const groupNames = Object.keys(headerGroups);
+        if (!groupNames.length) headerGroups.default = [{ key: "content-type", value: "application/json" }];
+        return {
+          activeEnv: "local",
+          activeGroup: groupNames[0] || "default",
+          envs: { local: { variables, headerGroups } },
+        };
+      };
+
+      const cloneDefaultEnv = () => JSON.parse(JSON.stringify(buildDefaultStore().envs.local));
+
+      const mergeStore = (saved) => {
+        const defaults = buildDefaultStore();
+        if (!saved || !saved.envs || typeof saved.envs !== "object") return defaults;
+        const envs = {};
+        for (const [name, env] of Object.entries(saved.envs)) {
+          const base = cloneDefaultEnv();
+          const variables = Array.isArray(env.variables) ? env.variables.map((row) => ({ key: String(row.key || ""), value: String(row.value ?? "") })) : base.variables.map((row) => ({ ...row }));
+          const known = new Set(variables.map((row) => row.key).filter(Boolean));
+          for (const row of base.variables) {
+            if (row.key && !known.has(row.key)) variables.push({ ...row });
+          }
+          // Backfill empty env values from recorded defaults so Try-it works out of the box.
+          const defaultsByKey = Object.fromEntries((base.variables || []).filter((row) => row.key).map((row) => [row.key, row.value ?? ""]));
+          for (const row of variables) {
+            if (!row.key) continue;
+            if (String(row.value ?? "").trim()) continue;
+            if (defaultsByKey[row.key]) row.value = defaultsByKey[row.key];
+          }
+          const headerGroups = { ...(env.headerGroups || {}) };
+          for (const [group, rows] of Object.entries(base.headerGroups)) {
+            if (!headerGroups[group]) headerGroups[group] = rows.map((row) => ({ ...row }));
+          }
+          if (!Object.keys(headerGroups).length) headerGroups.default = [{ key: "content-type", value: "application/json" }];
+          envs[name] = { variables, headerGroups };
+        }
+        if (!Object.keys(envs).length) return defaults;
+        const activeEnv = envs[saved.activeEnv] ? saved.activeEnv : Object.keys(envs)[0];
+        const groups = Object.keys(envs[activeEnv].headerGroups || {});
+        const activeGroup = groups.includes(saved.activeGroup) ? saved.activeGroup : groups[0] || "default";
+        return { activeEnv, activeGroup, envs };
+      };
+
+      const loadStore = () => {
+        try {
+          const raw = localStorage.getItem(STORE_KEY);
+          if (raw) return mergeStore(JSON.parse(raw));
+        } catch {}
+        return buildDefaultStore();
+      };
+
+      const applyServingBaseUrl = (state) => {
+        if (!locationBaseUrl || !state || !state.envs) return state;
+        for (const env of Object.values(state.envs)) {
+          const variables = env.variables || (env.variables = []);
+          const row = variables.find((entry) => entry.key === "baseUrl");
+          if (row) row.value = locationBaseUrl;
+          else variables.unshift({ key: "baseUrl", value: locationBaseUrl });
+        }
+        return state;
+      };
+
+      let store = applyServingBaseUrl(loadStore());
+
+      const persistStore = () => {
+        try {
+          localStorage.setItem(STORE_KEY, JSON.stringify(store));
+        } catch {}
+      };
+
+      const activeEnvConfig = () => store.envs[store.activeEnv] || store.envs[Object.keys(store.envs)[0]];
+
+      const varMap = () => {
+        const env = activeEnvConfig();
+        return Object.fromEntries((env.variables || []).filter((row) => row.key).map((row) => [row.key, row.value ?? ""]));
+      };
+
+      const interpolate = (value, vars, depth = 0) => {
+        if (value == null || depth > 8) return value;
+        if (typeof value === "object") {
+          if (Array.isArray(value)) return value.map((item) => interpolate(item, vars, depth));
+          return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, interpolate(nested, vars, depth)]));
+        }
+        if (typeof value !== "string") return value;
+        return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => (key in vars ? String(interpolate(vars[key], vars, depth + 1)) : "{{" + key + "}}"));
+      };
+
+      const resolvedHeadersFromGroup = (groupName) => {
+        const env = activeEnvConfig();
+        const groups = env.headerGroups || {};
+        const group = groups[groupName] || groups[Object.keys(groups)[0]] || [];
+        const vars = varMap();
+        return Object.fromEntries(group.filter((row) => row.key).map((row) => [row.key, String(interpolate(row.value || "", vars))]));
+      };
+
+      const resolvedHeaders = () => resolvedHeadersFromGroup(store.activeGroup);
+
+      /** OpenAPI security scheme ids for an operation (union across requirements). */
+      const securitySchemeIds = (op) => {
+        const requirements = (op && op.security) || spec.security || [];
+        if (!Array.isArray(requirements) || !requirements.length) return [];
+        const ids = [];
+        for (const requirement of requirements) {
+          if (!requirement || typeof requirement !== "object") continue;
+          for (const id of Object.keys(requirement)) ids.push(id);
+        }
+        return [...new Set(ids)];
+      };
+
+      /** Stable group name for this op: single scheme, or merged combo (userId+merchantId). */
+      const requiredGroupName = (op) => {
+        const ids = securitySchemeIds(op);
+        if (!ids.length) return null;
+        if (ids.length === 1) return ids[0];
+        return ids.slice().sort().join("+");
+      };
+
+      /** Fixed hint next to Headers — what this API needs to work. */
+      const requiredAuthHint = (op) => {
+        const ids = securitySchemeIds(op);
+        if (!ids.length) return "";
+        return "Required: " + ids.join(" + ");
+      };
+
+      /** Ensure merged combo group exists in the active env (lazy for older localStorage). */
+      const ensureRequiredHeaderGroup = (op) => {
+        const name = requiredGroupName(op);
+        if (!name) return null;
+        const env = activeEnvConfig();
+        const groups = env.headerGroups || (env.headerGroups = {});
+        if (groups[name]) return name;
+        const ids = securitySchemeIds(op);
+        const byKey = {};
+        for (const id of ids) {
+          for (const row of groups[id] || []) {
+            if (!row.key) continue;
+            byKey[row.key] = { key: row.key, value: row.value };
+          }
+        }
+        if (!Object.keys(byKey).length) return null;
+        if (!byKey["content-type"]) byKey["content-type"] = { key: "content-type", value: "application/json" };
+        groups[name] = Object.values(byKey);
+        return name;
+      };
+
+      /**
+       * On operation select: switch to the required (possibly merged) group once.
+       * User can still change the group from the top env panel afterward; Send follows that.
+       */
+      const syncHeaderGroupForOp = (op) => {
+        const name = ensureRequiredHeaderGroup(op);
+        if (!name) return;
+        if (store.activeGroup === name) return;
+        store.activeGroup = name;
+        persistStore();
+        syncEnvTrigger();
+        if (document.getElementById("env-wrap")?.classList.contains("open")) renderEnvPop();
+      };
+
+      const currentBaseUrl = () => String(interpolate(varMap().baseUrl || defaultBaseUrl, varMap()) || defaultBaseUrl).replace(/\/$/, "");
+
+      const envLabel = () => store.activeEnv + " · " + store.activeGroup;
+
+      const syncEnvTrigger = () => {
+        const trigger = document.getElementById("env-trigger");
+        if (trigger) trigger.textContent = envLabel();
+      };
+
+      const renderEnvPop = () => {
+        const env = activeEnvConfig();
+        const envNames = Object.keys(store.envs);
+        const groups = Object.keys(env.headerGroups || {});
+        if (!groups.includes(store.activeGroup)) store.activeGroup = groups[0] || "default";
+        const groupRows = env.headerGroups[store.activeGroup] || [];
+        const canRemoveEnv = envNames.length > 1;
+        const canRemoveGroup = groups.length > 1;
+
+        document.getElementById("env-pop").innerHTML = `
+          <div class="env-block">
+            <div class="env-label">Env</div>
+            <div class="chip-row">
+              ${envNames
+                .map((id) => `<button type="button" class="chip-btn ${id === store.activeEnv ? "on" : ""}" data-env="${escapeAttr(id)}">${escapeAttr(id)}</button>`)
+                .join("")}
+              <button type="button" class="ghost-btn" id="add-env" title="Add env">+</button>
+              <button type="button" class="ghost-btn" id="remove-env" title="Remove env" ${canRemoveEnv ? "" : "disabled"}>×</button>
+            </div>
+          </div>
+          <div class="env-block">
+            <div class="env-label">Variables</div>
+            ${(env.variables || [])
+              .map(
+                (row, index) => `<div class="env-kv" data-var="${index}">
+                  <input class="env-cell" data-field="key" spellcheck="false" value="${escapeAttr(row.key)}" />
+                  <input class="env-cell" data-field="value" spellcheck="false" value="${escapeAttr(row.value)}" />
+                  <button type="button" class="ghost-btn" data-remove-var="${index}">×</button>
+                </div>`,
+              )
+              .join("")}
+            <button type="button" class="btn env-add" id="add-var">Add variable</button>
+          </div>
+          <div class="env-block">
+            <div class="env-label">Header group</div>
+            <div class="chip-row">
+              ${groups
+                .map((group) => `<button type="button" class="chip-btn ${group === store.activeGroup ? "on" : ""}" data-group="${escapeAttr(group)}">${escapeAttr(group)}</button>`)
+                .join("")}
+              <button type="button" class="ghost-btn" id="add-group" title="Add header group">+</button>
+              <button type="button" class="ghost-btn" id="remove-group" title="Remove header group" ${canRemoveGroup ? "" : "disabled"}>×</button>
+            </div>
+            ${groupRows
+              .map(
+                (row, index) => `<div class="env-kv" data-hdr="${index}">
+                  <input class="env-cell" data-field="key" spellcheck="false" value="${escapeAttr(row.key)}" />
+                  <input class="env-cell" data-field="value" spellcheck="false" value="${escapeAttr(row.value)}" />
+                  <button type="button" class="ghost-btn" data-remove-hdr="${index}">×</button>
+                </div>`,
+              )
+              .join("")}
+            <button type="button" class="btn env-add" id="add-hdr">Add header</button>
+          </div>
+        `;
+
+        syncEnvTrigger();
+
+        document.getElementById("env-pop").querySelectorAll("[data-env]").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            store.activeEnv = button.dataset.env;
+            const nextGroups = Object.keys(activeEnvConfig().headerGroups || {});
+            if (!nextGroups.includes(store.activeGroup)) store.activeGroup = nextGroups[0] || "default";
+            persistStore();
+            renderEnvPop();
+            renderMain();
+          };
+        });
+        document.getElementById("add-env").onclick = (event) => {
+          event.stopPropagation();
+          let name = "env";
+          let n = 1;
+          while (store.envs[name + n]) n += 1;
+          name = name + n;
+          store.envs[name] = cloneDefaultEnv();
+          store.activeEnv = name;
+          store.activeGroup = Object.keys(store.envs[name].headerGroups)[0] || "default";
+          persistStore();
+          renderEnvPop();
+          renderMain();
+        };
+        document.getElementById("remove-env").onclick = (event) => {
+          event.stopPropagation();
+          const names = Object.keys(store.envs);
+          if (names.length <= 1 || !store.envs[store.activeEnv]) return;
+          delete store.envs[store.activeEnv];
+          store.activeEnv = Object.keys(store.envs)[0];
+          const nextGroups = Object.keys(activeEnvConfig().headerGroups || {});
+          store.activeGroup = nextGroups.includes(store.activeGroup) ? store.activeGroup : nextGroups[0] || "default";
+          persistStore();
+          renderEnvPop();
+          renderMain();
+        };
+        document.getElementById("env-pop").querySelectorAll("[data-group]").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            store.activeGroup = button.dataset.group;
+            persistStore();
+            renderEnvPop();
+            renderMain();
+          };
+        });
+        document.getElementById("add-group").onclick = (event) => {
+          event.stopPropagation();
+          let name = "group";
+          let n = 1;
+          const groupsMap = activeEnvConfig().headerGroups;
+          while (groupsMap[name + n]) n += 1;
+          name = name + n;
+          groupsMap[name] = [{ key: "content-type", value: "application/json" }];
+          store.activeGroup = name;
+          persistStore();
+          renderEnvPop();
+          renderMain();
+        };
+        document.getElementById("remove-group").onclick = (event) => {
+          event.stopPropagation();
+          const groupsMap = activeEnvConfig().headerGroups;
+          const names = Object.keys(groupsMap || {});
+          if (names.length <= 1 || !groupsMap[store.activeGroup]) return;
+          delete groupsMap[store.activeGroup];
+          store.activeGroup = Object.keys(groupsMap)[0] || "default";
+          persistStore();
+          renderEnvPop();
+          renderMain();
+        };
+        document.getElementById("env-pop").querySelectorAll("[data-var]").forEach((row) => {
+          row.querySelectorAll("input").forEach((input) => {
+            input.oninput = () => {
+              const index = Number(row.dataset.var);
+              const field = input.dataset.field;
+              if (!activeEnvConfig().variables[index] || (field !== "key" && field !== "value")) return;
+              activeEnvConfig().variables[index][field] = input.value;
+              persistStore();
+              syncEnvTrigger();
+              if (field === "value" && activeEnvConfig().variables[index].key === "baseUrl") renderMain();
+            };
+            input.onchange = () => renderMain();
+          });
+        });
+        document.getElementById("env-pop").querySelectorAll("[data-remove-var]").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            activeEnvConfig().variables.splice(Number(button.dataset.removeVar), 1);
+            persistStore();
+            renderEnvPop();
+            renderMain();
+          };
+        });
+        document.getElementById("add-var").onclick = (event) => {
+          event.stopPropagation();
+          activeEnvConfig().variables.push({ key: "", value: "" });
+          persistStore();
+          renderEnvPop();
+        };
+        document.getElementById("env-pop").querySelectorAll("[data-hdr]").forEach((row) => {
+          row.querySelectorAll("input").forEach((input) => {
+            input.oninput = () => {
+              const index = Number(row.dataset.hdr);
+              const field = input.dataset.field;
+              const rows = activeEnvConfig().headerGroups[store.activeGroup] || [];
+              if (!rows[index] || (field !== "key" && field !== "value")) return;
+              rows[index][field] = input.value;
+              persistStore();
+            };
+            input.onchange = () => renderMain();
+          });
+        });
+        document.getElementById("env-pop").querySelectorAll("[data-remove-hdr]").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            (activeEnvConfig().headerGroups[store.activeGroup] || []).splice(Number(button.dataset.removeHdr), 1);
+            persistStore();
+            renderEnvPop();
+            renderMain();
+          };
+        });
+        document.getElementById("add-hdr").onclick = (event) => {
+          event.stopPropagation();
+          const groupsMap = activeEnvConfig().headerGroups;
+          groupsMap[store.activeGroup] = groupsMap[store.activeGroup] || [];
+          groupsMap[store.activeGroup].push({ key: "", value: "" });
+          persistStore();
+          renderEnvPop();
+        };
+      };
+
+      document.title = "DAxTA";
+      const workspaceEl = document.getElementById("workspace");
+      if (workspace) {
+        workspaceEl.textContent = workspace;
+        workspaceEl.hidden = false;
+      } else {
+        workspaceEl.hidden = true;
+      }
+      document.getElementById("brand").textContent = title;
+
+      const envWrap = document.getElementById("env-wrap");
+      document.getElementById("env-trigger").addEventListener("click", (event) => {
+        event.stopPropagation();
+        envWrap.classList.toggle("open");
+        if (envWrap.classList.contains("open")) renderEnvPop();
+      });
+      document.getElementById("env-pop").addEventListener("click", (event) => event.stopPropagation());
+      renderEnvPop();
+
+      const VIEWER_EXTENSIONS = new Set(["x-viewer", "x-docs", "x-scenarios", "x-tree-segments", "x-workspace"]);
+
+      const toExportSpec = (source) => {
+        const walk = (value) => {
+          if (Array.isArray(value)) return value.map(walk);
+          if (!value || typeof value !== "object") return value;
+          const out = {};
+          for (const [key, child] of Object.entries(value)) {
+            if (VIEWER_EXTENSIONS.has(key)) continue;
+            out[key] = walk(child);
+          }
+          return out;
+        };
+        const exported = walk(source);
+        exported.openapi = exported.openapi || "3.0.3";
+        if (!exported.info) exported.info = { title: title, version: "0.0.0" };
+        if (!exported.paths) exported.paths = {};
+        return exported;
+      };
+
+      const downloadOpenApi = () => {
+        const exported = toExportSpec(spec);
+        const blob = new Blob([JSON.stringify(exported, null, 2) + "\n"], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const safeName = String(workspace || title || "openapi")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") || "openapi";
+        link.href = url;
+        link.download = safeName + ".openapi.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      document.getElementById("export-openapi").addEventListener("click", downloadOpenApi);
+
+      const HTTP = ["get", "post", "put", "patch", "delete"];
+      const STATUS = { 200: "OK", 201: "Created", 204: "No Content", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found", 409: "Conflict", 422: "Unprocessable Entity" };
+      const GROUP_ORDER = ["Success", "Business errors", "Invalid input", "Missing fields", "Auth", "Other"];
+      const METHOD_ORDER = { get: 0, post: 1, put: 2, patch: 3, delete: 4 };
+
+      const ops = [];
+      for (const [path, item] of Object.entries(spec.paths || {})) {
+        for (const method of HTTP) {
+          if (!item[method]) continue;
+          ops.push({
+            id: method + ":" + path,
+            method,
+            path,
+            op: item[method],
+            title: item[method].summary || path,
+            docs: item[method]["x-docs"] || { fields: [] },
+            scenarios: item[method]["x-scenarios"] || [],
+            treeSegments: item[method]["x-tree-segments"] || path.split("/").filter(Boolean),
+          });
+        }
+      }
+
+      const highlight = (value) => {
+        if (value === undefined || value === null || value === "") return "";
+        return JSON.stringify(value, null, 2)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+          .replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>')
+          .replace(/: (-?\d+(?:\.\d+)?)/g, ': <span class="n">$1</span>')
+          .replace(/: (true|false|null)/g, ': <span class="p">$1</span>');
+      };
+
+      const copyBodyText = (value) => {
+        if (value === undefined || value === "") return null;
+        if (typeof value === "string") return value;
+        return JSON.stringify(value, null, 2);
+      };
+
+      const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+
+      const showToast = (message) => {
+        let toast = document.getElementById("toast");
+        if (!toast) {
+          toast = document.createElement("div");
+          toast.id = "toast";
+          toast.className = "toast";
+          document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => toast.classList.remove("show"), 1400);
+      };
+
+      const copy = async (text, button, label) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          if (button && button.classList.contains("icon")) {
+            showToast("Kopyalandı");
+            return;
+          }
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => (button.textContent = label || previous), 1200);
+        } catch {}
+      };
+
+      const resolvedUrl = (item, scenario) => {
+        const vars = varMap();
+        let path = item.path;
+        for (const [name, value] of Object.entries(scenario.pathParams || {})) {
+          const fromVar = vars[name] ? String(interpolate(vars[name], vars)) : value;
+          path = path.replace("{" + name + "}", encodeURIComponent(fromVar ?? ""));
+        }
+        const query = { ...(scenario.query || {}) };
+        for (const key of Object.keys(query)) {
+          if (vars[key]) query[key] = String(interpolate(vars[key], vars));
+        }
+        const qs = new URLSearchParams(query).toString();
+        return currentBaseUrl() + path + (qs ? "?" + qs : "");
+      };
+
+      /**
+       * Use only headers that were on this recorded request.
+       * Empty headers (e.g. 401 missing-auth cases) must stay empty — never inject env auth.
+       * When headers exist, env can override values for the same keys (live tokens).
+       */
+      const requestHeadersForScenario = (scenario) => {
+        const recorded = { ...(scenario.headers || {}) };
+        const vars = varMap();
+        const envHeaders = resolvedHeaders();
+        const envByLower = {};
+        for (const [name, value] of Object.entries(envHeaders)) {
+          envByLower[String(name).toLowerCase()] = value;
+        }
+        const out = {};
+        for (const [name, value] of Object.entries(recorded)) {
+          const fromEnv = envByLower[String(name).toLowerCase()];
+          const raw = fromEnv != null && String(fromEnv).trim() !== "" ? fromEnv : value;
+          out[name] = String(interpolate(raw, vars));
+        }
+        return out;
+      };
+
+      const toCurl = (item, scenario) => {
+        const headers = requestHeadersForScenario(scenario);
+        const body = scenario.reqBody !== undefined ? interpolate(scenario.reqBody, varMap()) : undefined;
+        const lines = ["curl -X " + item.method.toUpperCase() + " '" + resolvedUrl(item, scenario).replace(/'/g, "'\\''") + "'"];
+        for (const [name, value] of Object.entries(headers)) {
+          lines.push("  -H '" + name + ": " + String(value).replace(/'/g, "'\\''") + "'");
+        }
+        if (body !== undefined && item.method !== "get") {
+          lines.push("  -d '" + JSON.stringify(body, null, 2).replace(/'/g, "'\\''") + "'");
+        }
+        return lines.join(" \\\n");
+      };
+
+      const proxyUrl = (target) => {
+        try {
+          const absolute = new URL(target, location.href);
+          if (absolute.origin === location.origin) return absolute.href;
+        } catch {}
+        if (location.protocol === "http:" || location.protocol === "https:") {
+          return "/__proxy?target=" + encodeURIComponent(target);
+        }
+        return target;
+      };
+
+      const sendRequest = async (item, scenario) => {
+        const target = resolvedUrl(item, scenario);
+        const headers = { ...requestHeadersForScenario(scenario) };
+        const body = scenario.reqBody !== undefined ? interpolate(scenario.reqBody, varMap()) : undefined;
+        if (body !== undefined && !headers["content-type"] && !headers["Content-Type"]) {
+          headers["content-type"] = "application/json";
+        }
+        const init = {
+          method: item.method.toUpperCase(),
+          headers,
+        };
+        if (body !== undefined && item.method !== "get" && item.method !== "head") {
+          init.body = typeof body === "string" ? body : JSON.stringify(body);
+        }
+        const response = await fetch(proxyUrl(target), init);
+        const text = await response.text();
+        let parsed = text;
+        try {
+          parsed = text ? JSON.parse(text) : undefined;
+        } catch {
+          parsed = text;
+        }
+        return { status: response.status, body: parsed, ok: response.ok };
+      };
+
+      const groupedDropdown = (scenarios, selected) => {
+        const groups = {};
+        scenarios.forEach((scenario, index) => {
+          (groups[scenario.group] ||= []).push({ scenario, index });
+        });
+        const order = GROUP_ORDER.filter((name) => groups[name]).concat(Object.keys(groups).filter((name) => !GROUP_ORDER.includes(name)));
+        const current = scenarios[selected];
+        const label = current ? current.group + " · " + current.name : "Recorded call";
+        return `<div class="dd" id="scenario-dd">
+          <button type="button" class="dd-toggle" id="scenario-toggle">${label}</button>
+          <div class="dd-menu">${order
+            .map(
+              (group) =>
+                `<div class="dd-group">${group}</div>` +
+                groups[group]
+                  .map(({ scenario, index }) => `<button type="button" class="dd-item ${index === selected ? "on" : ""}" data-index="${index}">${scenario.status} — ${scenario.name}</button>`)
+                  .join(""),
+            )
+            .join("")}</div>
+        </div>`;
+      };
+
+      let currentId = ops[0]?.id;
+      let scenarioIndex = 0;
+      const treePathSegments = (item) => item.treeSegments || item.path.split("/").filter(Boolean);
+      const expandedFolders = new Set(
+        [...new Set(ops.map((item) => treePathSegments(item)[0]).filter(Boolean))].map((version) => "/" + version),
+      );
+
+      const kv = (label, value) => {
+        if (value === undefined || value === "") return "";
+        const shown = typeof value === "object" ? JSON.stringify(value) : String(value);
+        return `<div class="kv" title="${escapeAttr(label)}: ${escapeAttr(shown)}"><div class="kname">${label}</div><div class="kval">${shown}</div></div>`;
+      };
+
+      const metaBlock = (title, bodyHtml, source = "", { always = false } = {}) => {
+        if (!always && !bodyHtml) return "";
+        return `<div class="meta-block">
+          <div class="meta-toolbar">
+            <span class="meta-label">${title}</span>
+            ${source ? `<span class="meta-source">${source}</span>` : ""}
+          </div>
+          ${bodyHtml || `<div class="meta-empty">—</div>`}
+        </div>`;
+      };
+
+      const buildPathTree = (items) => {
+        const root = { children: {}, ops: [] };
+        for (const item of items) {
+          const parts = treePathSegments(item);
+          let node = root;
+          for (let index = 0; index < parts.length; index += 1) {
+            const part = parts[index];
+            node.children[part] ??= { children: {}, ops: [] };
+            node = node.children[part];
+            if (index === parts.length - 1) node.ops.push(item);
+          }
+        }
+        return root;
+      };
+
+      const expandPathToItem = (item) => {
+        const parts = treePathSegments(item);
+        let prefix = "";
+        for (const part of parts) {
+          prefix += "/" + part;
+          expandedFolders.add(prefix);
+        }
+      };
+
+      const collectVisibleItems = (node) => {
+        const items = [...node.ops];
+        for (const child of Object.values(node.children)) items.push(...collectVisibleItems(child));
+        return items;
+      };
+
+      const renderTreeNode = (node, prefix = "", q = "") => {
+        const opsHtml = [...node.ops]
+          .sort((left, right) => (METHOD_ORDER[left.method] ?? 99) - (METHOD_ORDER[right.method] ?? 99))
+          .map(
+            (item) =>
+              `<button class="nav-item ${item.id === currentId ? "active" : ""}" data-id="${item.id}" title="${item.path}">
+                <span class="method ${item.method}">${item.method}</span>
+                <span class="nav-title">${item.title}</span>
+              </button>`,
+          )
+          .join("");
+
+        const foldersHtml = Object.entries(node.children)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([name, child]) => {
+            const folderPath = (prefix ? prefix + "/" : "/") + name;
+            const subtreeItems = collectVisibleItems(child);
+            if (q && !subtreeItems.some((item) => (item.method + " " + item.path + " " + item.title).toLowerCase().includes(q))) return "";
+            const open = q ? true : expandedFolders.has(folderPath);
+            return `<div class="tree-folder ${open ? "open" : ""}" data-folder="${folderPath}">
+              <button type="button" class="tree-folder-toggle" data-folder="${folderPath}">
+                <span class="chev"></span>
+                <span class="tree-folder-name">${name}</span>
+              </button>
+              <div class="tree-children">${renderTreeNode(child, folderPath, q)}</div>
+            </div>`;
+          })
+          .join("");
+
+        return opsHtml + foldersHtml;
+      };
+
+      const renderNav = () => {
+        const nav = document.getElementById("nav");
+        if (!ops.length) {
+          nav.innerHTML = `<div class="tree-empty">No endpoints recorded</div>`;
+          return;
+        }
+        if (currentId) {
+          const active = ops.find((item) => item.id === currentId);
+          if (active) expandPathToItem(active);
+        }
+        nav.innerHTML = `<div class="tree-root">${renderTreeNode(buildPathTree(ops), "", "")}</div>`;
+        nav.querySelectorAll(".nav-item").forEach((button) => {
+          button.onclick = () => select(button.dataset.id);
+        });
+        nav.querySelectorAll(".tree-folder-toggle").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            const folderPath = button.dataset.folder;
+            const folder = button.closest(".tree-folder");
+            if (expandedFolders.has(folderPath)) {
+              expandedFolders.delete(folderPath);
+              folder.classList.remove("open");
+            } else {
+              expandedFolders.add(folderPath);
+              folder.classList.add("open");
+            }
+          };
+        });
+      };
+
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+
+      const highlightMatch = (text, query) => {
+        const raw = String(text ?? "");
+        const q = query.trim();
+        if (!q) return escapeHtml(raw);
+        const lower = raw.toLowerCase();
+        const index = lower.indexOf(q.toLowerCase());
+        if (index < 0) return escapeHtml(raw);
+        return (
+          escapeHtml(raw.slice(0, index)) +
+          "<mark>" +
+          escapeHtml(raw.slice(index, index + q.length)) +
+          "</mark>" +
+          escapeHtml(raw.slice(index + q.length))
+        );
+      };
+
+      let searchActiveIndex = 0;
+
+      const closeSearch = ({ clear = false } = {}) => {
+        const wrap = document.getElementById("search-wrap");
+        const input = document.getElementById("search");
+        wrap.classList.remove("open");
+        document.body.classList.remove("searching");
+        searchActiveIndex = 0;
+        if (clear) input.value = "";
+      };
+
+      const openSearch = () => {
+        document.getElementById("search-wrap").classList.add("open");
+        document.body.classList.add("searching");
+      };
+
+      const renderSearchPanel = (query = "") => {
+        const q = query.trim().toLowerCase();
+        const panel = document.getElementById("search-panel");
+        if (!q) {
+          closeSearch();
+          panel.innerHTML = "";
+          return;
+        }
+        openSearch();
+        const matches = ops.filter((item) => (item.method + " " + item.path + " " + item.title).toLowerCase().includes(q));
+        if (!matches.length) {
+          panel.innerHTML = `<div class="search-empty">No matching endpoints</div>`;
+          return;
+        }
+        if (searchActiveIndex >= matches.length) searchActiveIndex = 0;
+        panel.innerHTML = matches
+          .map(
+            (item, index) => `<button type="button" class="search-hit ${index === searchActiveIndex ? "active" : ""}" data-id="${item.id}" role="option">
+              <span class="method ${item.method}">${item.method}</span>
+              <span class="search-hit-path">${highlightMatch(item.path, q)}</span>
+            </button>`,
+          )
+          .join("");
+        panel.querySelectorAll(".search-hit").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            select(button.dataset.id);
+            closeSearch({ clear: true });
+          };
+        });
+      };
+
+      const FIELD_SECTIONS = [
+        { key: "header", title: "Headers" },
+        { key: "path", title: "Path" },
+        { key: "query", title: "Query" },
+        { key: "body", title: "Body" },
+      ];
+
+      const fieldDepth = (name) => {
+        const parts = String(name || "")
+          .replace(/\[\]/g, ".")
+          .split(".")
+          .filter(Boolean);
+        return Math.max(0, parts.length - 1);
+      };
+
+      const rows = (fields) => {
+        if (!fields.length) return "";
+        return fields
+          .map((field) => {
+            const depth = field.in === "body" ? fieldDepth(field.name) : 0;
+            const pad = depth ? ` style="padding-left:${depth * 14}px"` : "";
+            const nestClass = depth ? " nested" : "";
+            return `<div class="row">
+              <div class="name${nestClass}"${pad}>${field.name}</div>
+              <div class="type">${field.in}</div>
+              <div>
+                <div class="type">${field.type}</div>
+                ${field.required === true ? `<div class="flag req">Required</div>` : field.required === false ? `<div class="flag">Optional</div>` : ""}
+              </div>
+            </div>`;
+          })
+          .join("");
+      };
+
+      const fieldsPanel = (fields) => {
+        if (!fields.length) return "";
+        const sections = FIELD_SECTIONS.map(({ key, title }) => {
+          const group = fields.filter((field) => field.in === key);
+          if (!group.length) return "";
+          return `<div class="fields-section">
+            <div class="fields-section-title">${title}</div>
+            ${rows(group)}
+          </div>`;
+        }).join("");
+        if (!sections) return "";
+        return `<section class="fields"><h2>Fields</h2>${sections}</section>`;
+      };
+
+      const renderMain = () => {
+        const item = ops.find((entry) => entry.id === currentId);
+        if (!item) {
+          document.getElementById("main").innerHTML = `<div class="empty">No operations in this workspace yet. Run integration tests to generate docs.</div>`;
+          return;
+        }
+        if (scenarioIndex >= item.scenarios.length) scenarioIndex = 0;
+        const scenario = item.scenarios[scenarioIndex] || { status: 0, pathParams: {}, query: {}, headers: {}, name: "" };
+        const fields = item.docs.fields || [];
+        ensureRequiredHeaderGroup(item.op);
+        const recordedHeaders = scenario.headers || {};
+        const recordedOk = scenario.status >= 200 && scenario.status < 300;
+        const statusText = STATUS[scenario.status] || item.op.responses?.[String(scenario.status)]?.description || "";
+        const emptyResponse = scenario.resBody === undefined || scenario.status === 204;
+        const reqCopyText = scenario.reqBody !== undefined ? copyBodyText(scenario.reqBody) : null;
+        const showingLive = liveResult && liveResult.id === item.id && liveResult.scenarioIndex === scenarioIndex;
+        const displayStatus = showingLive ? liveResult.status : scenario.status;
+        const displayBody = showingLive ? liveResult.body : scenario.resBody;
+        const displayOk = showingLive ? liveResult.status >= 200 && liveResult.status < 300 : recordedOk;
+        const displayStatusText = STATUS[displayStatus] || (showingLive ? "" : statusText);
+        const displayEmpty = showingLive ? displayBody === undefined || displayBody === "" : emptyResponse;
+        const resCopyText = displayEmpty ? null : copyBodyText(displayBody);
+        const responseTitle = showingLive ? "Live response" : "Recorded response";
+        const headersHtml = Object.keys(recordedHeaders).length
+          ? Object.entries(recordedHeaders).map(([name, value]) => kv(name, value)).join("")
+          : `<div class="meta-empty">No headers on this recorded request</div>`;
+        const pathParamsHtml = Object.entries(scenario.pathParams || {})
+          .map(([name, value]) => kv(name, value))
+          .join("");
+        const queryHtml = Object.entries(scenario.query || {})
+          .map(([name, value]) => kv(name, value))
+          .join("");
+        const bodyHtml =
+          scenario.reqBody !== undefined
+            ? `<pre>${highlight(scenario.reqBody)}</pre>`
+            : `<div class="meta-empty">No JSON body</div>`;
+
+        document.getElementById("main").innerHTML = `
+          <div class="head-row">
+            <div>
+              <h1 class="title">${item.title}</h1>
+              <p class="meta-line">${item.method.toUpperCase()} ${item.path}</p>
+            </div>
+            ${item.scenarios.length ? groupedDropdown(item.scenarios, scenarioIndex) : ""}
+          </div>
+          <div class="urlbar">
+            <div class="url"><span class="method ${item.method}">${item.method}</span><span>${resolvedUrl(item, scenario)}</span></div>
+            <button class="btn" id="copy-curl" type="button">Copy cURL</button>
+            <button class="btn primary" id="send" type="button">Send</button>
+          </div>
+          <div class="pair">
+            <section class="card" id="request-card">
+              <div class="card-head">
+                <h2>Request</h2>
+                <div class="card-head-actions">
+                  <button class="btn sm icon" id="copy-req" type="button" title="Copy body" aria-label="Copy body" ${reqCopyText ? "" : "disabled"}>${copyIcon}</button>
+                </div>
+              </div>
+              <div class="card-body">
+                ${metaBlock("Headers", headersHtml, requiredAuthHint(item.op), { always: true })}
+                ${metaBlock("Path", pathParamsHtml)}
+                ${metaBlock("Query", queryHtml)}
+                ${metaBlock("Body", bodyHtml, "", { always: true })}
+              </div>
+            </section>
+            <section class="card response-card" id="response-card">
+              <div class="card-head">
+                <h2>${responseTitle}</h2>
+                <div class="card-head-actions">
+                  <button class="btn sm icon" id="copy-res" type="button" title="Copy body" aria-label="Copy body" ${resCopyText ? "" : "disabled"}>${copyIcon}</button>
+                  <span><span class="code ${displayOk ? "ok" : ""}">${displayStatus || ""}</span> <span class="code-text">${displayStatusText}</span></span>
+                </div>
+              </div>
+              <div class="card-body" id="response-body">
+                ${showingLive && liveResult.error ? `<div class="live-err">${String(liveResult.error).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</div>` : displayEmpty ? `<div class="empty">Empty body</div>` : `<pre>${highlight(displayBody)}</pre>`}
+              </div>
+            </section>
+          </div>
+          ${fieldsPanel(fields)}
+        `;
+
+        const scenarioToggle = document.getElementById("scenario-toggle");
+        if (scenarioToggle) {
+          const root = document.getElementById("scenario-dd");
+          scenarioToggle.onclick = (event) => {
+            event.stopPropagation();
+            document.querySelectorAll(".dd.open").forEach((el) => {
+              if (el !== root) el.classList.remove("open");
+            });
+            root.classList.toggle("open");
+          };
+          root.querySelectorAll(".dd-item").forEach((button) => {
+            button.onclick = (event) => {
+              event.stopPropagation();
+              scenarioIndex = Number(button.dataset.index);
+              liveResult = null;
+              root.classList.remove("open");
+              renderMain();
+            };
+          });
+        }
+
+        const syncResponseHeight = () => {
+          const requestCard = document.getElementById("request-card");
+          const responseCard = document.getElementById("response-card");
+          const responseBody = document.getElementById("response-body");
+          if (!requestCard || !responseCard || !responseBody) return;
+          responseCard.style.maxHeight = "";
+          responseBody.style.maxHeight = "";
+          const requestHeight = requestCard.offsetHeight;
+          const head = responseCard.querySelector(".card-head");
+          const headHeight = head ? head.offsetHeight : 0;
+          const maxBody = Math.max(0, requestHeight - headHeight);
+          responseCard.style.maxHeight = requestHeight + "px";
+          responseBody.style.maxHeight = maxBody + "px";
+        };
+        syncResponseHeight();
+        requestAnimationFrame(syncResponseHeight);
+
+        document.getElementById("copy-curl").onclick = (event) => copy(toCurl(item, scenario), event.currentTarget, "Copy cURL");
+        const copyReq = document.getElementById("copy-req");
+        if (copyReq && reqCopyText) copyReq.onclick = (event) => copy(reqCopyText, event.currentTarget, "Copy body");
+        const copyRes = document.getElementById("copy-res");
+        if (copyRes && resCopyText) copyRes.onclick = (event) => copy(resCopyText, event.currentTarget, "Copy body");
+
+        const sendBtn = document.getElementById("send");
+        if (sendBtn) {
+          sendBtn.onclick = async () => {
+            sendBtn.disabled = true;
+            sendBtn.textContent = "Sending…";
+            try {
+              const result = await sendRequest(item, scenario);
+              liveResult = { id: item.id, scenarioIndex, status: result.status, body: result.body };
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              liveResult = {
+                id: item.id,
+                scenarioIndex,
+                status: 0,
+                body: undefined,
+                error:
+                  message +
+                  "\n\nTip: open docs at the same app port: http://localhost:3000/docs",
+              };
+            }
+            renderMain();
+          };
+        }
+      };
+
+      const select = (id) => {
+        currentId = id;
+        scenarioIndex = 0;
+        liveResult = null;
+        const selected = ops.find((entry) => entry.id === id);
+        if (selected) syncHeaderGroupForOp(selected.op);
+        renderNav();
+        renderMain();
+        history.replaceState(null, "", "#" + encodeURIComponent(id));
+      };
+
+      const searchInput = document.getElementById("search");
+      searchInput.addEventListener("input", (event) => {
+        searchActiveIndex = 0;
+        renderSearchPanel(event.target.value);
+      });
+      searchInput.addEventListener("keydown", (event) => {
+        const panel = document.getElementById("search-panel");
+        const hits = [...panel.querySelectorAll(".search-hit")];
+        if (event.key === "Escape") {
+          closeSearch({ clear: true });
+          searchInput.blur();
+          return;
+        }
+        if (!hits.length) return;
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          searchActiveIndex = (searchActiveIndex + 1) % hits.length;
+          renderSearchPanel(searchInput.value);
+          document.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          searchActiveIndex = (searchActiveIndex - 1 + hits.length) % hits.length;
+          renderSearchPanel(searchInput.value);
+          document.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          const target = hits[searchActiveIndex] || hits[0];
+          if (target) {
+            select(target.dataset.id);
+            closeSearch({ clear: true });
+          }
+        }
+      });
+      document.getElementById("search-backdrop").addEventListener("click", () => closeSearch({ clear: true }));
+      document.getElementById("search-wrap").addEventListener("click", (event) => event.stopPropagation());
+
+      document.addEventListener("click", () => {
+        document.querySelectorAll(".dd.open").forEach((el) => el.classList.remove("open"));
+        document.getElementById("env-wrap").classList.remove("open");
+        if (document.body.classList.contains("searching")) closeSearch({ clear: true });
+      });
+
+      const initial = decodeURIComponent(location.hash.replace(/^#/, "")) || ops[0]?.id;
+      select(ops.some((item) => item.id === initial) ? initial : ops[0]?.id);
+    </script>
+  </body>
+</html>
