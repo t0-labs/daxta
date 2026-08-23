@@ -1,7 +1,12 @@
-import { createInterface } from 'readline';
 import { existsSync, readFileSync } from 'fs';
 
-import { resetConfig, getConfig, type TreeLayout } from '../config';
+import {
+  resetConfig,
+  getConfig,
+  normalizeTreeLayout,
+  type ExampleLabelStyle,
+  type TreeLayout,
+} from '../config';
 import { listControllerPathTemplates } from '../fields/dto-fields';
 import { getSpecJsonPath } from '../serve/paths';
 import {
@@ -12,17 +17,7 @@ import {
   readTreePathOverrides,
   upsertConfigValue,
 } from './config-edit';
-import { banner, c } from './ui';
-
-function prompt(question: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
+import { banner, c, readlineAsk } from './ui';
 
 function normalizePathInput(raw: string): string {
   const trimmed = raw.trim();
@@ -30,30 +25,16 @@ function normalizePathInput(raw: string): string {
   return trimmed.startsWith('/') ? trimmed.replace(/\/+$/, '') || '/' : `/${trimmed.replace(/\/+$/, '')}`;
 }
 
-function urlOrderSegments(pathTemplate: string): string[] {
-  return pathTemplate.split('/').filter(Boolean);
-}
-
-function resourceFirstSegments(pathTemplate: string): string[] {
-  const parts = urlOrderSegments(pathTemplate);
-  if (parts.length >= 3 && /^v\d+$/i.test(parts[0])) {
-    return [parts[0], parts[2], parts[1], ...parts.slice(3)];
+function layoutSegments(pathTemplate: string, layout: TreeLayout, skipParams: boolean): string[] {
+  let parts = pathTemplate.split('/').filter(Boolean);
+  if (parts.length >= 3 && /^v\d+$/i.test(parts[0]) && layout === 'resource-role') {
+    parts = [parts[0], parts[2], parts[1], ...parts.slice(3)];
+  }
+  if (skipParams) {
+    const idx = parts.findIndex((part) => part.startsWith('{'));
+    if (idx >= 0) parts = parts.slice(0, idx);
   }
   return parts;
-}
-
-/** Put known "area" segments (admin/device/…) right after version. */
-function areaFirstSegments(pathTemplate: string): string[] {
-  const parts = urlOrderSegments(pathTemplate);
-  if (parts.length < 3 || !/^v\d+$/i.test(parts[0])) return parts;
-  const areas = new Set(['admin', 'device', 'devices', 'user', 'users', 'me', 'internal', 'public']);
-  const version = parts[0];
-  const rest = parts.slice(1);
-  const areaIdx = rest.findIndex((part) => areas.has(part.toLowerCase()) && !part.startsWith('{'));
-  if (areaIdx <= 0) return parts;
-  const area = rest[areaIdx];
-  const without = [...rest.slice(0, areaIdx), ...rest.slice(areaIdx + 1)];
-  return [version, area, ...without];
 }
 
 function listKnownPaths(): string[] {
@@ -70,32 +51,29 @@ function listKnownPaths(): string[] {
   try {
     for (const pathTemplate of listControllerPathTemplates()) fromSpec.add(pathTemplate);
   } catch {
-    // controllers may not parse yet
+    // ignore
   }
   return [...fromSpec].sort((a, b) => a.localeCompare(b));
 }
 
 function printPathChoices(paths: string[], limit = 12): void {
   if (!paths.length) {
-    console.log(`  ${c.dim('tip')} type a path like ${c.cyan('/v1/admin/baskets')}`);
+    console.log(`  ${c.dim('tip')} type a path like ${c.ice('/v1/admin/baskets')}`);
     return;
   }
   console.log(`  ${c.dim('known paths')}`);
   paths.slice(0, limit).forEach((item, index) => {
-    console.log(`    ${c.dim(String(index + 1).padStart(2, ' '))}  ${c.cyan(item)}`);
+    console.log(`    ${c.dim(String(index + 1).padStart(2, ' '))}  ${c.ice(item)}`);
   });
   if (paths.length > limit) console.log(`    ${c.dim(`… +${paths.length - limit} more`)}`);
 }
 
 async function pickPath(flagPath?: string): Promise<string | null> {
   if (flagPath) return normalizePathInput(flagPath);
-
   const known = listKnownPaths();
   printPathChoices(known);
-
-  const answer = await prompt(
-    `  ${c.yellow('?')} ${c.bold('Path')} to arrange in the sidebar\n` +
-      `    ${c.dim('number · /v1/admin/baskets · or n to skip')}\n  ${c.cyan('›')} `,
+  const answer = await readlineAsk(
+    `  ${c.gold('?')} ${c.bold('Path')} override ${c.dim('(number · path · n skip)')}\n  ${c.ice('›')} `,
   );
   if (!answer || /^n(o)?$/i.test(answer)) return null;
   if (/^\d+$/.test(answer)) {
@@ -106,157 +84,166 @@ async function pickPath(flagPath?: string): Promise<string | null> {
   return normalizePathInput(answer);
 }
 
-async function pickGlobalLayout(current: TreeLayout): Promise<TreeLayout | null> {
-  const sample = '/v1/admin/baskets';
+async function pickLayout(current: TreeLayout): Promise<TreeLayout> {
+  const sample = '/v1/admin/baskets/{id}/lock';
   console.log('');
-  console.log(`  ${c.bold('Docs sidebar layout')}`);
-  console.log(`  ${c.dim('Example')} ${c.cyan(sample)}`);
+  console.log(`  ${c.bold('Folder order')} ${c.dim('(company default)')}`);
+  console.log(`  ${c.dim('sample')} ${c.ice(sample)}`);
   console.log('');
-  console.log(`    ${c.cyan('1')}  resource-first`);
-  console.log(`       ${previewTree(resourceFirstSegments(sample))}`);
-  console.log(`       ${c.dim('v1 → baskets → admin')}`);
+  console.log(`    ${c.ice('1')}  role → resource  ${c.dim('recommended')}`);
+  console.log(`       ${previewTree(layoutSegments(sample, 'role-resource', true))}`);
+  console.log(`       ${c.dim('v1 › admin › baskets   (ops under baskets, not under {id})')}`);
   console.log('');
-  console.log(`    ${c.cyan('2')}  url-order`);
-  console.log(`       ${previewTree(urlOrderSegments(sample))}`);
-  console.log(`       ${c.dim('v1 → admin → baskets')}`);
+  console.log(`    ${c.ice('2')}  resource → role`);
+  console.log(`       ${previewTree(layoutSegments(sample, 'resource-role', true))}`);
+  console.log(`       ${c.dim('v1 › baskets › admin')}`);
   console.log('');
-  console.log(`    ${c.cyan('3')}  keep ${c.dim(`(${current})`)}`);
-  const answer = await prompt(`  ${c.yellow('?')} How should folders nest under /docs?\n  ${c.cyan('›')} `);
-  if (!answer || answer === '3' || /^k(eep)?$/i.test(answer)) return null;
-  if (answer === '1' || /^resource/i.test(answer)) return 'resource-first';
-  if (answer === '2' || /^url/i.test(answer)) return 'url-order';
-  throw new Error(`Unknown layout choice: ${answer}`);
+  console.log(`    ${c.ice('3')}  keep ${c.dim(`(${current})`)}`);
+  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
+  if (!answer || answer === '3' || /^k(eep)?$/i.test(answer)) return current;
+  if (answer === '1' || /^role/i.test(answer)) return 'role-resource';
+  if (answer === '2' || /^resource/i.test(answer)) return 'resource-role';
+  throw new Error(`Unknown layout: ${answer}`);
+}
+
+async function pickSkipParams(current: boolean): Promise<boolean> {
+  console.log('');
+  console.log(`  ${c.bold('Stop folders at path params')}`);
+  console.log(`  ${c.dim('Avoid')} ${c.ice('{id}')} ${c.dim('→ complete / lock / pay as nested folders')}`);
+  console.log(`    ${c.ice('1')}  yes — fold under resource ${c.dim('(recommended)')}`);
+  console.log(`    ${c.ice('2')}  no — nest full path`);
+  console.log(`    ${c.ice('3')}  keep ${c.dim(`(${current ? 'yes' : 'no'})`)}`);
+  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
+  if (!answer || answer === '3' || /^k(eep)?$/i.test(answer)) return current;
+  if (answer === '1' || /^y/i.test(answer)) return true;
+  if (answer === '2' || /^n/i.test(answer)) return false;
+  throw new Error(`Unknown choice: ${answer}`);
+}
+
+async function pickExampleStyle(current: ExampleLabelStyle): Promise<ExampleLabelStyle> {
+  console.log('');
+  console.log(`  ${c.bold('Example / scenario labels')}`);
+  console.log(`    ${c.ice('1')}  status-title-case`);
+  console.log(`       ${c.dim('201 — cyprus payload shape')}`);
+  console.log(`    ${c.ice('2')}  status-case`);
+  console.log(`       ${c.dim('201 — cyprus payload shape')}`);
+  console.log(`    ${c.ice('3')}  full`);
+  console.log(`       ${c.dim('201 — Create Mock Tbs - POST /v1/admin/mock-tbs POSITIVE CASES cyprus payload shape')}`);
+  console.log(`    ${c.ice('4')}  keep ${c.dim(`(${current})`)}`);
+  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
+  if (!answer || answer === '4' || /^k(eep)?$/i.test(answer)) return current;
+  if (answer === '1' || /title/i.test(answer)) return 'status-title-case';
+  if (answer === '2' || /status-case/i.test(answer)) return 'status-case';
+  if (answer === '3' || /^full/i.test(answer)) return 'full';
+  throw new Error(`Unknown style: ${answer}`);
 }
 
 type LayoutChoice = { id: string; label: string; segments: string[] };
 
-function layoutChoicesFor(pathTemplate: string): LayoutChoice[] {
-  const url = urlOrderSegments(pathTemplate);
-  const resource = resourceFirstSegments(pathTemplate);
-  const area = areaFirstSegments(pathTemplate);
+function layoutChoicesFor(pathTemplate: string, layout: TreeLayout, skipParams: boolean): LayoutChoice[] {
+  const role = layoutSegments(pathTemplate, 'role-resource', skipParams);
+  const resource = layoutSegments(pathTemplate, 'resource-role', skipParams);
   const choices: LayoutChoice[] = [
-    { id: 'url', label: 'URL order', segments: url },
-    { id: 'resource', label: 'Resource-first', segments: resource },
+    { id: 'role', label: 'role → resource', segments: role },
+    { id: 'resource', label: 'resource → role', segments: resource },
+    { id: 'custom', label: 'Custom segments', segments: role },
   ];
-  if (area.join('/') !== url.join('/') && area.join('/') !== resource.join('/')) {
-    choices.push({ id: 'area', label: 'Area-first (admin/device/…)', segments: area });
-  }
-  choices.push({ id: 'custom', label: 'Custom segments', segments: url });
   return choices;
 }
 
-async function pickSegments(pathTemplate: string): Promise<string[] | null> {
-  const choices = layoutChoicesFor(pathTemplate);
+async function pickSegments(
+  pathTemplate: string,
+  layout: TreeLayout,
+  skipParams: boolean,
+): Promise<string[] | null> {
+  const choices = layoutChoicesFor(pathTemplate, layout, skipParams);
   console.log('');
-  console.log(`  ${c.bold('Sidebar for')} ${c.cyan(pathTemplate)}`);
-  console.log(`  ${c.dim('Which nesting do you want?')}`);
+  console.log(`  ${c.bold('Override')} ${c.ice(pathTemplate)}`);
   choices.forEach((choice, index) => {
-    const mark = c.cyan(String(index + 1));
-    console.log(`    ${mark}  ${c.bold(choice.label)}`);
+    console.log(`    ${c.ice(String(index + 1))}  ${c.bold(choice.label)}`);
     console.log(`       ${previewTree(choice.segments)}`);
   });
-
-  const answer = await prompt(`  ${c.yellow('?')} Choose\n  ${c.cyan('›')} `);
+  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
   if (!answer || /^n(o)?$/i.test(answer)) return null;
-
-  const index = /^\d+$/.test(answer)
-    ? Number(answer) - 1
-    : choices.findIndex((choice) => choice.id === answer || choice.label.toLowerCase().startsWith(answer.toLowerCase()));
+  const index = /^\d+$/.test(answer) ? Number(answer) - 1 : -1;
   const selected = choices[index];
   if (!selected) throw new Error(`Unknown choice: ${answer}`);
-
   if (selected.id !== 'custom') return selected.segments;
-
-  const typed = await prompt(
-    `  ${c.yellow('?')} Segments in order ${c.dim('(space or › separated)')}\n` +
-      `    ${c.dim('e.g. v1 baskets admin')}\n  ${c.cyan('›')} `,
-  );
+  const typed = await readlineAsk(`  ${c.gold('?')} Segments ${c.dim('(space separated)')}\n  ${c.ice('›')} `);
   if (!typed) return null;
-  return typed
-    .split(/›|>|,|\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function saveLayout(configPath: string, layout: TreeLayout): void {
-  upsertConfigValue(configPath, 'treeLayout', formatTsString(layout));
-}
-
-function saveOverride(configPath: string, pathTemplate: string, segments: string[]): void {
-  const overrides = readTreePathOverrides();
-  overrides[pathTemplate] = segments;
-  upsertConfigValue(configPath, 'treePathOverrides', formatTsStringRecord(overrides));
+  return typed.split(/›|>|,|\s+/).map((part) => part.trim()).filter(Boolean);
 }
 
 export type TreeWizardOptions = {
   path?: string;
   layout?: string;
-  /** Called from install — no extra banner, always ask layout when TTY */
   embedded?: boolean;
   yes?: boolean;
 };
 
 /**
- * Interactive sidebar layout wizard.
- * Also used at the end of `daxta install` so the question is not a hidden separate command.
+ * Company API docs presentation wizard — install / migrate / `daxta tree`.
  */
 export async function runTreeWizard(options: TreeWizardOptions = {}): Promise<void> {
   if (options.yes || !process.stdin.isTTY) {
-    if (!options.embedded) {
-      console.log(`  ${c.dim('tree wizard skipped (non-interactive)')}`);
-    }
+    if (!options.embedded) console.log(`  ${c.dim('tree wizard skipped (non-interactive)')}`);
     return;
   }
 
-  if (!options.embedded) banner('DAxTA tree', 'sidebar folder order');
+  if (!options.embedded) banner('DAxTA tree', 'API docs presentation');
 
   const configPath = findDaxtaConfigPath();
-  if (!configPath) {
-    throw new Error('No daxta.config.ts found. Run `daxta install` first.');
-  }
+  if (!configPath) throw new Error('No daxta.config.ts found. Run `daxta install` first.');
 
   resetConfig();
   const config = getConfig(true);
 
   console.log('');
-  console.log(`  ${c.yellow(c.bold('?'))} ${c.bold('Sidebar')} ${c.dim('— how /docs folders nest')}`);
+  console.log(`  ${c.gold(c.bold('?'))} ${c.bold('API docs presentation')} ${c.dim('— sidebar + OpenAPI export')}`);
 
-  if (options.layout === 'resource-first' || options.layout === 'url-order') {
-    saveLayout(configPath, options.layout);
-    console.log(`  ${c.green('✔')} treeLayout → ${c.cyan(options.layout)}`);
-  } else {
-    const layout = await pickGlobalLayout(config.treeLayout);
-    if (layout) {
-      saveLayout(configPath, layout);
-      console.log(`  ${c.green('✔')} treeLayout → ${c.cyan(layout)}`);
-    } else {
-      console.log(`  ${c.dim('kept')} treeLayout ${c.cyan(config.treeLayout)}`);
-    }
-  }
+  let layout = normalizeTreeLayout(
+    options.layout === 'resource-first' || options.layout === 'resource-role'
+      ? 'resource-role'
+      : options.layout === 'url-order' || options.layout === 'role-resource'
+        ? 'role-resource'
+        : config.treeLayout,
+  );
+
+  if (!options.layout) layout = await pickLayout(layout);
+  upsertConfigValue(configPath, 'treeLayout', formatTsString(layout));
+  console.log(`  ${c.mint('✔')} treeLayout → ${c.ice(layout)}`);
+
+  const skipParams = await pickSkipParams(config.treeSkipParams !== false);
+  upsertConfigValue(configPath, 'treeSkipParams', skipParams ? 'true' : 'false');
+  console.log(`  ${c.mint('✔')} treeSkipParams → ${c.ice(String(skipParams))}`);
+
+  const exampleStyle = await pickExampleStyle(config.exampleLabelStyle ?? 'status-title-case');
+  upsertConfigValue(configPath, 'exampleLabelStyle', formatTsString(exampleStyle));
+  console.log(`  ${c.mint('✔')} exampleLabelStyle → ${c.ice(exampleStyle)}`);
 
   const customize = options.path
     ? 'y'
-    : await prompt(
-        `  ${c.yellow('?')} Customize a specific path now?\n` +
-          `    ${c.dim('Y')} yes · ${c.dim('n')} later ${c.dim('(daxta tree)')}\n  ${c.cyan('›')} `,
+    : await readlineAsk(
+        `  ${c.gold('?')} Per-path override now?\n` +
+          `    ${c.dim('Y')} yes · ${c.dim('n')} later\n  ${c.ice('›')} `,
       );
 
   if (customize && !/^n(o)?$/i.test(customize)) {
     const pathTemplate = await pickPath(options.path);
     if (pathTemplate) {
-      const segments = await pickSegments(pathTemplate);
+      const segments = await pickSegments(pathTemplate, layout, skipParams);
       if (segments?.length) {
-        saveOverride(configPath, pathTemplate, segments);
-        console.log('');
-        console.log(`  ${c.green('✔')} ${c.cyan(pathTemplate)}`);
-        console.log(`     ${previewTree(segments)}`);
+        const overrides = readTreePathOverrides();
+        overrides[pathTemplate] = segments;
+        upsertConfigValue(configPath, 'treePathOverrides', formatTsStringRecord(overrides));
+        console.log(`  ${c.mint('✔')} ${c.ice(pathTemplate)} → ${previewTree(segments)}`);
       }
     }
   }
 
   if (!options.embedded) {
-    console.log(`  ${c.dim('saved to')} ${configPath}`);
-    console.log(`  ${c.dim('refresh docs:')} ${c.cyan('daxta build')}`);
+    console.log(`  ${c.dim('saved')} ${configPath}`);
+    console.log(`  ${c.dim('refresh')} ${c.ice('daxta generate')}`);
     console.log('');
   }
 }

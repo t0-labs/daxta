@@ -1,12 +1,15 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
-import { caseGroup, caseName, declaredMethods, defaultTitle, type FieldDoc, type OperationDoc, operationTag, STATUS_TEXT, treePathSegments, viewerTreeConfig } from '../catalog';
+import { caseGroup, CASE_GROUP_ORDER, caseName, docsScenarioClause, declaredMethods, exampleLabel, parseCaseSection, type FieldDoc, type OperationDoc, operationSummary, operationTag, STATUS_TEXT, treePathSegments, viewerTreeConfig } from '../catalog';
+
+
 import { getConfig } from '../config';
 import { dtoRequired } from '../fields/dto-fields';
 import { extractPathParams, materializePath, pathParamNames, templatize } from '../path.util';
-import type { RecordedHit } from '../recorder';
+import { clearWorkerHits, type RecordedHit } from '../recorder';
 import { getFaviconAssetPath, getHitsJsonPath, getHtmlPath, getOutDir, getSpecJsonPath, getViewerAssetPath } from '../serve/paths';
+import { ensureViewerStoreSeeded } from '../serve/viewer-store';
 
 const METHOD_RANK: Record<string, number> = { get: 0, post: 1, put: 2, patch: 3, delete: 4 };
 
@@ -86,7 +89,7 @@ function readPackageMeta(): { title: string; version: string; description: strin
       description: pkg.description || 'Generated from integration test traffic.',
     };
   } catch {
-    return { title: 'API', version: '0.0.0', description: 'Generated from integration test traffic.' };
+    return { title: 'API', version: '0.0.0', description: 'Generated from observed test execution.' };
   }
 }
 
@@ -170,19 +173,59 @@ function valueFingerprint(value: unknown): string {
   }
 }
 
-/** Stable shared key so request + response examples from the same hit stay paired. */
-function exampleKeyForHit(hit: RecordedHit, index: number): string {
-  const base = slug(exampleLabel(hit), index);
-  return `${base}-${index}`;
-}
-
 function putExample(
-  store: Record<string, { summary: string; value: unknown }>,
+  store: Record<string, { summary: string; value: unknown; description?: string }>,
   key: string,
   summary: string,
   value: unknown,
 ) {
-  store[key] = { summary, value };
+  store[key] = { summary, description: summary, value };
+}
+
+/** Prefer a stable, human-readable example map key (Postman often displays the key). */
+function exampleKeyForHit(hit: RecordedHit, index: number): string {
+  const label = exampleLabel(hit);
+  const base = slug(label, index);
+  return base ? `${base}-${index}` : `example-${index + 1}`;
+}
+
+function isSuccessStatus(status: number): boolean {
+  return status >= 200 && status < 300;
+}
+
+/**
+ * Seed calls in the same it() share Jest's currentTestName.
+ * SEMANTIC: create-then-assert-409 must not surface the setup 201.
+ */
+function selectHitsForDocs(hits: RecordedHit[]): RecordedHit[] {
+  const byTest = new Map<string, RecordedHit[]>();
+  const unlabeled: RecordedHit[] = [];
+  for (const hit of hits) {
+    if (!hit.test) {
+      unlabeled.push(hit);
+      continue;
+    }
+    const list = byTest.get(hit.test) ?? [];
+    list.push(hit);
+    byTest.set(hit.test, list);
+  }
+
+  const selected: RecordedHit[] = [...unlabeled];
+  for (const group of byTest.values()) {
+    const section = parseCaseSection(group[0]?.test);
+    if (section === 'semantic' || section === 'invalid' || section === 'omitted' || section === 'auth') {
+      const errors = group.filter((hit) => !isSuccessStatus(hit.status));
+      selected.push(...(errors.length ? errors : group));
+      continue;
+    }
+    if (section === 'positive') {
+      const ok = group.filter((hit) => isSuccessStatus(hit.status));
+      selected.push(...(ok.length ? ok : group));
+      continue;
+    }
+    selected.push(...group);
+  }
+  return selected;
 }
 
 function isPrimaryHit(hit: RecordedHit): boolean {
@@ -329,7 +372,14 @@ function inferDocs(method: string, pathTemplate: string, opHits: RecordedHit[]):
     }
   }
 
-  return { title: defaultTitle(method, pathTemplate), fields };
+  return {
+    title: operationSummary(
+      method,
+      pathTemplate,
+      opHits.map((hit) => hit.test),
+    ),
+    fields,
+  };
 }
 
 function securityForHits(opHits: RecordedHit[]): Array<Record<string, unknown[]>> | undefined {
@@ -346,13 +396,13 @@ function securityForHits(opHits: RecordedHit[]): Array<Record<string, unknown[]>
   return [requirement];
 }
 
-function exampleLabel(hit: RecordedHit): string {
-  return `${hit.status} - ${caseName(hit.test)}`;
+function scenarioDisplayName(hit: RecordedHit): string {
+  return docsScenarioClause(caseName(hit.test));
 }
 
 function toScenario(hit: RecordedHit): Scenario {
   return {
-    name: caseName(hit.test),
+    name: scenarioDisplayName(hit),
     group: caseGroup(hit.test),
     status: hit.status,
     pathParams: pathParamsFromHit(hit),
@@ -365,7 +415,7 @@ function toScenario(hit: RecordedHit): Scenario {
 
 function sortScenarios(scenarios: Scenario[]): Scenario[] {
   const groupRank = (group: string) => {
-    const order = ['Success', 'Business errors', 'Invalid input', 'Missing fields', 'Auth', 'Other'];
+    const order = [...CASE_GROUP_ORDER];
     const index = order.indexOf(group);
     return index === -1 ? order.length : index;
   };
@@ -397,32 +447,49 @@ function dedupeScenarios(scenarios: Scenario[]): Scenario[] {
   });
 }
 
-export function loadHits(): RecordedHit[] {
-  if (!existsSync(getOutDir())) return [];
-  const workerFiles = readdirSync(getOutDir()).filter((fileName) => fileName.startsWith('hits-w') && fileName.endsWith('.json'));
-  if (workerFiles.length) {
-    return canonicalizeHits(
-      workerFiles.flatMap((fileName) => {
-        try {
-          const parsed = JSON.parse(readFileSync(path.join(getOutDir(), fileName), 'utf8')) as RecordedHit[];
-          return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-          console.error(`DAxTA: skipped corrupt hits file ${fileName}:`, error);
-          return [];
-        }
-      }),
-    );
-  }
+/** `hits-w{workerId}-p{pid}.json` leftover from a previous Jest run must not stack. */
+function currentRunWorkerFiles(outDir: string): string[] {
+  const names = readdirSync(outDir).filter((fileName) => fileName.startsWith('hits-w') && fileName.endsWith('.json'));
+  if (!names.length) return [];
 
-  // Fallback after workers were cleaned — rebuild from last merged hits.json
+  const hitsJsonPath = getHitsJsonPath();
+  const watermark = existsSync(hitsJsonPath) ? statSync(hitsJsonPath).mtimeMs - 1000 : 0;
+  const fromThisRun = names.filter((fileName) => statSync(path.join(outDir, fileName)).mtimeMs >= watermark);
+  const pool = fromThisRun.length ? fromThisRun : names;
+
+  const newestByWorker = new Map<string, { fileName: string; mtime: number }>();
+  for (const fileName of pool) {
+    const workerId = fileName.match(/^hits-w([^-]+)-p\d+\.json$/)?.[1] ?? fileName;
+    const mtime = statSync(path.join(outDir, fileName)).mtimeMs;
+    const prev = newestByWorker.get(workerId);
+    if (!prev || mtime >= prev.mtime) newestByWorker.set(workerId, { fileName, mtime });
+  }
+  return [...newestByWorker.values()].map((entry) => entry.fileName);
+}
+
+function readHitFile(filePath: string, label: string): RecordedHit[] {
   try {
-    if (!existsSync(getHitsJsonPath())) return [];
-    const parsed = JSON.parse(readFileSync(getHitsJsonPath(), 'utf8')) as RecordedHit[];
-    return canonicalizeHits(Array.isArray(parsed) ? parsed : []);
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as RecordedHit[];
+    return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error('DAxTA: skipped corrupt hits.json:', error);
+    console.error(`DAxTA: skipped corrupt hits file ${label}:`, error);
     return [];
   }
+}
+
+export function loadHits(): RecordedHit[] {
+  if (!existsSync(getOutDir())) return [];
+  const workerFiles = currentRunWorkerFiles(getOutDir());
+  if (workerFiles.length) {
+    const loaded = canonicalizeHits(
+      workerFiles.flatMap((fileName) => readHitFile(path.join(getOutDir(), fileName), fileName)),
+    );
+    if (loaded.length) return loaded;
+  }
+
+  // Fallback after workers were cleaned — last completed run's hits.json
+  if (!existsSync(getHitsJsonPath())) return [];
+  return canonicalizeHits(readHitFile(getHitsJsonPath(), 'hits.json'));
 }
 
 function sortOperations<T>(entries: [string, T][]): [string, T][] {
@@ -445,7 +512,7 @@ function sortOperations<T>(entries: [string, T][]): [string, T][] {
 
 function buildSpec(hits: RecordedHit[]): OpenApiSpec {
   const grouped = new Map<string, RecordedHit[]>();
-  for (const hit of hits.filter(isPrimaryHit)) {
+  for (const hit of selectHitsForDocs(hits.filter(isPrimaryHit))) {
     const key = `${hit.method} ${hit.path}`;
     const opHits = grouped.get(key) ?? [];
     opHits.push(hit);
@@ -473,7 +540,11 @@ function buildSpec(hits: RecordedHit[]): OpenApiSpec {
     const pathItem = (paths[pathTemplate] ??= {});
     const operation = (pathItem[method] ??= {
       tags: [tag],
-      summary: docs.title,
+      summary: operationSummary(
+        method,
+        pathTemplate,
+        opHits.map((hit) => hit.test),
+      ),
       security,
       responses: {},
       'x-docs': docs,
@@ -692,8 +763,11 @@ function countOperations(spec: OpenApiSpec): number {
 
 function toStandaloneHtml(spec: unknown): string {
   const template = readFileSync(getViewerAssetPath(), 'utf8');
-  const faviconUri = existsSync(getFaviconAssetPath())
-    ? `data:image/png;base64,${readFileSync(getFaviconAssetPath()).toString('base64')}`
+  const faviconPath = getFaviconAssetPath();
+  const faviconUri = existsSync(faviconPath)
+    ? faviconPath.endsWith('.svg')
+      ? `data:image/svg+xml;base64,${readFileSync(faviconPath).toString('base64')}`
+      : `data:image/png;base64,${readFileSync(faviconPath).toString('base64')}`
     : '';
   return template
     .replace('__SPEC_JSON__', JSON.stringify(spec).replace(/</g, '\\u003c'))
@@ -728,6 +802,10 @@ export function buildDaxtaSpec(options: { silent?: boolean; requireHits?: boolea
   const existingHits = readJson<RecordedHit[]>(getHitsJsonPath());
   const existingSpec = readJson<OpenApiSpec>(getSpecJsonPath());
   const writeHtml = options.html !== false;
+  const seededStore = ensureViewerStoreSeeded();
+  if (seededStore && !options.silent) {
+    console.log(`Seeded ${seededStore} from envPresets`);
+  }
 
   if (!hits.length) {
     if (existingSpec && writeHtml && viewerTemplateNewerThanHtml()) {
@@ -756,10 +834,13 @@ export function buildDaxtaSpec(options: { silent?: boolean; requireHits?: boolea
   const changed = operationsChanged || hitsChanged || metaChanged || refreshHtml;
 
   if (changed) {
-    if (hitsChanged) writeJson(getHitsJsonPath(), hits);
+    writeJson(getHitsJsonPath(), hits);
     if (operationsChanged || metaChanged) writeJson(getSpecJsonPath(), spec);
     if (refreshHtml) writeFileSync(getHtmlPath(), toStandaloneHtml(spec));
+  } else {
+    writeJson(getHitsJsonPath(), hits);
   }
+  clearWorkerHits();
 
   const operations = countOperations(spec);
   const result: BuildResult = {
@@ -773,7 +854,7 @@ export function buildDaxtaSpec(options: { silent?: boolean; requireHits?: boolea
 
   if (!options.silent) {
     if (!changed) {
-      console.log(`DAxTA unchanged (${hits.length} hits, ${operations} operations — ${unchanged} kept as-is)`);
+      console.log(`API spec unchanged (${hits.length} hits, ${operations} operations — ${unchanged} kept as-is)`);
     } else {
       console.log(`Wrote ${getSpecJsonPath()} from ${hits.length} hits (${operations} operations — ${updated} updated, ${unchanged} unchanged)`);
       console.log(`Wrote ${getHtmlPath()}`);
@@ -783,5 +864,8 @@ export function buildDaxtaSpec(options: { silent?: boolean; requireHits?: boolea
   return result;
 }
 
-/** @deprecated Use `buildDaxtaSpec` */
+/** Generate API documentation (OpenAPI spec + HTML viewer) from recorded test execution. */
+export const generateApiDocs = buildDaxtaSpec;
+
+/** @deprecated Use `generateApiDocs` */
 export const buildOpenApi = buildDaxtaSpec;

@@ -159,9 +159,9 @@ function migrateMainApiDocs(cwd: string): string[] {
 function migrateConfigDefaults(configPath: string, configText: string): string[] {
   const notes: string[] = [];
   const fields = readStringField(configText, 'fieldsFile');
-  const outDir = readStringField(configText, 'outDir') || 'daxta/out';
+  const outDir = readStringField(configText, 'outDir') || '.daxta/out';
   if (fields === 'daxta.fields.json' || fields === './daxta.fields.json') {
-    const next = `${outDir.replace(/\\/g, '/').replace(/\/$/, '')}/daxta.fields.json`;
+    const next = `${outDir.replace(/\\/g, '/').replace(/\/$/, '')}/fields.json`;
     if (upsertConfigField(configPath, 'fieldsFile', next)) {
       notes.push(`fieldsFile → ${next}`);
     }

@@ -1,23 +1,12 @@
-import { createInterface } from 'readline';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
-import { c } from './ui';
+import { askLine, c, readlineAsk } from './ui';
 
 export type TestScriptChoice = {
   name: string;
   command: string;
 };
-
-function prompt(question: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
 
 function scoreScript(name: string, command: string): number {
   const n = name.toLowerCase();
@@ -76,31 +65,40 @@ export async function resolveTestScript(options: {
   const choices = listTestScripts(options.scripts);
   if (!choices.length) {
     if (options.yes || !process.stdin.isTTY) return null;
-    const typed = await prompt(
-      `  ${c.yellow('?')} ${c.bold('No test script found.')} Enter script name, or ${c.dim('n')} to skip:\n  ${c.cyan('›')} `,
-    );
+    const typed = await readlineAsk(askLine('No test script found', 'script name, or n to skip'));
     if (!typed || /^n(o)?$/i.test(typed)) return null;
     return typed;
   }
 
-  const def = choices[0];
+  const shown = choices.slice(0, 8);
+  const def = shown[0];
   if (options.yes || !process.stdin.isTTY) return def.name;
 
-  console.log(`  ${c.dim('your scripts')}`);
-  choices.slice(0, 8).forEach((choice, i) => {
-    const mark = i === 0 ? c.cyan('●') : c.dim('○');
-    const label = i === 0 ? c.bold(choice.name) : c.dim(choice.name);
-    const cmd = isDaxtaWrappedScript(choice.command) ? '(already wired → daxta test)' : choice.command.slice(0, 56);
-    console.log(`    ${mark} ${label}  ${c.dim(cmd)}`);
+  console.log(`  ${c.gold('?')}  ${c.bold('Test script')}  ${c.dim('— reporter + globalSetup')}`);
+  shown.forEach((choice, i) => {
+    const n = String(i + 1);
+    const rec = i === 0 ? c.dim('  recommended') : '';
+    const cmd = isDaxtaWrappedScript(choice.command)
+      ? '(already wired → daxta test)'
+      : choice.command.length > 52
+        ? `${choice.command.slice(0, 52)}…`
+        : choice.command;
+    console.log(`    ${c.ice(n)}  ${c.bold(choice.name)}${rec}`);
+    console.log(`       ${c.dim(cmd)}`);
   });
+  console.log(`    ${c.dim('n')}  skip`);
 
-  const answer = await prompt(
-    `  ${c.yellow('?')} Attach DAxTA plugin to ${c.cyan(def.name)}?\n` +
-      `    ${c.dim('Y')} yes · ${c.dim('n')} skip · or type another script name\n  ${c.cyan('›')} `,
+  const answer = await readlineAsk(
+    `  ${c.dim(`Enter = 1 (${def.name})`)}  ${c.dim('·')}  ${c.dim('or type a script name')}\n  ${c.ice('›')} `,
   );
 
-  if (!answer || /^y(es)?$/i.test(answer)) return def.name;
+  if (!answer) return def.name;
   if (/^n(o)?$/i.test(answer)) return null;
+  if (/^\d+$/.test(answer)) {
+    const picked = shown[Number(answer) - 1];
+    if (!picked) throw new Error(`No script #${answer}`);
+    return picked.name;
+  }
   return answer;
 }
 

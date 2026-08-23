@@ -1,8 +1,7 @@
-import { createInterface } from 'readline';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
-import { c } from './ui';
+import { askLine, c, readlineAsk } from './ui';
 
 const IMPORT_LINE = `import { apiDocs } from '@t0.labs/daxta';`;
 const MARKER = 'apiDocs(';
@@ -41,24 +40,14 @@ export function findMainCandidates(cwd: string): string[] {
   return preferred;
 }
 
-function prompt(question: string): Promise<string> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
-
 /**
  * Ask: use detected main, or type another path / n to skip.
  */
 export async function resolveMainPath(cwd: string, candidates: string[]): Promise<string | null> {
   const def = candidates[0];
   if (!def) {
-    const typed = await prompt(
-      `  ${c.yellow('?')} ${c.bold('No main.ts found.')} Enter path, or ${c.dim('n')} to skip:\n  ${c.cyan('›')} `,
+    const typed = await readlineAsk(
+      `${askLine('No main.ts found', 'path, or n to skip')}`,
     );
     if (!typed || /^n(o)?$/i.test(typed)) return null;
     const full = path.isAbsolute(typed) ? typed : path.join(cwd, typed);
@@ -67,23 +56,25 @@ export async function resolveMainPath(cwd: string, candidates: string[]): Promis
   }
 
   const rel = path.relative(cwd, def);
-  if (candidates.length > 1) {
-    console.log(`  ${c.dim('candidates')}`);
-    for (const file of candidates.slice(0, 5)) {
-      const r = path.relative(cwd, file);
-      console.log(`    ${r === rel ? c.cyan('●') : c.dim('○')} ${r === rel ? c.bold(r) : c.dim(r)}`);
-    }
-    if (candidates.length > 5) console.log(`    ${c.dim(`… +${candidates.length - 5} more`)}`);
-  }
-
-  const answer = await prompt(
-    `  ${c.yellow('?')} Inject ${c.bold('apiDocs(app)')} into ${c.cyan(rel)}?\n` +
-      `    ${c.dim('Y')} yes · ${c.dim('n')} skip · or type another path\n  ${c.cyan('›')} `,
+  const shown = candidates.slice(0, 8);
+  console.log(`  ${c.gold('?')}  ${c.bold('Nest entry')}  ${c.dim('— apiDocs(app)')}`);
+  shown.forEach((file, i) => {
+    const r = path.relative(cwd, file);
+    const rec = i === 0 ? c.dim('  recommended') : '';
+    console.log(`    ${c.ice(String(i + 1))}  ${c.bold(r)}${rec}`);
+  });
+  if (candidates.length > shown.length) console.log(`    ${c.dim(`… +${candidates.length - shown.length} more`)}`);
+  console.log(`    ${c.dim('n')}  skip`);
+  const answer = await readlineAsk(
+    `  ${c.dim(`Enter = 1 (${rel})`)}  ${c.dim('·')}  ${c.dim('or type a path')}\n  ${c.ice('›')} `,
   );
-
-  if (!answer || /^y(es)?$/i.test(answer)) return def;
+  if (!answer) return def;
   if (/^n(o)?$/i.test(answer)) return null;
-
+  if (/^\d+$/.test(answer)) {
+    const picked = shown[Number(answer) - 1];
+    if (!picked) throw new Error(`No file #${answer}`);
+    return picked;
+  }
   const full = path.isAbsolute(answer) ? answer : path.join(cwd, answer);
   if (!existsSync(full)) throw new Error(`File not found: ${full}`);
   return full;
@@ -167,6 +158,36 @@ export function injectApiDocs(filePath: string, dryRun = false): string {
   if (next === before) return `no changes for ${filePath}`;
   if (!dryRun) writeFileSync(filePath, next);
   return `injected apiDocs() into ${path.relative(process.cwd(), filePath)}`;
+}
+
+/** Remove `apiDocs(...)` calls and `@t0.labs/daxta` imports from a Nest entry file. */
+export function removeApiDocs(filePath: string, dryRun = false): string {
+  const before = readFileSync(filePath, 'utf8');
+  let next = before;
+
+  next = next.replace(/^[ \t]*apiDocs\s*\([^;]*\)\s*;?[ \t]*\n?/gm, '');
+  next = next.replace(/^[ \t]*\b(?:mountDaxtaDocs|docs)\s*\([^;]*\)\s*;?[ \t]*\n?/gm, '');
+
+  next = next.replace(
+    /^[ \t]*import\s*\{[^}]*\bapiDocs\b[^}]*\}\s*from\s*['"]@t0\.labs\/daxta['"]\s*;?[ \t]*\n?/gm,
+    (line) => {
+      // Drop whole import if only apiDocs (and legacy aliases); otherwise strip the name
+      const names = line.match(/\{([^}]*)\}/)?.[1] ?? '';
+      const remaining = names
+        .split(',')
+        .map((part) => part.trim())
+        .filter((part) => part && !/^(apiDocs|mountDaxtaDocs|docs)$/.test(part));
+      if (!remaining.length) return '';
+      return line.replace(/\{[^}]*\}/, `{ ${remaining.join(', ')} }`);
+    },
+  );
+
+  // Orphan blank lines left after removals — light tidy
+  next = next.replace(/\n{3,}/g, '\n\n');
+
+  if (next === before) return `no apiDocs in ${path.relative(process.cwd(), filePath)}`;
+  if (!dryRun) writeFileSync(filePath, next);
+  return `removed apiDocs from ${path.relative(process.cwd(), filePath)}`;
 }
 
 export type InjectMainOptions = {

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API Documentation</title>
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHN0eWxlPgogICAgLmJnIHsgZmlsbDogI2ZmZmZmZjsgfQogICAgLmZnIHsgZmlsbDogIzExMTExMTsgfQogICAgLnJpbmcgeyBmaWxsOiBub25lOyBzdHJva2U6ICMxMTExMTE7IHN0cm9rZS13aWR0aDogMS4yNTsgfQogICAgQG1lZGlhIChwcmVmZXJzLWNvbG9yLXNjaGVtZTogZGFyaykgewogICAgICAuYmcgeyBmaWxsOiAjMTExMTExOyB9CiAgICAgIC5mZyB7IGZpbGw6ICNmZmZmZmY7IH0KICAgICAgLnJpbmcgeyBzdHJva2U6ICNmZmZmZmY7IH0KICAgIH0KICA8L3N0eWxlPgogIDxyZWN0IGNsYXNzPSJiZyIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIvPgogIDxyZWN0IGNsYXNzPSJyaW5nIiB4PSIwLjYiIHk9IjAuNiIgd2lkdGg9IjMwLjgiIGhlaWdodD0iMzAuOCIgcng9IjYuNCIvPgogIDxwYXRoIGNsYXNzPSJmZyIgZD0iTTQuMiA1LjIgMTQuMiA4Ljh2NC4yQTQuMiA0LjIgMCAwIDEgMTQuMiAyMS40djRMNC4yIDI2LjhaIi8+CiAgPHBhdGggY2xhc3M9ImZnIiBkPSJNMjcuOCA1LjIgMTcuOCA4Ljh2NC4yQTQuMiA0LjIgMCAwIDAgMTcuOCAyMS40djRMMjcuOCAyNi44WiIvPgo8L3N2Zz4K" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --canvas: #fafafa;
+        --nav: #ffffff;
+        --white: #ffffff;
+        --inset: #f5f5f5;
+        --hairline: #e6e6e6;
+        --stone: #666666;
+        --charcoal: #333333;
+        --obsidian: #111111;
+        --sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+        --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        --radius: 5px;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--obsidian);
+        font: 13px/1.45 var(--sans);
+      }
+      .topnav {
+        height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 16px;
+        background: var(--nav);
+        border-bottom: 1px solid var(--hairline);
+      }
+      .nav-meta {
+        margin-left: auto;
+        font: 11px/1 var(--mono);
+        color: var(--stone);
+      }
+      .stage {
+        min-height: calc(100vh - 44px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+      .panel {
+        width: min(440px, 100%);
+        background: var(--white);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        padding: 24px;
+      }
+      .kicker {
+        font: 600 10px/1 var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--stone);
+        margin: 0 0 8px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        line-height: 1.25;
+      }
+      p {
+        margin: 0 0 16px;
+        color: var(--charcoal);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .steps {
+        margin: 0 0 16px;
+        padding: 0;
+        list-style: none;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .steps li {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 10px;
+        align-items: start;
+        padding: 10px 12px;
+        border-top: 1px solid var(--hairline);
+        font-size: 13px;
+      }
+      .steps li:first-child { border-top: 0; }
+      .n {
+        font: 600 11px/22px var(--mono);
+        color: var(--stone);
+      }
+      .cmd {
+        margin: 0 0 16px;
+        padding: 10px 12px;
+        background: var(--inset);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        font: 12px/1.45 var(--mono);
+        color: var(--obsidian);
+      }
+      .actions { display: flex; gap: 8px; }
+      .btn {
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--white);
+        font: 12px/1 var(--sans);
+        color: var(--charcoal);
+        cursor: pointer;
+      }
+      .btn.primary {
+        background: var(--obsidian);
+        color: var(--white);
+        border-color: var(--obsidian);
+      }
+      .foot {
+        margin-top: 16px;
+        font-size: 11px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topnav">
+      <span class="nav-meta">/api-docs</span>
+    </header>
+    <main class="stage">
+      <div class="panel">
+        <p class="kicker">Waiting</p>
+        <h1>No API documentation yet</h1>
+        <p>This page publishes when API traffic has been recorded. Run your integration tests, then refresh.</p>
+        <ol class="steps">
+          <li><span class="n">1</span><span>Run the integration suite that hits your API.</span></li>
+          <li><span class="n">2</span><span>DAxTA writes API docs from those requests and responses.</span></li>
+          <li><span class="n">3</span><span>Reload this page to open the workbench.</span></li>
+        </ol>
+        <pre class="cmd">pnpm run test:integration</pre>
+        <div class="actions">
+          <button class="btn primary" type="button" id="reload">Refresh</button>
+        </div>
+        <div class="foot">Generated by DAxTA</div>
+      </div>
+    </main>
+    <script>
+      document.getElementById("reload").onclick = () => location.reload();
+    </script>
+  </body>
+</html>

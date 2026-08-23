@@ -1,7 +1,7 @@
 {
   "name": "@t0.labs/daxta",
-  "version": "0.4.4",
-  "description": "DAxTA \u2014 docs from Nest integration traffic + DTO field CLI / Try-it",
+  "version": "0.5.2",
+  "description": "DAxTA — Tested behavior. Trusted API docs. Generate API documentation from observed test execution.",
   "license": "MIT",
   "repository": {
     "type": "git",

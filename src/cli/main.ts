@@ -1,4 +1,4 @@
-import { buildDaxtaSpec } from '../build/build-spec';
+import { generateApiDocs } from '../build/build-spec';
 import { runFileCall, runInteractiveCall } from '../call';
 import { getConfig, resetConfig } from '../config';
 import { writeFieldsFile } from '../fields/export-fields';
@@ -7,29 +7,34 @@ import { installDaxta } from './install';
 import { migrateProject, reportMigration } from './migrate';
 import { runDaxtaTest } from './test';
 import { runTreeWizard } from './tree';
+import { runTitleCheck } from './titles';
+import { uninstallDaxta } from './uninstall';
+import { c } from './ui';
 
 function usage() {
-  console.log(`DAxTA CLI (@t0.labs/daxta)
-
-Usage:
-  daxta install [--dry-run] [--skip-dep] [--skip-main] [--yes] [--main <path>] [--fast]
-  daxta init                 (alias of install)
-  daxta migrate [--yes]      (force upgrade + sidebar prompts)
-  daxta test [--script <name>] [--config <jest.json>] [--serve] [--port <n>] [--yes]
-  daxta build
-  daxta serve [--port <n>]
-  daxta tree [PATH] [--layout resource-first|url-order]
-  daxta fields [METHOD] [PATH] [--out <file>]
-  daxta call [METHOD] [PATH] [--fields <file>] [--header k:v ...]
-  daxta call --file <values.json> [--header k:v ...]
-
-One-shot setup:
-  pnpm dlx @t0.labs/daxta install
-  npx @t0.labs/daxta install
-
-daxta test = forwards to your package script (Jest stays parent; DAxTA is a plugin)
-daxta tree = choose how paths appear in the /docs sidebar
-`);
+  const cmd = (name: string) => c.bold(c.ice(name));
+  console.log('');
+  console.log(`  ${c.bold(c.ice('DAxTA'))}`);
+  console.log(`  ${c.dim('Tested behavior. Trusted API docs.')}`);
+  console.log('');
+  console.log(`  ${c.gold('Setup')}`);
+  console.log(`    ${cmd('daxta install')}     ${c.dim('Install DAxTA in this project')}`);
+  console.log(`    ${cmd('daxta uninstall')}   ${c.dim('Remove DAxTA from this project')}`);
+  console.log(`    ${cmd('daxta migrate')}     ${c.dim('Upgrade project wiring after a package bump')}`);
+  console.log('');
+  console.log(`  ${c.gold('API docs')}`);
+  console.log(`    ${cmd('daxta generate')}    ${c.dim('Generate API documentation from test execution')}`);
+  console.log(`    ${cmd('daxta serve')}       ${c.dim('Serve API documentation locally')}`);
+  console.log(`    ${cmd('daxta tree')}        ${c.dim('Configure API docs sidebar layout')}`);
+  console.log(`    ${cmd('daxta titles')}      ${c.dim('Align test titles with API docs examples')}`);
+  console.log(`    ${cmd('daxta test')}        ${c.dim('Run the project test script (Jest stays parent)')}`);
+  console.log('');
+  console.log(`  ${c.gold('Try-it')}`);
+  console.log(`    ${cmd('daxta fields')}      ${c.dim('Export API field map')}`);
+  console.log(`    ${cmd('daxta call')}        ${c.dim('Send a Try-it request from the CLI')}`);
+  console.log('');
+  console.log(`  ${c.mint('First time')}  ${c.ice('pnpm dlx @t0.labs/daxta install')}`);
+  console.log('');
 }
 
 function parseArgs(argv: string[]) {
@@ -76,6 +81,17 @@ async function main() {
       reportMigration({ ...migration, skipped: false });
     }
     await runTreeWizard({ embedded: true, yes: Boolean(flags.yes) });
+    await runTitleCheck({ yes: Boolean(flags.yes) });
+    return;
+  }
+
+  if (command === 'uninstall' || command === 'remove') {
+    await uninstallDaxta({
+      dryRun: Boolean(flags['dry-run']),
+      yes: Boolean(flags.yes),
+      fast: Boolean(flags.fast),
+      keepDep: Boolean(flags['keep-dep']),
+    });
     return;
   }
 
@@ -97,14 +113,25 @@ async function main() {
     return;
   }
 
+  if (command === 'titles' || command === 'title') {
+    const code = await runTitleCheck({
+      checkOnly: Boolean(flags.check),
+      apply: Boolean(flags.yes) && !flags.check,
+      yes: Boolean(flags.yes),
+      strict: Boolean(flags.strict),
+    });
+    if (code) process.exitCode = code;
+    return;
+  }
+
   if (command === 'test') {
     const argv = rest[0] === '--' ? rest.slice(1) : rest;
     await runDaxtaTest({ argv });
     return;
   }
 
-  if (command === 'build') {
-    buildDaxtaSpec({ requireHits: true });
+  if (command === 'generate' || command === 'build') {
+    generateApiDocs({ requireHits: true });
     return;
   }
 

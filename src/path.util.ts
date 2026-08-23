@@ -1,4 +1,5 @@
 import { getConfig } from './config';
+import { HTTP_VERBS } from './catalog/test-title';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NUMERIC_ID_RE = /^-?\d+(\.\d+)?$/;
@@ -43,7 +44,7 @@ export function toOpenApiTemplate(path: string): string {
 
 export function templateFromTestName(test?: string): string | null {
   if (!test) return null;
-  const match = test.match(/^\/?(\S+)\s+\[(?:GET|POST|PUT|PATCH|DELETE|UPDATE|UPSERT)\]/i);
+  const match = test.match(new RegExp(`^/?(\\S+)\\s+\\[(?:${HTTP_VERBS})\\]`, 'i'));
   if (!match) return null;
   const raw = `/${match[1].replace(/^\/+/, '')}`.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, ':$1').replace(/\/+$/, '') || '/';
   return toOpenApiTemplate(raw);

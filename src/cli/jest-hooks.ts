@@ -7,6 +7,7 @@ type JestConfig = Record<string, unknown>;
 
 const SETUP = '@t0.labs/daxta/setup';
 const REPORTER = '@t0.labs/daxta/jest-reporter';
+const GLOBAL_SETUP = '@t0.labs/daxta/jest-global-setup';
 
 export function loadJestJson(filePath: string): JestConfig {
   return JSON.parse(readFileSync(filePath, 'utf8')) as JestConfig;
@@ -107,6 +108,14 @@ function injectIntoJsSource(source: string): { source: string; notes: string[] }
     }
   }
 
+  if (!/\bglobalSetup\s*:/.test(next) && !next.includes(GLOBAL_SETUP)) {
+    const inserted = insertIntoObjectLiteral(next, `globalSetup: '${GLOBAL_SETUP}',`);
+    if (inserted) {
+      next = inserted;
+      notes.push(`globalSetup = ${GLOBAL_SETUP}`);
+    }
+  }
+
   if (!next.includes(REPORTER)) {
     const range = findArrayPropRange(next, 'reporters');
     if (range) {
@@ -153,6 +162,11 @@ function injectIntoJsonConfig(filePath: string, dryRun: boolean): string[] {
     notes.push(`reporters += ${REPORTER}`);
   }
 
+  if (!data.globalSetup) {
+    data.globalSetup = GLOBAL_SETUP;
+    notes.push(`globalSetup = ${GLOBAL_SETUP}`);
+  }
+
   if (!dryRun && notes.length) {
     writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
   }
@@ -161,7 +175,8 @@ function injectIntoJsonConfig(filePath: string, dryRun: boolean): string[] {
 
 /**
  * Inject DAxTA as a Jest plugin (setup + reporter). Does not wrap the test process.
- * Supports JSON and JS/CJS/MJS/TS config files. Leaves globalSetup / globalTeardown untouched.
+ * Supports JSON and JS/CJS/MJS/TS config files. Adds globalSetup only when missing
+ * (does not replace an existing user globalSetup).
  */
 export function injectJestHooks(jestConfigPath: string, dryRun = false): string[] {
   if (!existsSync(jestConfigPath)) throw new Error(`Jest config not found: ${jestConfigPath}`);
@@ -194,4 +209,125 @@ export function unwrapDaxtaTestScript(
   if (!current || !/\bdaxta\s+test\b/.test(current)) return false;
   scripts[scriptName] = originalCommand;
   return true;
+}
+
+function removeStringFromArrayLiteral(source: string, key: string, needle: string): { source: string; removed: boolean } {
+  const range = findArrayPropRange(source, key);
+  if (!range) return { source, removed: false };
+  const inner = source.slice(range.open + 1, range.close);
+  if (!inner.includes(needle)) return { source, removed: false };
+
+  let nextInner = inner
+    .replace(new RegExp(`(['"])${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1\\s*,\\s*`), '')
+    .replace(new RegExp(`,\\s*(['"])${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1`), '')
+    .replace(new RegExp(`(['"])${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1`), '');
+
+  return {
+    source: `${source.slice(0, range.open + 1)}${nextInner}${source.slice(range.close)}`,
+    removed: true,
+  };
+}
+
+function removeReporterFromJsSource(source: string): { source: string; removed: boolean } {
+  // Single-string reporter entry
+  let { source: next, removed } = removeStringFromArrayLiteral(source, 'reporters', REPORTER);
+  // Array tuple reporter: [ '@t0.labs/daxta/jest-reporter', { ... } ],
+  const tupleRe = new RegExp(
+    `,?\\s*\\[\\s*['"]${REPORTER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\s*,\\s*\\{[\\s\\S]*?\\}\\s*\\]\\s*,?`,
+  );
+  if (tupleRe.test(next)) {
+    next = next.replace(tupleRe, (match) => (match.trim().startsWith(',') ? '' : ''));
+    // Clean double commas / leading commas in array
+    const range = findArrayPropRange(next, 'reporters');
+    if (range) {
+      let inner = next.slice(range.open + 1, range.close);
+      inner = inner.replace(/,\s*,/g, ',').replace(/^\s*,/, '').replace(/,\s*$/, '');
+      next = `${next.slice(0, range.open + 1)}${inner}${next.slice(range.close)}`;
+    }
+    removed = true;
+  }
+  return { source: next, removed };
+}
+
+function removeFromJsSource(source: string): { source: string; notes: string[] } {
+  const notes: string[] = [];
+  let next = source;
+
+  const setup = removeStringFromArrayLiteral(next, 'setupFilesAfterEnv', SETUP);
+  next = setup.source;
+  if (setup.removed) notes.push(`setupFilesAfterEnv -= ${SETUP}`);
+
+  const reporters = removeReporterFromJsSource(next);
+  next = reporters.source;
+  if (reporters.removed) notes.push(`reporters -= ${REPORTER}`);
+  else {
+    const plain = removeStringFromArrayLiteral(next, 'reporters', REPORTER);
+    next = plain.source;
+    if (plain.removed) notes.push(`reporters -= ${REPORTER}`);
+  }
+
+  const globalSetupRe = new RegExp(
+    `\\s*globalSetup\\s*:\\s*['"]${GLOBAL_SETUP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\s*,?`,
+  );
+  if (globalSetupRe.test(next)) {
+    next = next.replace(globalSetupRe, '');
+    notes.push(`globalSetup -= ${GLOBAL_SETUP}`);
+  }
+
+  return { source: next, notes };
+}
+
+function removeFromJsonConfig(filePath: string, dryRun: boolean): string[] {
+  const notes: string[] = [];
+  const data = loadJestJson(filePath);
+
+  if (Array.isArray(data.setupFilesAfterEnv)) {
+    const before = data.setupFilesAfterEnv as string[];
+    const after = before.filter((entry) => entry !== SETUP);
+    if (after.length !== before.length) {
+      data.setupFilesAfterEnv = after;
+      notes.push(`setupFilesAfterEnv -= ${SETUP}`);
+    }
+  }
+
+  if (Array.isArray(data.reporters)) {
+    const before = data.reporters as unknown[];
+    const after = before.filter((entry) => {
+      if (entry === REPORTER) return false;
+      if (Array.isArray(entry) && entry[0] === REPORTER) return false;
+      return true;
+    });
+    if (after.length !== before.length) {
+      data.reporters = after.length ? after : ['default'];
+      notes.push(`reporters -= ${REPORTER}`);
+    }
+  }
+
+  if (data.globalSetup === GLOBAL_SETUP) {
+    delete data.globalSetup;
+    notes.push(`globalSetup -= ${GLOBAL_SETUP}`);
+  }
+
+  if (!dryRun && notes.length) {
+    writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
+  }
+  return notes;
+}
+
+/** Remove DAxTA Jest setup + reporter from a JSON/JS config. */
+export function removeJestHooks(jestConfigPath: string, dryRun = false): string[] {
+  if (!existsSync(jestConfigPath)) return [];
+
+  if (isJsonConfigPath(jestConfigPath)) {
+    return removeFromJsonConfig(jestConfigPath, dryRun);
+  }
+
+  if (!isJsLikeConfigPath(jestConfigPath)) return [];
+
+  const original = readFileSync(jestConfigPath, 'utf8');
+  const { source, notes } = removeFromJsSource(original);
+  if (!dryRun && notes.length && source !== original) {
+    writeFileSync(jestConfigPath, source);
+  }
+  return notes;
 }

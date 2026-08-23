@@ -1,11 +1,12 @@
 import { existsSync, readFileSync, statSync } from 'fs';
 
-import { getDocsBasePath, getHtmlPath } from './paths';
+import { getDocsBasePath, getHtmlPath, readEmptyDocsHtml } from './paths';
 import { CORS_PREFLIGHT_HEADERS, forwardProxyRequest } from './proxy';
 import { readStrippedOpenApiJson } from './spec-utils';
+import { readViewerEnvStore, writeViewerEnvStore } from './viewer-store';
 
 export type ApiDocsOptions = {
-  /** URL prefix for the viewer. Default from config (`docsPath`) or `/docs`. */
+  /** URL prefix for the API docs viewer. Default from config (`docsPath`) or `/api-docs`. */
   basePath?: string;
 };
 
@@ -80,12 +81,48 @@ function bodyToBuffer(body: unknown): Buffer | undefined {
   return Buffer.from(JSON.stringify(body));
 }
 
+async function readRequestJson(req: LooseRequest): Promise<unknown> {
+  if (req.body != null && req.body !== '') {
+    if (typeof req.body === 'string') {
+      try {
+        return JSON.parse(req.body);
+      } catch {
+        return null;
+      }
+    }
+    if (Buffer.isBuffer(req.body)) {
+      try {
+        return JSON.parse(req.body.toString('utf8'));
+      } catch {
+        return null;
+      }
+    }
+    return req.body;
+  }
+
+  const stream = req as unknown as NodeJS.ReadableStream & { readableEnded?: boolean };
+  if (typeof stream.on !== 'function' || stream.readableEnded) return null;
+
+  const chunks: Buffer[] = [];
+  await new Promise<void>((resolve, reject) => {
+    stream.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    stream.on('end', () => resolve());
+    stream.on('error', reject);
+  });
+  if (!chunks.length) return null;
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Express / Nest handler that serves the DAxTA viewer under `/docs`
- * (or `basePath`) and the Try-it proxy at `/__proxy`.
+ * Express / Nest handler that serves generated API docs under `/api-docs`
+ * (or `basePath`), Try-it proxy at `/__proxy`, and env store at `{base}/env.json`.
  */
 export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
-  const basePath = (options.basePath ?? getDocsBasePath()).replace(/\/$/, '') || '/docs';
+  const basePath = (options.basePath ?? getDocsBasePath()).replace(/\/$/, '') || '/api-docs';
 
   return async (req, res, next) => {
     const method = (req.method || 'GET').toUpperCase();
@@ -113,7 +150,37 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
 
     const isDocsRoot = pathname === basePath || pathname === `${basePath}/`;
     const isDocsSpec = pathname === `${basePath}/openapi.json`;
-    if (!isDocsRoot && !isDocsSpec) {
+    const isDocsEnv = pathname === `${basePath}/env.json`;
+
+    if (!isDocsRoot && !isDocsSpec && !isDocsEnv) {
+      next();
+      return;
+    }
+
+    if (isDocsEnv) {
+      if (method === 'GET' || method === 'HEAD') {
+        const store = readViewerEnvStore();
+        write(res, 200, `${JSON.stringify(store ?? null)}\n`, {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+        });
+        return;
+      }
+      if (method === 'PUT' || method === 'POST') {
+        try {
+          const payload = await readRequestJson(req);
+          const saved = writeViewerEnvStore(payload);
+          write(res, 200, `${JSON.stringify(saved)}\n`, {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': 'no-store',
+          });
+        } catch (error) {
+          write(res, 400, `${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}\n`, {
+            'content-type': 'application/json; charset=utf-8',
+          });
+        }
+        return;
+      }
       next();
       return;
     }
@@ -126,7 +193,7 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
     if (isDocsSpec) {
       const body = readStrippedOpenApiJson();
       if (!body) {
-        write(res, 404, 'openapi.json not found. Run `daxta build` first.', { 'content-type': 'text/plain; charset=utf-8' });
+        write(res, 404, 'openapi.json not found. Run `daxta generate` first.', { 'content-type': 'text/plain; charset=utf-8' });
         return;
       }
       write(res, 200, body, {
@@ -139,8 +206,9 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
 
     const htmlPath = getHtmlPath();
     if (!existsSync(htmlPath)) {
-      write(res, 404, 'openapi.html not found. Run integration tests or `daxta build` first.', {
-        'content-type': 'text/plain; charset=utf-8',
+      write(res, 200, readEmptyDocsHtml(), {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
       });
       return;
     }
@@ -155,11 +223,11 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
 }
 
 /**
- * Enable DAxTA `/docs` on a Nest / Express app (`app.use(...)`).
+ * Mount generated API docs on a Nest / Express app (`app.use(...)`).
  *
  * Requires `DAXTA_DOCS` in the environment:
  * - missing / empty → throws (app must set it explicitly)
- * - `true` | `1` | `yes` | `on` → serve `/docs`
+ * - `true` | `1` | `yes` | `on` → serve API docs
  * - `false` | `0` | `no` | `off` → no-op
  */
 export function apiDocs(
@@ -169,7 +237,7 @@ export function apiDocs(
   const raw = process.env.DAXTA_DOCS;
   if (raw == null || String(raw).trim() === '') {
     throw new Error(
-      'DAxTA: DAXTA_DOCS is not set. Set DAXTA_DOCS=true to enable /docs, or DAXTA_DOCS=false to disable.',
+      'DAxTA: DAXTA_DOCS is not set. Set DAXTA_DOCS=true to enable API docs, or DAXTA_DOCS=false to disable.',
     );
   }
   const normalized = String(raw).trim().toLowerCase();

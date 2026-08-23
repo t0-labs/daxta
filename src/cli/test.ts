@@ -4,6 +4,7 @@ import { spawnSync } from 'child_process';
 
 import { getConfig, resetConfig } from '../config';
 import { isDaxtaWrappedScript, resolveTestScript } from './discover-test';
+import { runTitleCheck } from './titles';
 import { c } from './ui';
 
 type PackageJson = {
@@ -36,10 +37,12 @@ export async function runDaxtaTest(options: { cwd?: string; argv?: string[] } = 
 
   const passthrough: string[] = [];
   let yes = false;
+  let strict = false;
   let scriptFlag: string | undefined;
   for (let i = 0; i < (options.argv ?? []).length; i += 1) {
     const token = (options.argv ?? [])[i];
     if (token === '--yes' || token === '-y') yes = true;
+    else if (token === '--strict') strict = true;
     else if (token === '--script') scriptFlag = (options.argv ?? [])[++i];
     else if (token === '--') passthrough.push(...(options.argv ?? []).slice(i + 1));
     else passthrough.push(token);
@@ -66,6 +69,12 @@ export async function runDaxtaTest(options: { cwd?: string; argv?: string[] } = 
       `${c.yellow('!')} ${scriptName} still wraps ${c.bold('daxta test')}. Run ${c.cyan('daxta migrate')} to unwrap and attach as a Jest plugin.`,
     );
     process.exitCode = 1;
+    return;
+  }
+
+  const titleExit = await runTitleCheck({ cwd, yes, strict });
+  if (titleExit !== 0) {
+    process.exitCode = titleExit;
     return;
   }
 

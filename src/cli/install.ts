@@ -10,7 +10,8 @@ import {
 } from './discover-test';
 import { injectJestHooks, resolveJestConfigPath, unwrapDaxtaTestScript } from './jest-hooks';
 import { runTreeWizard } from './tree';
-import { banner, box, c, nextSteps, sleep, step } from './ui';
+import { runTitleCheck } from './titles';
+import { box, c, nextSteps, phase, sleep, splash, step } from './ui';
 
 type PackageJson = {
   name?: string;
@@ -102,13 +103,25 @@ function writeConfig(cwd: string, dryRun: boolean): { created: boolean; rel: str
   const body = `import { defineConfig } from '@t0.labs/daxta';
 
 export default defineConfig({
+  specInfo: () => ({
+    title: 'API',
+    version: '1.0.0',
+  }),
   workspace: 'API',
   baseUrl: 'http://localhost:3000',
   controllersRoot: 'src',
-  outDir: 'daxta/out',
-  docsPath: '/docs',
-  treeLayout: 'resource-first',
-  fieldsFile: 'daxta/out/daxta.fields.json',
+  outDir: '.daxta/out',
+  docsPath: '/api-docs',
+  treeLayout: 'role-resource',
+  treeSkipParams: true,
+  exampleLabelStyle: 'status-title-case',
+  fieldsFile: '.daxta/out/fields.json',
+  viewerStoreFile: '.daxta/viewer-store.json',
+  envPresets: {
+    local: { baseUrl: 'http://localhost:3000' },
+    staging: { baseUrl: 'https://api.staging.example.com' },
+    production: { baseUrl: 'https://api.example.com' },
+  },
 });
 `;
   if (!dryRun) writeFileSync(configPath, body);
@@ -117,7 +130,7 @@ export default defineConfig({
 
 function ensureGitignore(cwd: string, dryRun: boolean): string[] {
   const gitignorePath = path.join(cwd, '.gitignore');
-  const entries = ['daxta/out/', '**/.jest.daxta.runtime.json'];
+  const entries = ['.daxta/out/', '.daxta/viewer-store.json', '**/.jest.daxta.runtime.json'];
   if (!existsSync(gitignorePath)) {
     if (!dryRun) writeFileSync(gitignorePath, `${entries.join('\n')}\n`);
     return entries.map((e) => `created .gitignore (+ ${e})`);
@@ -127,12 +140,39 @@ function ensureGitignore(cwd: string, dryRun: boolean): string[] {
   const added: string[] = [];
   let next = text;
   for (const entry of entries) {
-    if (lines.has(entry) || lines.has('daxta/') || (entry === 'daxta/out/' && lines.has('daxta/out'))) continue;
+    if (lines.has(entry) || lines.has('.daxta/') || lines.has('daxta/') || (entry === '.daxta/out/' && (lines.has('.daxta/out') || lines.has('daxta/out/')))) continue;
     next = next.endsWith('\n') ? `${next}${entry}\n` : `${next}\n${entry}\n`;
     added.push(entry);
   }
   if (added.length && !dryRun) writeFileSync(gitignorePath, next);
   return added.map((e) => `.gitignore += ${e}`);
+}
+
+const ENV_CANDIDATES = ['.env', '.env.local', '.env.development', '.env.development.local'] as const;
+
+/** Ensure DAXTA_DOCS is present (default true). Mirrors uninstall strip. */
+function ensureEnvDaxtaDocs(cwd: string, dryRun: boolean): string {
+  for (const name of ENV_CANDIDATES) {
+    const filePath = path.join(cwd, name);
+    if (!existsSync(filePath)) continue;
+    const text = readFileSync(filePath, 'utf8');
+    if (/^\s*DAXTA_DOCS\s*=/m.test(text)) return `${name} · DAXTA_DOCS already set`;
+  }
+
+  const targetName = ENV_CANDIDATES.find((name) => existsSync(path.join(cwd, name))) ?? '.env';
+  const targetPath = path.join(cwd, targetName);
+  const created = !existsSync(targetPath);
+  const line = 'DAXTA_DOCS=true';
+  if (!dryRun) {
+    if (created) {
+      writeFileSync(targetPath, `${line}\n`);
+    } else {
+      const text = readFileSync(targetPath, 'utf8');
+      const next = text.endsWith('\n') || text.length === 0 ? `${text}${line}\n` : `${text}\n${line}\n`;
+      writeFileSync(targetPath, next);
+    }
+  }
+  return created ? `created ${targetName} (+ DAXTA_DOCS=true)` : `${targetName} += DAXTA_DOCS=true`;
 }
 
 function runPackageInstall(cwd: string, pm: 'pnpm' | 'yarn' | 'npm', version: string, dryRun: boolean) {
@@ -151,7 +191,7 @@ function runPackageInstall(cwd: string, pm: 'pnpm' | 'yarn' | 'npm', version: st
 export async function installDaxta(options: InstallOptions = {}): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   const dryRun = Boolean(options.dryRun);
-  const paceMs = options.fast || dryRun || process.env.CI ? 0 : 2200;
+  const paceMs = options.fast || dryRun || process.env.CI ? 0 : 380;
   const pkgPath = path.join(cwd, 'package.json');
   if (!existsSync(pkgPath)) throw new Error(`No package.json in ${cwd}`);
 
@@ -159,11 +199,14 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
   const pm = detectPackageManager(cwd, pkg);
   const version = selfVersion();
   const project = pkg.name || path.basename(cwd);
+  const of = 5;
 
-  banner('DAxTA install', `v${version} · ${project}`);
-  if (paceMs) await sleep(700);
+  splash({ version, project, dryRun });
+  if (paceMs) await sleep(220);
 
-  await step('Detect package manager', () => pm, { paceMs });
+  phase(1, of, 'Project', 'package manager and DAxTA package');
+
+  await step('Detect package manager', () => pm, { paceMs, n: 1, of });
 
   if (!options.skipDep) {
     if (!isDaxtaListed(pkg) || !isDaxtaInstalled(cwd)) {
@@ -174,12 +217,14 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
           if (!dryRun) pkg = readJson<PackageJson>(pkgPath);
           return { summary: 'devDependency', details: [spec] };
         },
-        { paceMs: paceMs ? 600 : 0 },
+        { paceMs: paceMs ? 180 : 0, n: 1, of },
       );
     } else {
-      await step('Package dependency', () => 'already installed — skip add', { paceMs });
+      await step('Package dependency', () => 'already installed — skip add', { paceMs, n: 1, of });
     }
   }
+
+  phase(2, of, 'Workspace files', 'config, gitignore, API docs env flag');
 
   await step(
     'Write daxta.config.ts',
@@ -187,7 +232,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
       const { created, rel } = writeConfig(cwd, dryRun);
       return created ? `created ${rel}` : `exists · ${rel}`;
     },
-    { paceMs },
+    { paceMs, n: 2, of },
   );
 
   await step(
@@ -202,16 +247,16 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
       if (!details.length) return 'no daxta:* aliases';
       return { summary: `${details.length} cleanup(s)`, details };
     },
-    { paceMs },
+    { paceMs, n: 2, of },
   );
 
   await step(
     'Prepare output dir',
     () => {
-      if (!dryRun) mkdirSync(path.join(cwd, 'daxta', 'out'), { recursive: true });
-      return 'daxta/out';
+      if (!dryRun) mkdirSync(path.join(cwd, '.daxta', 'out'), { recursive: true });
+      return '.daxta/out';
     },
-    { paceMs },
+    { paceMs, n: 2, of },
   );
 
   await step(
@@ -221,12 +266,18 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
       if (!notes.length) return 'already ignored';
       return { summary: `${notes.length} entr${notes.length === 1 ? 'y' : 'ies'}`, details: notes };
     },
-    { paceMs },
+    { paceMs, n: 2, of },
   );
 
+  await step(
+    'Set DAXTA_DOCS in env',
+    () => ensureEnvDaxtaDocs(cwd, dryRun),
+    { paceMs, n: 2, of },
+  );
+
+  phase(3, of, 'Nest', 'apiDocs(app) on the HTTP bootstrap');
+
   if (!options.skipMain) {
-    console.log('');
-    console.log(`  ${c.yellow(c.bold('?'))} ${c.bold('Nest entry')} ${c.dim('— wire apiDocs(app)')}`);
     const target = await resolveMainTarget({
       cwd,
       yes: options.yes,
@@ -234,7 +285,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
     });
 
     if (!target) {
-      await step('Inject apiDocs(app)', () => 'skipped', { paceMs });
+      await step('Inject apiDocs(app)', () => 'skipped', { paceMs, n: 3, of });
     } else {
       await step(
         'Inject apiDocs(app)',
@@ -249,13 +300,15 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
             ],
           };
         },
-        { paceMs },
+        { paceMs, n: 3, of },
       );
     }
+  } else {
+    await step('Inject apiDocs(app)', () => 'skipped (--skip-main)', { paceMs, n: 3, of });
   }
 
-  console.log('');
-  console.log(`  ${c.yellow(c.bold('?'))} ${c.bold('Test script')} ${c.dim('— Jest plugin, your script stays the parent')}`);
+  phase(4, of, 'Tests', 'Jest plugin — your script stays the parent');
+
   const testScript = await resolveTestScript({
     cwd,
     scripts: pkg.scripts,
@@ -318,29 +371,35 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
           details,
         };
       },
-      { paceMs },
+      { paceMs, n: 4, of },
     );
   } else {
-    await step('Attach test hooks', () => 'skipped', { paceMs });
+    await step('Attach test hooks', () => 'skipped', { paceMs, n: 4, of });
   }
+
+  phase(5, of, 'API docs taste', 'sidebar folders + test titles for the viewer');
 
   if (!dryRun) {
     await runTreeWizard({ embedded: true, yes: Boolean(options.yes) });
+    await runTitleCheck({ cwd, yes: Boolean(options.yes) });
   }
 
-  box('Done', [
-    `${c.green('✔')} DAxTA wired for ${c.bold(project)}`,
-    `${c.dim('env')} ${c.cyan('DAXTA_DOCS=true')} or ${c.cyan('false')}`,
-    `${c.dim('tests')} run your usual script — Docs ready prints when Jest finishes`,
-    `${c.dim('sidebar')} ${c.cyan('daxta tree')} anytime to re-arrange folders`,
+  box('Ready', [
+    `${c.mint('✔')}  ${c.bold(project)}  ·  DAxTA ${c.gold(`v${version}`)}`,
+    `${c.dim('api docs')} ${c.ice('/api-docs')}  ·  ${c.ice('DAXTA_DOCS=true')}`,
+    `${c.dim('tests')}    same script — titles first, spec after`,
+    `${c.dim('retune')}   ${c.ice('daxta tree')}  ·  ${c.ice('daxta titles')}`,
   ]);
 
   const wired = testScript && pkg.scripts?.[testScript] ? testScript : null;
   nextSteps([
-    { cmd: 'echo "DAXTA_DOCS=true" >> .env', why: 'enable /docs on the app port' },
     {
       cmd: wired ? `${pm} run ${wired}` : 'pnpm test',
       why: 'unchanged entrypoint — DAxTA is a Jest plugin',
+    },
+    {
+      cmd: `${pm} start:dev`,
+      why: 'open /api-docs (DAXTA_DOCS already in .env)',
     },
   ]);
 }

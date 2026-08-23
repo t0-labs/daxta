@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bg { fill: #ffffff; }
+    .fg { fill: #111111; }
+    .ring { fill: none; stroke: #111111; stroke-width: 1.25; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #111111; }
+      .fg { fill: #ffffff; }
+      .ring { stroke: #ffffff; }
+    }
+  </style>
+  <rect class="bg" width="32" height="32" rx="7"/>
+  <rect class="ring" x="0.6" y="0.6" width="30.8" height="30.8" rx="6.4"/>
+  <path class="fg" d="M4.2 5.2 14.2 8.8v4.2A4.2 4.2 0 0 1 14.2 21.4v4L4.2 26.8Z"/>
+  <path class="fg" d="M27.8 5.2 17.8 8.8v4.2A4.2 4.2 0 0 0 17.8 21.4v4L27.8 26.8Z"/>
+</svg>
