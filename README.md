@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/npm/@t0.labs/daxta@0.5.2/assets/logo.png" width="88" alt="DAxTA" />
+  <img src="https://cdn.jsdelivr.net/npm/@t0.labs/daxta@0.5.4/assets/logo.png" width="88" alt="DAxTA" />
 </p>
 
 <h1 align="center">DAxTA</h1>
@@ -28,11 +28,12 @@ DAxTA captures that real traffic while your tests run and turns it into interact
 **No duplicate API definitions. No manually maintained examples. No documentation-specific decorators.**
 
 ```ts
-import { apiDocs, generateApiDocs } from '@t0.labs/daxta';
+import { apiDocs } from '@t0.labs/daxta';
 
-await generateApiDocs();
-apiDocs(app);
+apiDocs(app); // NestJS — mount /api-docs when DAXTA_DOCS=true
 ```
+
+Generation happens when Jest finishes (reporter) or when you run `daxta generate`. You do not call `generateApiDocs()` in `main.ts`.
 
 ---
 
@@ -359,18 +360,32 @@ daxta generate
 
 ## API
 
-```ts
-import {
-  apiDocs,
-  apiDocsHandler,
-  generateApiDocs,
-  serveApiDocs,
-} from '@t0.labs/daxta';
+**NestJS** — only this belongs in `main.ts`:
 
-await generateApiDocs();      // OpenAPI spec + HTML from recorded test hits
-apiDocs(app);                 // preferred — same origin as your API
-app.use(apiDocsHandler());    // Express-style mount
-serveApiDocs({ port: 5199 }); // standalone viewer
+```ts
+import { apiDocs } from '@t0.labs/daxta';
+
+apiDocs(app);
+```
+
+`generateApiDocs()` is not part of the Nest bootstrap. Jest builds the spec after tests; you can also run `daxta generate`.
+
+**Express** (no Nest `app.use` helper):
+
+```ts
+import { apiDocsHandler } from '@t0.labs/daxta';
+
+app.use(apiDocsHandler());
+```
+
+`apiDocs(app)` works on Express too — it is `app.use(apiDocsHandler())` plus the `DAXTA_DOCS` gate.
+
+**Standalone viewer** (CLI / rare):
+
+```ts
+import { serveApiDocs } from '@t0.labs/daxta';
+
+serveApiDocs({ port: 5199 });
 ```
 
 ---
@@ -398,3 +413,11 @@ It is just trapped inside your tests.
 <p align="center"><strong>API Test → API Documentation</strong></p>
 
 <p align="center">You already wrote the tests. Let DAxTA write the docs.</p>
+
+---
+
+## License
+
+DAxTA is [MIT](LICENSE) licensed.
+
+Copyright (c) 2026 t0.labs

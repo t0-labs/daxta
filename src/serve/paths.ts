@@ -45,8 +45,6 @@ export function readEmptyDocsHtml(): Buffer {
 }
 
 export function getFaviconAssetPath(): string {
-  const svg = path.join(__dirname, '..', '..', 'assets', 'favicon.svg');
-  if (existsSync(svg)) return svg;
   return path.join(__dirname, '..', '..', 'assets', 'favicon.png');
 }
 

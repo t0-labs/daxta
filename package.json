@@ -1,8 +1,27 @@
 {
   "name": "@t0.labs/daxta",
-  "version": "0.5.2",
+  "version": "0.5.5",
   "description": "DAxTA — Tested behavior. Trusted API docs. Generate API documentation from observed test execution.",
   "license": "MIT",
+  "author": {
+    "name": "t0.labs",
+    "url": "https://github.com/t0-labs"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "daxta",
+    "nestjs",
+    "openapi",
+    "swagger",
+    "api-docs",
+    "api-documentation",
+    "jest",
+    "supertest",
+    "integration-tests",
+    "postman",
+    "typescript",
+    "class-validator"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/t0-labs/daxta.git"
@@ -20,7 +39,8 @@
     "dist",
     "bin",
     "assets",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -51,13 +71,15 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build"
+    "test": "npm run build && node --test test/*.test.cjs",
+    "prepublishOnly": "npm test"
   },
   "peerDependencies": {
     "class-transformer": ">=0.5.0",
     "class-validator": ">=0.14.0",
     "reflect-metadata": ">=0.1.13",
-    "typescript": ">=4.9.0"
+    "typescript": ">=4.9.0",
+    "jest": ">=27"
   },
   "peerDependenciesMeta": {
     "jest": {
@@ -65,7 +87,7 @@
     }
   },
   "dependencies": {
-    "jiti": "^2.4.2"
+    "jiti": "2.7.0"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
@@ -79,5 +101,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "overrides": {
+    "validator": "13.15.22"
   }
 }

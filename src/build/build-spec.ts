@@ -765,9 +765,7 @@ function toStandaloneHtml(spec: unknown): string {
   const template = readFileSync(getViewerAssetPath(), 'utf8');
   const faviconPath = getFaviconAssetPath();
   const faviconUri = existsSync(faviconPath)
-    ? faviconPath.endsWith('.svg')
-      ? `data:image/svg+xml;base64,${readFileSync(faviconPath).toString('base64')}`
-      : `data:image/png;base64,${readFileSync(faviconPath).toString('base64')}`
+    ? `data:image/png;base64,${readFileSync(faviconPath).toString('base64')}`
     : '';
   return template
     .replace('__SPEC_JSON__', JSON.stringify(spec).replace(/</g, '\\u003c'))

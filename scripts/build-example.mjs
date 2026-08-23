@@ -522,8 +522,8 @@ const spec = {
 
 function main() {
   const root = path.resolve(__dirname, '..');
-  const favicon = fs.readFileSync(path.join(root, 'assets', 'favicon.svg'));
-  const faviconUri = `data:image/svg+xml;base64,${favicon.toString('base64')}`;
+  const favicon = fs.readFileSync(path.join(root, 'assets', 'favicon.png'));
+  const faviconUri = `data:image/png;base64,${favicon.toString('base64')}`;
   let html = fs.readFileSync(path.join(root, 'assets', 'viewer.html'), 'utf8');
   html = html
     .replace('__SPEC_JSON__', JSON.stringify(spec).replace(/</g, '\\u003c'))

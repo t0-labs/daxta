@@ -12,9 +12,9 @@ async function main() {
   const outDir = path.join(root, 'assets', 'readme');
   fs.mkdirSync(outDir, { recursive: true });
 
-  const faviconPath = path.join(root, 'assets', 'favicon.svg');
+  const faviconPath = path.join(root, 'assets', 'favicon.png');
   const favicon = fs.readFileSync(faviconPath);
-  const faviconUri = `data:image/svg+xml;base64,${favicon.toString('base64')}`;
+  const faviconUri = `data:image/png;base64,${favicon.toString('base64')}`;
 
   const spec = {
     openapi: '3.0.3',
