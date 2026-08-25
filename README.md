@@ -30,7 +30,7 @@ DAxTA captures that real traffic while your tests run and turns it into interact
 ```ts
 import { apiDocs } from '@t0.labs/daxta';
 
-apiDocs(app); // NestJS — mount /api-docs when DAXTA_DOCS=true
+apiDocs(app); // NestJS — mount /docs when DAXTA_DOCS=on
 ```
 
 Generation happens when Jest finishes (reporter) or when you run `daxta generate`. You do not call `generateApiDocs()` in `main.ts`.
@@ -139,7 +139,7 @@ These examples come from **actual test executions**, not manually maintained doc
 
 3. **When Jest finishes**, DAxTA performs a single documentation build.
 
-4. `apiDocs(app)` mounts the generated documentation on your NestJS application when `DAXTA_DOCS=true`.
+4. `apiDocs(app)` mounts the generated documentation on your NestJS application when `DAXTA_DOCS=on`.
 
 ---
 
@@ -200,7 +200,7 @@ When Jest finishes, your documentation is ready.
 Start your application with DAxTA enabled:
 
 ```bash
-DAXTA_DOCS=true pnpm start:dev
+DAXTA_DOCS=on pnpm start:dev
 ```
 
 Open:
@@ -290,20 +290,20 @@ Your tests remain the source of truth.
 
 ## `DAXTA_DOCS`
 
-DAxTA requires an explicit decision about whether `/api-docs` should be mounted.
+DAxTA requires an explicit decision about whether `/docs` should be mounted. Only `on` and `off` are accepted.
 
 ```bash
-DAXTA_DOCS=true    # mount /api-docs
-DAXTA_DOCS=false   # do not mount /api-docs
+DAXTA_DOCS=on      # mount /docs
+DAXTA_DOCS=off     # do not mount /docs
 
-# unset / empty → throws
+# unset / empty / any other value → throws
 ```
 
 This makes exposing API documentation an explicit application decision.
 
-`DAXTA_DOCS=false` does not remove `@t0.labs/daxta` from your Node image. It only prevents `/api-docs` from being mounted.
+`DAXTA_DOCS=off` does not remove `@t0.labs/daxta` from your Node image. It only prevents `/docs` from being mounted.
 
-The path is configurable via `docsPath` in `daxta.config.ts` (default `/api-docs`).
+The path defaults to `/docs`. Override with `DAXTA_DOCS_PATH` or `docsPath` in `daxta.config.ts`.
 
 ---
 

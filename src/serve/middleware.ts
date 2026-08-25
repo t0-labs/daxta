@@ -6,7 +6,7 @@ import { readStrippedOpenApiJson } from './spec-utils';
 import { readViewerEnvStore, writeViewerEnvStore } from './viewer-store';
 
 export type ApiDocsOptions = {
-  /** URL prefix for the API docs viewer. Default from config (`docsPath`) or `/api-docs`. */
+  /** URL prefix for the API docs viewer. Default from config (`docsPath`) / `DAXTA_DOCS_PATH` or `/docs`. */
   basePath?: string;
 };
 
@@ -118,11 +118,11 @@ async function readRequestJson(req: LooseRequest): Promise<unknown> {
 }
 
 /**
- * Express / Nest handler that serves generated API docs under `/api-docs`
+ * Express / Nest handler that serves generated API docs under `/docs`
  * (or `basePath`), Try-it proxy at `/__proxy`, and env store at `{base}/env.json`.
  */
 export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
-  const basePath = (options.basePath ?? getDocsBasePath()).replace(/\/$/, '') || '/api-docs';
+  const basePath = (options.basePath ?? getDocsBasePath()).replace(/\/$/, '') || '/docs';
 
   return async (req, res, next) => {
     const method = (req.method || 'GET').toUpperCase();
@@ -226,9 +226,11 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
  * Mount generated API docs on a Nest / Express app (`app.use(...)`).
  *
  * Requires `DAXTA_DOCS` in the environment:
- * - missing / empty → throws (app must set it explicitly)
- * - `true` | `1` | `yes` | `on` → serve API docs
- * - `false` | `0` | `no` | `off` → no-op
+ * - missing / empty → throws
+ * - `on` → serve docs
+ * - `off` → no-op
+ *
+ * Path defaults to `/docs`. Override with `DAXTA_DOCS_PATH` or `docsPath` in config.
  */
 export function apiDocs(
   app: { use: (...handlers: unknown[]) => unknown },
@@ -236,18 +238,12 @@ export function apiDocs(
 ): void {
   const raw = process.env.DAXTA_DOCS;
   if (raw == null || String(raw).trim() === '') {
-    throw new Error(
-      'DAxTA: DAXTA_DOCS is not set. Set DAXTA_DOCS=true to enable API docs, or DAXTA_DOCS=false to disable.',
-    );
+    throw new Error('DAxTA: DAXTA_DOCS is not set. Set DAXTA_DOCS=on or DAXTA_DOCS=off.');
   }
   const normalized = String(raw).trim().toLowerCase();
-  const enabled = ['1', 'true', 'yes', 'on'].includes(normalized);
-  const disabled = ['0', 'false', 'no', 'off'].includes(normalized);
-  if (!enabled && !disabled) {
-    throw new Error(
-      `DAxTA: invalid DAXTA_DOCS="${raw}". Use true/false (or 1/0).`,
-    );
+  if (normalized !== 'on' && normalized !== 'off') {
+    throw new Error(`DAxTA: invalid DAXTA_DOCS="${raw}". Use on or off.`);
   }
-  if (!enabled) return;
+  if (normalized === 'off') return;
   app.use(apiDocsHandler(options));
 }

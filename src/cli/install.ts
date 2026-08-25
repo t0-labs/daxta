@@ -111,7 +111,7 @@ export default defineConfig({
   baseUrl: 'http://localhost:3000',
   controllersRoot: 'src',
   outDir: '.daxta/out',
-  docsPath: '/api-docs',
+  docsPath: '/docs',
   treeLayout: 'role-resource',
   treeSkipParams: true,
   exampleLabelStyle: 'status-title-case',
@@ -150,7 +150,7 @@ function ensureGitignore(cwd: string, dryRun: boolean): string[] {
 
 const ENV_CANDIDATES = ['.env', '.env.local', '.env.development', '.env.development.local'] as const;
 
-/** Ensure DAXTA_DOCS is present (default true). Mirrors uninstall strip. */
+/** Ensure DAXTA_DOCS is present (default on). Mirrors uninstall strip. */
 function ensureEnvDaxtaDocs(cwd: string, dryRun: boolean): string {
   for (const name of ENV_CANDIDATES) {
     const filePath = path.join(cwd, name);
@@ -162,7 +162,7 @@ function ensureEnvDaxtaDocs(cwd: string, dryRun: boolean): string {
   const targetName = ENV_CANDIDATES.find((name) => existsSync(path.join(cwd, name))) ?? '.env';
   const targetPath = path.join(cwd, targetName);
   const created = !existsSync(targetPath);
-  const line = 'DAXTA_DOCS=true';
+  const line = 'DAXTA_DOCS=on';
   if (!dryRun) {
     if (created) {
       writeFileSync(targetPath, `${line}\n`);
@@ -172,7 +172,7 @@ function ensureEnvDaxtaDocs(cwd: string, dryRun: boolean): string {
       writeFileSync(targetPath, next);
     }
   }
-  return created ? `created ${targetName} (+ DAXTA_DOCS=true)` : `${targetName} += DAXTA_DOCS=true`;
+  return created ? `created ${targetName} (+ DAXTA_DOCS=on)` : `${targetName} += DAXTA_DOCS=on`;
 }
 
 function runPackageInstall(cwd: string, pm: 'pnpm' | 'yarn' | 'npm', version: string, dryRun: boolean) {
@@ -386,7 +386,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
 
   box('Ready', [
     `${c.mint('✔')}  ${c.bold(project)}  ·  DAxTA ${c.gold(`v${version}`)}`,
-    `${c.dim('api docs')} ${c.ice('/api-docs')}  ·  ${c.ice('DAXTA_DOCS=true')}`,
+    `${c.dim('api docs')} ${c.ice('/docs')}  ·  ${c.ice('DAXTA_DOCS=on')}`,
     `${c.dim('tests')}    same script — titles first, spec after`,
     `${c.dim('retune')}   ${c.ice('daxta tree')}  ·  ${c.ice('daxta titles')}`,
   ]);
@@ -399,7 +399,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
     },
     {
       cmd: `${pm} start:dev`,
-      why: 'open /api-docs (DAXTA_DOCS already in .env)',
+      why: 'open /docs (DAXTA_DOCS=on already in .env)',
     },
   ]);
 }
