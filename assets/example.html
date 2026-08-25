@@ -563,9 +563,12 @@
         grid-column: 3;
         grid-row: 1;
         min-height: 0;
-        overflow: auto;
+        height: 100%;
+        overflow: hidden;
         padding: 14px 18px 16px;
         background: var(--paper);
+        display: flex;
+        flex-direction: column;
       }
       .sidebar {
         position: relative;
@@ -1123,6 +1126,7 @@
         gap: 8px;
         align-items: stretch;
         margin-bottom: 12px;
+        flex: none;
       }
       .url {
         flex: 1;
@@ -1199,8 +1203,11 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
-        margin-bottom: 20px;
-        align-items: start;
+        margin-bottom: 0;
+        align-items: stretch;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
       }
       .card {
         background: var(--white);
@@ -1208,9 +1215,12 @@
         border: 1px solid var(--hairline);
         box-shadow: none;
         min-width: 0;
+        min-height: 0;
+        height: 100%;
         display: flex;
         flex-direction: column;
         max-width: 100%;
+        overflow: hidden;
       }
       .card.response-card {
         overflow: hidden;
@@ -1252,12 +1262,15 @@
         padding: 0;
         display: flex;
         flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      .json-pane {
         min-height: 0;
       }
-      #response-body {
-        overflow: auto;
-      }
-      #response-body pre {
+      .json-pane pre {
         max-height: none;
       }
       .meta-block {
@@ -1412,6 +1425,9 @@
         .foot-bar { position: sticky; bottom: 0; }
         .sidebar-resizer { display: none; }
         .pair, .schemas { grid-template-columns: 1fr; }
+        .workbench { overflow: auto; height: auto; }
+        .pair { flex: none; height: auto; overflow: visible; }
+        .card { height: auto; max-height: 70vh; }
         .search-wrap { width: min(280px, 70vw); }
       }
 
@@ -3546,7 +3562,7 @@
                 ${metaBlock("Headers", headersHtml, requiredAuthHint(item.op), { always: true })}
                 ${metaBlock("Path", pathParamsHtml)}
                 ${metaBlock("Query", queryHtml)}
-                ${metaBlock("Body", bodyHtml, "", { always: true })}
+                ${metaBlock("Body", `<div class="json-pane">${bodyHtml}</div>`, "", { always: true })}
                 ${schemas.request}
               </div>
             </section>
@@ -3567,7 +3583,7 @@
                 </div>
               </div>
               <div class="card-body">
-                <div id="response-body">${resHtml}</div>
+                ${metaBlock("Body", `<div class="json-pane" id="response-body">${resHtml}</div>`, "", { always: true })}
                 ${schemas.response}
               </div>
             </section>
@@ -3625,23 +3641,6 @@
             renderMain();
           };
         });
-
-        const syncResponseHeight = () => {
-          const requestCard = document.getElementById("request-card");
-          const responseCard = document.getElementById("response-card");
-          const responseBody = document.getElementById("response-body");
-          if (!requestCard || !responseCard || !responseBody) return;
-          responseCard.style.maxHeight = "";
-          responseBody.style.maxHeight = "";
-          const requestHeight = requestCard.offsetHeight;
-          const head = responseCard.querySelector(".card-head");
-          const headHeight = head ? head.offsetHeight : 0;
-          const maxBody = Math.max(0, requestHeight - headHeight);
-          responseCard.style.maxHeight = requestHeight + "px";
-          responseBody.style.maxHeight = maxBody + "px";
-        };
-        syncResponseHeight();
-        requestAnimationFrame(syncResponseHeight);
 
         document.getElementById("copy-curl").onclick = (event) => copy(toCurl(item, scenario), event.currentTarget, "Copy cURL");
         const copyReq = document.getElementById("copy-req");
