@@ -55,6 +55,10 @@ export type DaxtaConfig = {
   exampleLabelStyle?: ExampleLabelStyle;
   port?: number;
   fieldsFile?: string;
+  /**
+   * URL prefix for the viewer. Default `/docs`.
+   * Override with env `DAXTA_DOCS_PATH` (e.g. `/docs` or `docs`).
+   */
   docsPath?: string;
   /**
    * Persisted Try-it env/header store (survives rebuild). Default `.daxta/viewer-store.json`.
@@ -105,7 +109,7 @@ const DEFAULTS: ResolvedDaxtaConfig = {
   exampleLabelStyle: 'status-title-case',
   port: 5199,
   fieldsFile: '.daxta/out/fields.json',
-  docsPath: '/api-docs',
+  docsPath: '/docs',
   viewerStoreFile: '.daxta/viewer-store.json',
   envPresets: {
     local: { baseUrl: 'http://localhost:3000' },
@@ -113,6 +117,14 @@ const DEFAULTS: ResolvedDaxtaConfig = {
 };
 
 let cached: ResolvedDaxtaConfig | null = null;
+
+export const DEFAULT_DOCS_PATH = '/docs';
+
+export function normalizeDocsPath(raw?: string | null): string {
+  const value = String(raw ?? DEFAULT_DOCS_PATH).trim() || DEFAULT_DOCS_PATH;
+  const withSlash = value.startsWith('/') ? value : `/${value}`;
+  return withSlash.replace(/\/$/, '') || DEFAULT_DOCS_PATH;
+}
 
 export function defineConfig(config: DaxtaConfig): DaxtaConfig {
   return config;
@@ -158,6 +170,7 @@ export function resolveConfig(cwd = process.cwd(), overrides?: DaxtaConfig): Res
   if (merged.treeSkipParams == null) merged.treeSkipParams = DEFAULTS.treeSkipParams;
   if (merged.exampleLabelStyle == null) merged.exampleLabelStyle = DEFAULTS.exampleLabelStyle;
   merged.envPresets = normalizeEnvPresets(merged.envPresets, merged.baseUrl);
+  merged.docsPath = normalizeDocsPath(process.env.DAXTA_DOCS_PATH || merged.docsPath);
   merged.controllersRoot = path.isAbsolute(merged.controllersRoot)
     ? merged.controllersRoot
     : path.join(cwd, merged.controllersRoot);

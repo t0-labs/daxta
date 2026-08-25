@@ -16,10 +16,10 @@ function printDocsReady(hits: number, operations: number): void {
     console.log('');
     console.log(`  ${bold('API docs ready')}`);
     console.log(`  ${dim('│')} ${green('✔')} ${cyan(url)} ${dim(`(${hits} hits · ${operations} ops)`)}`);
-    console.log(`  ${dim('│')} ${dim('DAXTA_DOCS=true')} required on app start`);
+    console.log(`  ${dim('│')} ${dim('DAXTA_DOCS=on')} required on app start`);
     console.log('');
     console.log(`  ${bold('Next')}`);
-    console.log(`  ${cyan('$')} ${bold('DAXTA_DOCS=true pnpm start:dev')}`);
+    console.log(`  ${cyan('$')} ${bold('DAXTA_DOCS=on pnpm start:dev')}`);
     console.log(`    ${dim(`open ${url}`)}`);
     console.log('');
   } catch {

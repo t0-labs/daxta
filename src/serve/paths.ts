@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
 
-import { getConfig } from '../config';
+import { DEFAULT_DOCS_PATH, getConfig, normalizeDocsPath } from '../config';
 
 export function getOutDir(): string {
   return getConfig().outDir;
@@ -49,11 +49,10 @@ export function getFaviconAssetPath(): string {
 }
 
 export function getDocsBasePath(): string {
-  const configured = getConfig().docsPath ?? '/api-docs';
-  return configured.startsWith('/') ? configured.replace(/\/$/, '') || '/api-docs' : `/${configured}`.replace(/\/$/, '');
+  return normalizeDocsPath(process.env.DAXTA_DOCS_PATH || getConfig().docsPath || DEFAULT_DOCS_PATH);
 }
 
-/** App-origin URL where generated API docs are served (e.g. `http://localhost:3000/api-docs`). */
+/** App-origin URL where generated API docs are served (e.g. `http://localhost:3000/docs`). */
 export function getApiDocUrl(): string {
   const config = getConfig();
   return `${String(config.baseUrl || '').replace(/\/$/, '')}${getDocsBasePath()}`;

@@ -1336,7 +1336,7 @@
       const viewer = spec["x-viewer"] || {};
       const workspace = (spec.info && spec.info["x-workspace"]) || viewer.workspace || "";
       const defaultBaseUrlFromSpec = String((viewer.baseUrl || (spec.servers && spec.servers[0] && spec.servers[0].url) || "http://localhost:3000")).replace(/\/$/, "");
-      const docsPathSuffix = String(viewer.docsPath || "/api-docs").replace(/\/$/, "") || "/api-docs";
+      const docsPathSuffix = String(viewer.docsPath || "/docs").replace(/\/$/, "") || "/docs";
 
       const inferBaseUrlFromLocation = () => {
         if (typeof location === "undefined") return null;
