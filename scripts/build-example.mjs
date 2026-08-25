@@ -520,14 +520,19 @@ const spec = {
   },
 };
 
+function pngDataUri(filePath) {
+  return `data:image/png;base64,${fs.readFileSync(filePath).toString('base64')}`;
+}
+
 function main() {
   const root = path.resolve(__dirname, '..');
-  const favicon = fs.readFileSync(path.join(root, 'assets', 'favicon.png'));
-  const faviconUri = `data:image/png;base64,${favicon.toString('base64')}`;
+  const faviconUri = pngDataUri(path.join(root, 'assets', 'logo-dark.png'));
+  const faviconLightUri = pngDataUri(path.join(root, 'assets', 'logo-light.png'));
   let html = fs.readFileSync(path.join(root, 'assets', 'viewer.html'), 'utf8');
   html = html
     .replace('__SPEC_JSON__', JSON.stringify(spec).replace(/</g, '\\u003c'))
-    .replaceAll('__FAVICON_DATA_URI__', faviconUri);
+    .replaceAll('__FAVICON_DATA_URI__', faviconUri)
+    .replaceAll('__FAVICON_LIGHT_DATA_URI__', faviconLightUri);
   const out = path.join(root, 'assets', 'example.html');
   fs.writeFileSync(out, html);
   const ops = Object.values(spec.paths).reduce((n, item) => n + Object.keys(item).length, 0);

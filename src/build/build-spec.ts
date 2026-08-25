@@ -8,7 +8,7 @@ import { getConfig } from '../config';
 import { dtoRequired } from '../fields/dto-fields';
 import { extractPathParams, materializePath, pathParamNames, templatize } from '../path.util';
 import { clearWorkerHits, type RecordedHit } from '../recorder';
-import { getFaviconAssetPath, getHitsJsonPath, getHtmlPath, getOutDir, getSpecJsonPath, getViewerAssetPath } from '../serve/paths';
+import { getFaviconAssetPath, getFaviconLightAssetPath, getHitsJsonPath, getHtmlPath, getOutDir, getSpecJsonPath, getViewerAssetPath } from '../serve/paths';
 import { ensureViewerStoreSeeded } from '../serve/viewer-store';
 
 const METHOD_RANK: Record<string, number> = { get: 0, post: 1, put: 2, patch: 3, delete: 4 };
@@ -761,22 +761,25 @@ function countOperations(spec: OpenApiSpec): number {
   return Object.values(spec.paths).reduce((count, pathItem) => count + Object.keys(pathItem).length, 0);
 }
 
+function pngDataUri(filePath: string): string {
+  return existsSync(filePath) ? `data:image/png;base64,${readFileSync(filePath).toString('base64')}` : '';
+}
+
 function toStandaloneHtml(spec: unknown): string {
   const template = readFileSync(getViewerAssetPath(), 'utf8');
-  const faviconPath = getFaviconAssetPath();
-  const faviconUri = existsSync(faviconPath)
-    ? `data:image/png;base64,${readFileSync(faviconPath).toString('base64')}`
-    : '';
+  const faviconUri = pngDataUri(getFaviconAssetPath());
+  const faviconLightUri = pngDataUri(getFaviconLightAssetPath()) || faviconUri;
   return template
     .replace('__SPEC_JSON__', JSON.stringify(spec).replace(/</g, '\\u003c'))
-    .replaceAll('__FAVICON_DATA_URI__', faviconUri);
+    .replaceAll('__FAVICON_DATA_URI__', faviconUri)
+    .replaceAll('__FAVICON_LIGHT_DATA_URI__', faviconLightUri);
 }
 
 function viewerTemplateNewerThanHtml(): boolean {
   if (!existsSync(getHtmlPath())) return true;
   const htmlMtime = statSync(getHtmlPath()).mtimeMs;
   const newerThan = (filePath: string) => existsSync(filePath) && statSync(filePath).mtimeMs > htmlMtime;
-  return newerThan(getViewerAssetPath()) || newerThan(getFaviconAssetPath());
+  return newerThan(getViewerAssetPath()) || newerThan(getFaviconAssetPath()) || newerThan(getFaviconLightAssetPath());
 }
 
 function applyViewerMeta(spec: OpenApiSpec): OpenApiSpec {
