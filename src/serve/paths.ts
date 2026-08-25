@@ -45,7 +45,13 @@ export function readEmptyDocsHtml(): Buffer {
 }
 
 export function getFaviconAssetPath(): string {
+  const dark = path.join(__dirname, '..', '..', 'assets', 'logo-dark.png');
+  if (existsSync(dark)) return dark;
   return path.join(__dirname, '..', '..', 'assets', 'favicon.png');
+}
+
+export function getFaviconLightAssetPath(): string {
+  return path.join(__dirname, '..', '..', 'assets', 'logo-light.png');
 }
 
 export function getDocsBasePath(): string {

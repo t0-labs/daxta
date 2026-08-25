@@ -10,10 +10,22 @@ import 'reflect-metadata';
 
 import { defaultMetadataStorage } from 'class-transformer/cjs/storage';
 import { getMetadataStorage } from 'class-validator';
-import * as ts from 'typescript';
+import * as tsImport from 'typescript';
+import type * as TS from 'typescript';
 
 import { getConfig } from '../config';
 import { pathMatchesTemplate } from '../path.util';
+
+type Ts = typeof import('typescript');
+
+function loadTypescript(): Ts {
+  const mod = tsImport as Ts & { default?: Ts };
+  if (mod.ScriptTarget && mod.ScriptTarget.Latest != null) return mod;
+  if (mod.default?.ScriptTarget && mod.default.ScriptTarget.Latest != null) return mod.default;
+  return mod;
+}
+
+const ts = loadTypescript();
 
 type ValidationMeta = {
   propertyName: string;
@@ -59,26 +71,26 @@ function walkFiles(dir: string, suffix: string, out: string[] = []): string[] {
   return out;
 }
 
-function decoratorName(node: ts.Decorator): string | undefined {
+function decoratorName(node: TS.Decorator): string | undefined {
   const expr = node.expression;
   if (ts.isCallExpression(expr) && ts.isIdentifier(expr.expression)) return expr.expression.text;
   if (ts.isIdentifier(expr)) return expr.text;
   return undefined;
 }
 
-function decoratorArgs(node: ts.Decorator): ts.NodeArray<ts.Expression> | undefined {
+function decoratorArgs(node: TS.Decorator): TS.NodeArray<TS.Expression> | undefined {
   const expr = node.expression;
   if (ts.isCallExpression(expr)) return expr.arguments;
   return undefined;
 }
 
-function litString(node: ts.Expression | undefined): string | undefined {
+function litString(node: TS.Expression | undefined): string | undefined {
   if (!node) return undefined;
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
   return undefined;
 }
 
-function objectProp(obj: ts.ObjectLiteralExpression, key: string): ts.Expression | undefined {
+function objectProp(obj: TS.ObjectLiteralExpression, key: string): TS.Expression | undefined {
   for (const prop of obj.properties) {
     if (!ts.isPropertyAssignment(prop)) continue;
     const name = ts.isIdentifier(prop.name) ? prop.name.text : ts.isStringLiteral(prop.name) ? prop.name.text : undefined;
@@ -111,11 +123,11 @@ function resolveImportPath(fromFile: string, specifier: string): string | null {
   return null;
 }
 
-function collectImports(source: ts.SourceFile, filePath: string): Map<string, string> {
+function collectImports(source: TS.SourceFile, filePath: string): Map<string, string> {
   const map = new Map<string, string>();
   for (const stmt of source.statements) {
     if (!ts.isImportDeclaration(stmt) || !stmt.importClause) continue;
-    const spec = litString(stmt.moduleSpecifier as ts.Expression);
+    const spec = litString(stmt.moduleSpecifier as TS.Expression);
     if (!spec) continue;
     const resolved = resolveImportPath(filePath, spec);
     if (!resolved) continue;
@@ -161,13 +173,14 @@ function loadDto(filePath: string, exportName: string): DtoCtor | undefined {
 
 function parseController(filePath: string): RouteBinding[] {
   const text = readFileSync(filePath, 'utf8');
-  const source = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true);
+  const scriptTarget = ts.ScriptTarget?.Latest ?? 99;
+  const source = ts.createSourceFile(filePath, text, scriptTarget, true);
   const imports = collectImports(source, filePath);
   const routes: RouteBinding[] = [];
 
   for (const stmt of source.statements) {
     if (!ts.isClassDeclaration(stmt) || !stmt.name) continue;
-    const ctrlDecorators = ts.getDecorators?.(stmt) ?? (stmt as unknown as { decorators?: ts.Decorator[] }).decorators ?? [];
+    const ctrlDecorators = ts.getDecorators?.(stmt) ?? (stmt as unknown as { decorators?: TS.Decorator[] }).decorators ?? [];
     const controller = ctrlDecorators.find((decorator) => decoratorName(decorator) === 'Controller');
     if (!controller) continue;
 
@@ -192,7 +205,7 @@ function parseController(filePath: string): RouteBinding[] {
 
     for (const member of stmt.members) {
       if (!ts.isMethodDeclaration(member) || !member.name || !ts.isIdentifier(member.name)) continue;
-      const methodDecorators = ts.getDecorators?.(member) ?? (member as unknown as { decorators?: ts.Decorator[] }).decorators ?? [];
+      const methodDecorators = ts.getDecorators?.(member) ?? (member as unknown as { decorators?: TS.Decorator[] }).decorators ?? [];
       const http = methodDecorators.find((decorator) => HTTP_DECORATORS.has(decoratorName(decorator) ?? ''));
       if (!http) continue;
 
@@ -204,7 +217,7 @@ function parseController(filePath: string): RouteBinding[] {
       let paramName: string | undefined;
 
       for (const param of member.parameters ?? []) {
-        const paramDecorators = ts.getDecorators?.(param) ?? (param as unknown as { decorators?: ts.Decorator[] }).decorators ?? [];
+        const paramDecorators = ts.getDecorators?.(param) ?? (param as unknown as { decorators?: TS.Decorator[] }).decorators ?? [];
         for (const decorator of paramDecorators) {
           const kind = PARAM_DECORATORS[decoratorName(decorator) ?? ''];
           if (!kind) continue;

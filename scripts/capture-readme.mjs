@@ -12,9 +12,9 @@ async function main() {
   const outDir = path.join(root, 'assets', 'readme');
   fs.mkdirSync(outDir, { recursive: true });
 
-  const faviconPath = path.join(root, 'assets', 'favicon.png');
-  const favicon = fs.readFileSync(faviconPath);
-  const faviconUri = `data:image/png;base64,${favicon.toString('base64')}`;
+  const pngDataUri = (filePath) => `data:image/png;base64,${fs.readFileSync(filePath).toString('base64')}`;
+  const faviconUri = pngDataUri(path.join(root, 'assets', 'logo-dark.png'));
+  const faviconLightUri = pngDataUri(path.join(root, 'assets', 'logo-light.png'));
 
   const spec = {
     openapi: '3.0.3',
@@ -151,7 +151,8 @@ async function main() {
   let html = fs.readFileSync(path.join(root, 'assets', 'viewer.html'), 'utf8');
   html = html
     .replace('__SPEC_JSON__', JSON.stringify(spec).replace(/</g, '\\u003c'))
-    .replaceAll('__FAVICON_DATA_URI__', faviconUri);
+    .replaceAll('__FAVICON_DATA_URI__', faviconUri)
+    .replaceAll('__FAVICON_LIGHT_DATA_URI__', faviconLightUri);
   const demoPath = path.join(outDir, 'demo.html');
   fs.writeFileSync(demoPath, html);
 

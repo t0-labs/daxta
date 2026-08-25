@@ -10,7 +10,7 @@ import {
 } from '../titles/scan';
 import { banner, c, readlineAsk } from './ui';
 
-type PickResult = string | 'skip' | 'all' | null;
+type PickResult = string | 'skip' | 'skip-all' | 'all' | null;
 
 async function pickFromSuggestions(
   finding: { file: string; line: number; column: number; raw: string; suggestions: string[] },
@@ -23,7 +23,7 @@ async function pickFromSuggestions(
   console.log(`    ${c.dim(finding.raw)}`);
   if (extra) console.log(`    ${c.dim(extra)}`);
   if (!suggestions.length) {
-    console.log(`    ${c.gold('no auto suggestion')} ${c.dim('— type a title, or s to skip')}`);
+    console.log(`    ${c.gold('no auto suggestion')} ${c.dim('— type a title, or s to skip one, n to skip all')}`);
   }
   suggestions.forEach((name, index) => {
     const mark = index === 0 ? c.dim('  recommended') : '';
@@ -31,14 +31,15 @@ async function pickFromSuggestions(
   });
   console.log(
     suggestions.length
-      ? `    ${c.dim('Enter = 1')}  ${c.dim('·')}  ${c.ice('a')} remaining auto  ${c.dim('·')}  ${c.ice('s')} skip  ${c.dim('·')}  ${c.ice('c')} custom`
-      : `    ${c.ice('c')} custom  ${c.dim('·')}  ${c.ice('s')} skip`,
+      ? `    ${c.dim('Enter = 1')}  ${c.dim('·')}  ${c.ice('a')} remaining auto  ${c.dim('·')}  ${c.ice('s')} skip one  ${c.dim('·')}  ${c.ice('n')} skip all  ${c.dim('·')}  ${c.ice('c')} custom`
+      : `    ${c.ice('c')} custom  ${c.dim('·')}  ${c.ice('s')} skip one  ${c.dim('·')}  ${c.ice('n')} skip all`,
   );
 
   const answer = (await readlineAsk(`  ${c.ice('›')} `)).trim();
   const lower = answer.toLowerCase();
   if (!answer) return suggestions[0] ? suggestions[0] : 'skip';
   if (lower === 's') return 'skip';
+  if (lower === 'n' || lower === 'no' || lower === 'skip-all' || lower === 'skipall') return 'skip-all';
   if (lower === 'a' || lower === 'all') return 'all';
   if (lower === 'y' || lower === 'yes') return suggestions[0] ? suggestions[0] : 'skip';
   if (lower === 'c') {
@@ -154,7 +155,16 @@ export async function runTitleCheck(options: {
   console.log(`  ${c.dim('it()+')}  creates mock tbs when cyprus payload shape`);
   console.log(`  ${c.dim('it()-')}  returns error when tax id already exists`);
   console.log(`  ${c.dim('label')}  201 — cyprus payload shape`);
-  console.log(`  ${c.gold(String(total))} to review — ${c.ice('y')} one recommended, ${c.ice('a')} all remaining, ${c.ice('s')} skip.`);
+  const start = await readlineAsk(
+    `  ${c.gold('?')} Review test names now?\n` +
+      `    ${c.dim('Y')} yes · ${c.dim('n')} skip all\n  ${c.ice('›')} `,
+  );
+  if (!start || /^n(o)?$/i.test(start)) {
+    console.log(`  ${c.dim('skipped')} ${c.ice('daxta titles')} ${c.dim('anytime')}`);
+    console.log('');
+    return 0;
+  }
+  console.log(`  ${c.gold(String(total))} to review — ${c.ice('y')} one recommended, ${c.ice('a')} all remaining, ${c.ice('s')} skip one, ${c.ice('n')} skip all.`);
 
   let written = 0;
   let skipped = 0;
@@ -172,6 +182,14 @@ export async function runTitleCheck(options: {
           `docs would show ${pending.path} — custom title required`,
           isHumanOperationTitle,
         );
+        if (customChoice === 'skip-all') {
+          skipped += rest.pending.length;
+          console.log(`  ${c.dim('skipped remaining')}`);
+          console.log('');
+          console.log(`  ${c.mint('✔')} ${written} updated  ${c.dim(`${skipped} skipped`)}`);
+          console.log('');
+          return options.strict && skipped > 0 ? 1 : 0;
+        }
         if (!customChoice || customChoice === 'skip' || customChoice === 'all') {
           skipped += 1;
           continue;
@@ -181,6 +199,14 @@ export async function runTitleCheck(options: {
           written += 1;
         } else skipped += 1;
       }
+      console.log('');
+      console.log(`  ${c.mint('✔')} ${written} updated  ${c.dim(`${skipped} skipped`)}`);
+      console.log('');
+      return options.strict && skipped > 0 ? 1 : 0;
+    }
+    if (choice === 'skip-all') {
+      skipped += report.titles.length - i + report.cases.length;
+      console.log(`  ${c.dim('skipped remaining')}`);
       console.log('');
       console.log(`  ${c.mint('✔')} ${written} updated  ${c.dim(`${skipped} skipped`)}`);
       console.log('');
@@ -210,6 +236,11 @@ export async function runTitleCheck(options: {
       const rest = applyAllRecommended(cwd, [], report.cases, 0, i);
       written += rest.written;
       skipped += rest.skipped;
+      break;
+    }
+    if (choice === 'skip-all') {
+      skipped += report.cases.length - i;
+      console.log(`  ${c.dim('skipped remaining')}`);
       break;
     }
     if (!choice || choice === 'skip') {

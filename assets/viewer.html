@@ -1,16 +1,42 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>API Documentation</title>
-    <link rel="icon" href="__FAVICON_DATA_URI__" />
+    <link rel="icon" id="favicon" href="__FAVICON_DATA_URI__" />
     <link rel="apple-touch-icon" href="__FAVICON_DATA_URI__" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       :root {
+        --canvas: #050505;
+        --sidebar: #090909;
+        --nav: #090909;
+        --paper: #050505;
+        --white: #101010;
+        --inset: #131313;
+        --hairline: #262626;
+        --line: #1c1c1c;
+        --smoke: #6a6a6a;
+        --stone: #8a8a8a;
+        --charcoal: #c8c8c8;
+        --obsidian: #f4f4f4;
+        --accent: #8fa35a;
+        --ok: #3dcc70;
+        --ok-bg: #16301f;
+        --get: #3dcc70;
+        --warn: #d4a017;
+        --err: #f07171;
+        --err-bg: #3a1818;
+        --sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+        --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        --radius: 2px;
+        --ring: 0 0 0 1px #262626;
+        --ghost: none;
+      }
+      html[data-theme="light"] {
         --canvas: #fafafa;
         --sidebar: #fafafa;
         --nav: #ffffff;
@@ -27,16 +53,14 @@
         --ok: #15803d;
         --ok-bg: #e8f8ee;
         --get: #16a34a;
+        --warn: #b45309;
         --err: #b42318;
         --err-bg: #fbeaea;
-        --sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
-        --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-        --radius: 5px;
         --ring: 0 0 0 1px #e6e6e6;
         --ghost: 0 0 0 1px #e6e6e6;
       }
       * { box-sizing: border-box; }
-      html, body { height: 100%; }
+      html, body { height: 100%; overflow: hidden; }
       :focus { outline: none; }
       :focus-visible {
         outline: 2px solid #c6c6c6;
@@ -59,14 +83,25 @@
         padding: 0 14px;
         background: var(--nav);
         border-bottom: 1px solid var(--hairline);
-        position: sticky;
+        position: fixed;
         top: 0;
-        z-index: 20;
+        left: 0;
+        right: 0;
+        z-index: 200;
       }
-      body.searching .topnav { z-index: 30; }
-      .brand-wrap { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: start; }
+      body.searching .topnav { z-index: 210; }
+      body.search-palette .topnav { z-index: 40; }
+      .brand-wrap { display: flex; align-items: center; min-width: 0; justify-self: start; }
       .workspace { display: none; }
-      .brand { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--charcoal); }
+      .brand {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--obsidian);
+      }
       .ep-nav {
         justify-self: center;
         display: flex;
@@ -96,7 +131,7 @@
         height: 22px;
         padding: 0 8px;
         border: 0;
-        border-radius: 4px;
+        border-radius: 2px;
         background: transparent;
         color: var(--stone);
         font: 500 11px/22px var(--mono);
@@ -119,6 +154,79 @@
         padding: 0;
       }
       .nav-tools .btn.icon svg { width: 16px; height: 16px; }
+      .more-wrap { position: relative; flex: none; }
+      .more-pop {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        width: 260px;
+        background: var(--white);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        padding: 6px;
+        z-index: 220;
+      }
+      .more-wrap.open .more-pop { display: block; }
+      .more-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 34px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 2px;
+        background: transparent;
+        color: var(--obsidian);
+        cursor: pointer;
+        font: 500 12px/1 var(--sans);
+        text-align: left;
+      }
+      .more-item:hover { background: var(--inset); }
+      .more-item-ico {
+        width: 16px;
+        height: 16px;
+        flex: none;
+        color: var(--charcoal);
+      }
+      .more-item-ico svg { width: 16px; height: 16px; display: block; }
+      .more-item-label { flex: 1; min-width: 0; }
+      .more-item-meta {
+        color: var(--stone);
+        font: 500 11px/1 var(--mono);
+      }
+      html[data-theme="light"] .theme-moon { display: none; }
+      html:not([data-theme="light"]) .theme-sun { display: none; }
+      .more-sep {
+        height: 1px;
+        background: var(--hairline);
+        margin: 6px 4px;
+      }
+      .more-section {
+        padding: 8px 8px 4px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--stone);
+      }
+      .more-shortcut {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 8px;
+        font-size: 12px;
+        color: var(--charcoal);
+      }
+      .more-shortcut kbd {
+        font: 500 11px/1 var(--mono);
+        color: var(--stone);
+        border: 1px solid var(--hairline);
+        border-radius: 2px;
+        padding: 3px 5px;
+      }
       .btn[data-tip] { position: relative; }
       .btn[data-tip]::after {
         content: attr(data-tip);
@@ -167,7 +275,7 @@
         font: 500 10px/1 var(--mono);
         color: var(--smoke);
         border: 1px solid var(--hairline);
-        border-radius: 4px;
+        border-radius: 2px;
         padding: 3px 5px;
         pointer-events: none;
         background: var(--inset);
@@ -178,15 +286,61 @@
         border-radius: var(--radius) var(--radius) 0 0;
       }
       .search-wrap.open .search-kbd { display: none; }
+      body.searching:not(.search-palette) .tree-scroll,
+      body.searching:not(.search-palette) .prefix-bar,
+      body.searching:not(.search-palette) .nav-foot {
+        filter: blur(7px);
+        opacity: 0.4;
+        pointer-events: none;
+        transition: filter 0.2s ease, opacity 0.2s ease;
+      }
       .search-backdrop {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(232, 232, 232, 0.72);
-        backdrop-filter: blur(2px);
-        z-index: 25;
+        z-index: 80;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 12vh 16px 24px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
       }
-      body.searching .search-backdrop { display: block; }
+      html[data-theme="light"] .search-backdrop {
+        background: rgba(250, 250, 250, 0.55);
+      }
+      body.search-palette .search-backdrop { display: flex; }
+      .search-palette-card {
+        width: min(640px, 100%);
+        background: var(--white);
+        border: 1px solid var(--hairline);
+        border-radius: 2px;
+        overflow: hidden;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+      .search-palette-input {
+        width: 100%;
+        height: 48px;
+        border: 0;
+        border-bottom: 1px solid var(--hairline);
+        background: transparent;
+        color: var(--obsidian);
+        padding: 0 16px;
+        font-size: 15px;
+        letter-spacing: -0.02em;
+      }
+      .search-palette-input:focus { outline: none; }
+      .search-palette-input::placeholder { color: var(--smoke); }
+      .search-palette-panel {
+        max-height: min(420px, 52vh);
+        overflow: auto;
+        padding: 6px;
+      }
+      .search-palette-hint {
+        padding: 8px 16px 12px;
+        font-size: 11px;
+        color: var(--smoke);
+      }
       .search-panel {
         display: none;
         position: absolute;
@@ -337,7 +491,7 @@
         border: 0;
         background: var(--inset);
         box-shadow: var(--ghost);
-        border-radius: 9999px;
+        border-radius: 2px;
         padding: 5px 10px;
         cursor: pointer;
         font-size: 12px;
@@ -351,7 +505,7 @@
       .env-base-line {
         margin-top: 8px;
         padding: 8px 10px;
-        border-radius: 8px;
+        border-radius: 2px;
         background: var(--inset);
         font: 11px/1.4 var(--mono);
         color: var(--charcoal);
@@ -394,9 +548,12 @@
         grid-template-columns: var(--sidebar-w, 320px) 6px minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr) auto;
         height: calc(100vh - 44px);
+        margin-top: 44px;
+        transition: grid-template-columns 0.32s cubic-bezier(0.22, 1, 0.36, 1);
       }
+      body.sidebar-resizing .app { transition: none; }
       .app.sidebar-collapsed {
-        grid-template-columns: 0 28px minmax(0, 1fr);
+        grid-template-columns: 0 0 minmax(0, 1fr);
       }
       .sidebar {
         grid-row: 1 / -1;
@@ -425,10 +582,15 @@
         background: var(--sidebar);
         border-right: 0;
         font-size: 13px;
+        transition: opacity 0.22s ease;
       }
       .app.sidebar-collapsed .sidebar {
         overflow: hidden;
         padding: 0;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .app.sidebar-collapsed .sidebar-resizer {
         pointer-events: none;
         opacity: 0;
       }
@@ -474,23 +636,6 @@
       .sidebar-resizer:hover,
       body.sidebar-resizing .sidebar-resizer {
         background: var(--obsidian);
-      }
-      .app.sidebar-collapsed .sidebar-resizer {
-        width: 28px;
-        cursor: pointer;
-        background: var(--sidebar);
-        border-right: 1px solid var(--line);
-      }
-      .app.sidebar-collapsed .sidebar-resizer::before {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 6px;
-        height: 6px;
-        border-right: 1.5px solid var(--charcoal);
-        border-bottom: 1.5px solid var(--charcoal);
-        transform: translate(-70%, -50%) rotate(-45deg);
       }
       body.sidebar-resizing {
         cursor: col-resize;
@@ -576,8 +721,8 @@
         gap: 0;
         border-radius: var(--radius);
       }
-      .nav-op:hover { background: var(--white); }
-      .nav-op.active { background: var(--white); box-shadow: 0 0 0 1px var(--hairline); }
+      .nav-op:hover { background: transparent; }
+      .nav-op.active { background: transparent; box-shadow: none; }
       .nav-op-row {
         display: flex;
         align-items: center;
@@ -589,7 +734,7 @@
         width: 24px;
         height: 24px;
         border: 0;
-        border-radius: 4px;
+        border-radius: 2px;
         background: transparent;
         color: var(--stone);
         cursor: pointer;
@@ -615,26 +760,41 @@
       .nav-examples {
         display: none;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
         margin: 0 4px 6px 18px;
-        padding-left: 8px;
-        border-left: 1px solid var(--hairline);
       }
       .nav-op.examples-open > .nav-examples { display: flex; }
-      .nav-ex-group { display: flex; flex-direction: column; gap: 1px; }
+      .nav-ex-group { display: flex; flex-direction: column; gap: 0; }
+      .nav-ex-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        margin-left: 4px;
+        padding-left: 0;
+        border-left: 1px solid var(--hairline);
+      }
+      .nav-ex-group.ok > .nav-ex-items { border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
+      .nav-ex-group.warn > .nav-ex-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
+      .nav-ex-group.omit > .nav-ex-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
+      .nav-ex-group.err > .nav-ex-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
       .nav-ex-group-label {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: 6px 8px 2px;
+        padding: 6px 0 2px 4px;
         font: 600 10px/1.2 var(--sans);
-        letter-spacing: 0.02em;
-        color: var(--stone);
+        letter-spacing: 0.04em;
+        color: var(--charcoal);
       }
+      .nav-ex-group-label.ok { color: var(--ok); }
+      .nav-ex-group-label.warn { color: var(--warn); }
+      .nav-ex-group-label.omit { color: var(--accent); }
+      .nav-ex-group-label.err { color: var(--err); }
       .nav-ex-count {
         font: 600 10px/1.4 var(--mono);
-        color: var(--stone);
+        color: inherit;
+        opacity: 0.7;
       }
       .nav-example {
         display: block;
@@ -642,8 +802,8 @@
         border: 0;
         background: transparent;
         text-align: left;
-        padding: 4px 8px;
-        border-radius: 4px;
+        padding: 4px 0 4px 8px;
+        border-radius: 2px;
         cursor: pointer;
         font-size: 11px;
         line-height: 1.35;
@@ -652,14 +812,14 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .nav-example:hover { background: var(--inset); color: var(--charcoal); }
-      .nav-example.on { color: var(--obsidian); background: var(--inset); }
+      .nav-example:hover { background: color-mix(in srgb, var(--obsidian) 4%, transparent); color: var(--charcoal); }
+      .nav-example.on { color: var(--obsidian); background: color-mix(in srgb, var(--obsidian) 8%, transparent); font-weight: 500; }
       .nav-ex-total {
         flex: none;
         min-width: 16px;
         margin-right: 2px;
         padding: 1px 5px;
-        border-radius: 4px;
+        border-radius: 2px;
         background: var(--obsidian);
         color: var(--white);
         font: 600 10px/1.4 var(--mono);
@@ -804,7 +964,7 @@
         min-width: 40px;
         height: 18px;
         padding: 0 5px;
-        border-radius: 4px;
+        border-radius: 2px;
         font: 600 10px/1 var(--mono);
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -825,14 +985,30 @@
       .schema-block .meta-label { margin-bottom: 8px; display: block; }
 
       .ex-block { margin: 0; position: relative; }
-      .ex-dock {
+      .foot-bar {
         grid-column: 3;
         grid-row: 2;
         position: relative;
         z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         padding: 8px 16px 10px;
         background: var(--white);
         border-top: 1px solid var(--hairline);
+      }
+      .foot-bar .sidebar-toggle {
+        flex: none;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+      }
+      .ex-dock {
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+        background: transparent;
+        border: 0;
       }
       .ex-dock:empty { display: none; }
       .ex-dock .dd-menu {
@@ -915,7 +1091,7 @@
         height: 32px;
         margin: 8px 8px 4px;
         border: 1px solid var(--hairline);
-        border-radius: 4px;
+        border-radius: 2px;
         padding: 0 8px;
         font-size: 12px;
         background: var(--white);
@@ -934,6 +1110,8 @@
         padding: 10px 12px 4px;
       }
       .dd-group.ok { color: var(--ok); }
+      .dd-group.warn { color: var(--warn); }
+      .dd-group.omit { color: var(--accent); }
       .dd-group.err { color: var(--err); }
       .dd-count {
         font: 600 10px/1.4 var(--mono);
@@ -1086,7 +1264,7 @@
       .mode-toggle {
         display: flex;
         border: 1px solid var(--hairline);
-        border-radius: 4px;
+        border-radius: 2px;
         overflow: hidden;
       }
       .mode-toggle button {
@@ -1170,20 +1348,20 @@
       pre {
         margin: 0;
         padding: 10px 12px;
-        background: #fcfcfc;
+        background: var(--inset);
         border-radius: 0;
         overflow: auto;
         font: 12px/1.5 var(--mono);
       }
-      .k { color: #111111; }
+      .k { color: var(--obsidian); }
       .s { color: var(--accent); }
-      .n { color: #111111; }
+      .n { color: var(--charcoal); }
       .p { color: #666666; }
       .empty { color: var(--stone); font-size: 13px; padding: 14px 16px; }
       .code {
         font: 600 11px/1 var(--mono);
         padding: 3px 6px;
-        border-radius: 4px;
+        border-radius: 2px;
         background: var(--inset);
       }
       .code.ok { background: var(--ok-bg); color: var(--ok); }
@@ -1206,13 +1384,22 @@
         margin: 0 0 8px;
         color: var(--stone);
       }
+      .schema-rows {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content max-content;
+        column-gap: 16px;
+      }
       .row {
         display: grid;
-        grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) auto;
-        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) max-content max-content;
+        grid-column: 1 / -1;
+        column-gap: 16px;
         align-items: baseline;
         padding: 5px 0;
         font-size: 12px;
+      }
+      .schema-rows > .row {
+        grid-template-columns: subgrid;
       }
       .row .name {
         font-family: var(--mono);
@@ -1238,7 +1425,13 @@
         font-size: 11px;
         min-width: 0;
       }
-      .flag { font-size: 11px; color: var(--smoke); }
+      .flag {
+        font-size: 11px;
+        color: var(--smoke);
+        justify-self: end;
+        text-align: right;
+        min-height: 1em;
+      }
       .flag.req { color: var(--err); }
 
       .work-foot {
@@ -1248,18 +1441,22 @@
       }
 
       @media (max-width: 960px) {
+        html, body { overflow: auto; height: auto; }
         .app {
           grid-template-columns: 1fr;
           grid-template-rows: auto 1fr auto;
           height: auto;
           min-height: calc(100vh - 44px);
         }
-        .app.sidebar-collapsed {
-          grid-template-columns: 1fr;
+        .sidebar, .workbench, .foot-bar { grid-column: 1; grid-row: auto; }
+        .sidebar { max-height: 40vh; }
+        .app.sidebar-collapsed .sidebar {
+          max-height: 0 !important;
+          padding: 0 !important;
+          opacity: 0;
+          pointer-events: none;
         }
-        .sidebar, .workbench, .ex-dock { grid-column: 1; grid-row: auto; }
-        .sidebar { max-height: 40vh; opacity: 1 !important; pointer-events: auto !important; padding: 16px 12px 24px !important; }
-        .ex-dock { position: sticky; bottom: 0; }
+        .foot-bar { position: sticky; bottom: 0; }
         .sidebar-resizer { display: none; }
         .pair, .schemas { grid-template-columns: 1fr; }
         .workbench { overflow: auto; height: auto; }
@@ -1267,27 +1464,66 @@
         .card { height: auto; max-height: 70vh; }
         .search-wrap { width: min(280px, 70vw); }
       }
+
+      .method { border-radius: 2px; }
+      html:not([data-theme="light"]) .btn.primary {
+        background: #f3f3f3;
+        color: #0a0a0a;
+      }
+      html:not([data-theme="light"]) .btn.primary:hover { color: #0a0a0a; }
+
     </style>
   </head>
   <body>
     <header class="topnav">
       <div class="brand-wrap">
-        <div class="brand" id="brand">API</div>
+        <div class="brand" id="brand">DAxTA API Document</div>
       </div>
       <div class="ep-nav" id="ep-nav">
         <span class="ep-name" id="ep-name"></span>
       </div>
       <div class="nav-tools">
-        <button class="btn icon" id="export-openapi" type="button" data-tip="Export" aria-label="Export">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
         <div class="env-wrap" id="env-wrap">
           <button class="env-trigger" id="env-trigger" type="button">local · —</button>
           <div class="env-pop" id="env-pop"></div>
         </div>
+        <div class="more-wrap" id="more-wrap">
+          <button class="btn icon" id="more-toggle" type="button" data-tip="Menu" aria-label="Menu" aria-expanded="false" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+          </button>
+          <div class="more-pop" id="more-pop" role="menu">
+            <button class="more-item" id="theme-toggle" type="button" role="menuitem">
+              <span class="more-item-ico theme-sun" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+              </span>
+              <span class="more-item-ico theme-moon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/></svg>
+              </span>
+              <span class="more-item-label">Theme</span>
+              <span class="more-item-meta" id="theme-label">Dark</span>
+            </button>
+            <button class="more-item" id="export-openapi" type="button" role="menuitem">
+              <span class="more-item-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </span>
+              <span class="more-item-label">Export</span>
+            </button>
+            <div class="more-sep"></div>
+            <div class="more-section">Shortcuts</div>
+            <div class="more-shortcut"><span>Search</span><kbd id="shortcut-palette">⌘K</kbd></div>
+            <div class="more-shortcut"><span>Sidebar search</span><kbd>/</kbd></div>
+            <div class="more-shortcut"><span>Close</span><kbd>Esc</kbd></div>
+          </div>
+        </div>
       </div>
     </header>
-    <div class="search-backdrop" id="search-backdrop"></div>
+    <div class="search-backdrop" id="search-backdrop">
+      <div class="search-palette-card" id="search-palette-card">
+        <input class="search-palette-input" id="search-palette-input" placeholder="Search endpoints..." autocomplete="off" spellcheck="false" />
+        <div class="search-palette-panel" id="search-palette-panel" role="listbox"></div>
+        <div class="search-palette-hint">↑↓ navigate · enter open · esc close</div>
+      </div>
+    </div>
     <div class="export-backdrop" id="export-backdrop" role="dialog" aria-modal="true" aria-labelledby="export-title">
       <div class="export-modal" id="export-modal">
         <div class="export-head">
@@ -1326,7 +1562,12 @@
       </aside>
       <button type="button" class="sidebar-resizer" id="sidebar-resizer" aria-label="Resize sidebar" title="Drag to resize · double-click to collapse"></button>
       <main class="workbench" id="main"></main>
-      <div class="ex-dock" id="ex-dock"></div>
+      <div class="foot-bar">
+        <button class="btn icon sidebar-toggle" id="sidebar-toggle" type="button" data-tip="Sidebar" aria-label="Toggle sidebar" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16"/></svg>
+        </button>
+        <div class="ex-dock" id="ex-dock"></div>
+      </div>
     </div>
     <script>
       window.__SPEC__ = __SPEC_JSON__;
@@ -1398,11 +1639,15 @@
         if (!app) return;
         app.style.setProperty("--sidebar-w", sidebarLayout.width + "px");
         app.classList.toggle("sidebar-collapsed", sidebarLayout.collapsed);
+        const toggle = document.getElementById("sidebar-toggle");
+        if (toggle) {
+          toggle.setAttribute("aria-pressed", sidebarLayout.collapsed ? "true" : "false");
+          toggle.setAttribute("data-tip", sidebarLayout.collapsed ? "Show sidebar" : "Hide sidebar");
+          toggle.setAttribute("aria-label", sidebarLayout.collapsed ? "Show sidebar" : "Hide sidebar");
+        }
         if (resizer) {
-          resizer.title = sidebarLayout.collapsed
-            ? "Click to expand sidebar"
-            : "Drag to resize · double-click to collapse";
-          resizer.setAttribute("aria-label", sidebarLayout.collapsed ? "Expand sidebar" : "Resize sidebar");
+          resizer.title = "Drag to resize · double-click to collapse";
+          resizer.setAttribute("aria-label", "Resize sidebar");
         }
       };
 
@@ -1464,19 +1709,21 @@
         resizer.addEventListener("touchstart", onDown, { passive: false });
         resizer.addEventListener("dblclick", (event) => {
           event.preventDefault();
-          sidebarLayout.collapsed = !sidebarLayout.collapsed;
-          if (!sidebarLayout.collapsed && sidebarLayout.width < SIDEBAR_MIN) sidebarLayout.width = SIDEBAR_DEFAULT;
-          applySidebarLayout();
-          persistSidebarLayout();
-        });
-        resizer.addEventListener("click", (event) => {
-          if (!sidebarLayout.collapsed || moved) return;
-          event.preventDefault();
-          sidebarLayout.collapsed = false;
-          applySidebarLayout();
-          persistSidebarLayout();
+          toggleSidebar();
         });
       };
+
+      const toggleSidebar = () => {
+        sidebarLayout.collapsed = !sidebarLayout.collapsed;
+        if (!sidebarLayout.collapsed && sidebarLayout.width < SIDEBAR_MIN) sidebarLayout.width = SIDEBAR_DEFAULT;
+        applySidebarLayout();
+        persistSidebarLayout();
+      };
+
+      document.getElementById("sidebar-toggle")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggleSidebar();
+      });
 
       initSidebarResize();
 
@@ -2092,7 +2339,36 @@
 
       document.title = title || "API Documentation";
       const brandEl = document.getElementById("brand");
-      if (brandEl) brandEl.textContent = title;
+      if (brandEl) brandEl.textContent = (title || "DAxTA") + " API Document";
+      const applyTheme = (mode) => {
+        const next = mode === "light" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("daxta-theme", next);
+        const fav = document.getElementById("favicon");
+        if (fav) fav.setAttribute("href", next === "light" ? "__FAVICON_LIGHT_DATA_URI__" : "__FAVICON_DATA_URI__");
+        const themeLabel = document.getElementById("theme-label");
+        if (themeLabel) themeLabel.textContent = next === "light" ? "Light" : "Dark";
+      };
+      applyTheme(localStorage.getItem("daxta-theme") || "dark");
+      const shortcutPalette = document.getElementById("shortcut-palette");
+      if (shortcutPalette) shortcutPalette.textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K";
+      document.getElementById("theme-toggle")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+      });
+      const moreWrap = document.getElementById("more-wrap");
+      const moreToggle = document.getElementById("more-toggle");
+      const setMoreOpen = (open) => {
+        moreWrap?.classList.toggle("open", open);
+        moreToggle?.setAttribute("aria-expanded", open ? "true" : "false");
+      };
+      moreToggle?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const next = !moreWrap.classList.contains("open");
+        envWrap.classList.remove("open");
+        setMoreOpen(next);
+      });
+      document.getElementById("more-pop")?.addEventListener("click", (event) => event.stopPropagation());
       const specVersion = (spec.info && spec.info.version) || "";
       const navVersion = document.getElementById("nav-version");
       if (navVersion) navVersion.textContent = specVersion ? (specVersion.startsWith("v") ? specVersion : "v" + specVersion) : "";
@@ -2100,6 +2376,7 @@
       const envWrap = document.getElementById("env-wrap");
       document.getElementById("env-trigger").addEventListener("click", (event) => {
         event.stopPropagation();
+        setMoreOpen(false);
         envWrap.classList.toggle("open");
         if (envWrap.classList.contains("open")) renderEnvPop();
       });
@@ -2608,6 +2885,7 @@
 
       document.getElementById("export-openapi").addEventListener("click", (event) => {
         event.stopPropagation();
+        setMoreOpen(false);
         openExportModal();
       });
       document.getElementById("export-cancel").addEventListener("click", closeExportModal);
@@ -2823,7 +3101,13 @@
       };
 
       const displayGroup = (group) => GROUP_LABEL[group] || group || "Other";
-      const groupTone = (label) => (String(label).toLowerCase() === "positive cases" ? "ok" : "err");
+      const groupTone = (group) => {
+        const key = String(group || "").toUpperCase();
+        if (key === "POSITIVE CASES") return "ok";
+        if (key === "INVALID CASES") return "warn";
+        if (key === "OMITTED CASES") return "omit";
+        return "err";
+      };
       const statusOk = (status) => Number(status) >= 200 && Number(status) < 300;
 
       const groupedDropdown = (scenarios, selected) => {
@@ -2849,7 +3133,7 @@
                 });
                 if (!rows.length) return "";
                 const label = displayGroup(group);
-                return `<div class="dd-group ${groupTone(label)}"><span>${escapeHtml(label)} (${rows.length})</span></div>` +
+                return `<div class="dd-group ${groupTone(group)}"><span>${escapeHtml(label)} (${rows.length})</span></div>` +
                   rows
                     .map(
                       ({ scenario, index }) =>
@@ -2884,14 +3168,14 @@
         const { groups, order } = groupScenarios(item.scenarios);
         return `<div class="nav-examples">${order
           .map(
-            (group) => `<div class="nav-ex-group">
-              <div class="nav-ex-group-label"><span>${escapeHtml(displayGroup(group))}</span><span class="nav-ex-count">${groups[group].length}</span></div>
-              ${groups[group]
+            (group) => `<div class="nav-ex-group ${groupTone(group)}">
+              <div class="nav-ex-group-label ${groupTone(group)}"><span>${escapeHtml(displayGroup(group))}</span><span class="nav-ex-count">${groups[group].length}</span></div>
+              <div class="nav-ex-items">${groups[group]
                 .map(
                   ({ scenario, index }) =>
                     `<button type="button" class="nav-example ${item.id === currentId && index === scenarioIndex ? "on" : ""}" data-id="${escapeAttr(item.id)}" data-scenario="${index}" title="${escapeAttr(scenarioNavLabel(scenario))}">${escapeHtml(scenarioNavLabel(scenario))}</button>`,
                 )
-                .join("")}
+                .join("")}</div>
             </div>`,
           )
           .join("")}</div>`;
@@ -3082,14 +3366,45 @@
 
       let searchActiveIndex = 0;
 
+      const bindSearchHits = (panel, query) => {
+        panel.querySelectorAll(".search-hit").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            select(button.dataset.id);
+            closeSearch({ clear: true });
+          };
+        });
+      };
+
+      const searchHitsHtml = (query) => {
+        const q = query.trim().toLowerCase();
+        const matches = q
+          ? ops.filter((item) => (item.method + " " + item.path + " " + item.title).toLowerCase().includes(q))
+          : ops;
+        if (!matches.length) return { html: `<div class="search-empty">No matching endpoints</div>`, count: 0 };
+        if (searchActiveIndex >= matches.length) searchActiveIndex = 0;
+        const html = matches
+          .map(
+            (item, index) => `<button type="button" class="search-hit ${index === searchActiveIndex ? "active" : ""}" data-id="${item.id}" role="option">
+              <span class="method ${item.method}">${item.method}</span>
+              <span class="search-hit-path">${q ? highlightMatch(item.path, q) : escapeHtml(item.path)}</span>
+            </button>`,
+          )
+          .join("");
+        return { html, count: matches.length };
+      };
+
       const closeSearch = ({ clear = false } = {}) => {
         const wrap = document.getElementById("search-wrap");
         const input = document.getElementById("search");
         wrap.classList.remove("open");
         document.body.classList.remove("searching");
+        document.body.classList.remove("search-palette");
         searchActiveIndex = 0;
         if (clear) {
           input.value = "";
+          const paletteInput = document.getElementById("search-palette-input");
+          if (paletteInput) paletteInput.value = "";
           navQuery = "";
           renderNav();
         }
@@ -3098,6 +3413,24 @@
       const openSearch = () => {
         document.getElementById("search-wrap").classList.add("open");
         document.body.classList.add("searching");
+        document.body.classList.remove("search-palette");
+      };
+
+      const openPalette = () => {
+        closeSearch({ clear: false });
+        document.body.classList.add("search-palette");
+        searchActiveIndex = 0;
+        const paletteInput = document.getElementById("search-palette-input");
+        renderPalettePanel(paletteInput.value);
+        paletteInput.focus();
+        paletteInput.select();
+      };
+
+      const renderPalettePanel = (query = "") => {
+        const panel = document.getElementById("search-palette-panel");
+        const { html } = searchHitsHtml(query);
+        panel.innerHTML = html;
+        bindSearchHits(panel, query);
       };
 
       const renderSearchPanel = (query = "") => {
@@ -3111,27 +3444,9 @@
           return;
         }
         openSearch();
-        const matches = ops.filter((item) => (item.method + " " + item.path + " " + item.title).toLowerCase().includes(q));
-        if (!matches.length) {
-          panel.innerHTML = `<div class="search-empty">No matching endpoints</div>`;
-          return;
-        }
-        if (searchActiveIndex >= matches.length) searchActiveIndex = 0;
-        panel.innerHTML = matches
-          .map(
-            (item, index) => `<button type="button" class="search-hit ${index === searchActiveIndex ? "active" : ""}" data-id="${item.id}" role="option">
-              <span class="method ${item.method}">${item.method}</span>
-              <span class="search-hit-path">${highlightMatch(item.path, q)}</span>
-            </button>`,
-          )
-          .join("");
-        panel.querySelectorAll(".search-hit").forEach((button) => {
-          button.onclick = (event) => {
-            event.stopPropagation();
-            select(button.dataset.id);
-            closeSearch({ clear: true });
-          };
-        });
+        const { html } = searchHitsHtml(query);
+        panel.innerHTML = html;
+        bindSearchHits(panel, query);
       };
 
       const jsonBlock = (value, pretty) => {
@@ -3186,18 +3501,24 @@
 
       const schemaRows = (fields, { showLoc = false } = {}) => {
         if (!fields.length) return `<div class="meta-empty">—</div>`;
-        return fields
+        return `<div class="schema-rows">${fields
           .map((field) => {
             const depth = fieldDepth(field.name);
             const nestClass = depth ? " nested" : "";
             const depthAttr = depth ? ` data-depth="${Math.min(depth, 4)}"` : "";
+            const flag =
+              field.required === true
+                ? `<div class="flag req">required</div>`
+                : field.required === false
+                  ? `<div class="flag">optional</div>`
+                  : `<div class="flag"></div>`;
             return `<div class="row">
               <div class="name${nestClass}"${depthAttr}>${escapeHtml(field.name)}</div>
               <div class="type">${escapeHtml(field.type)}${showLoc && field.in && field.in !== "body" ? " · " + escapeHtml(field.in) : ""}</div>
-              ${field.required === true ? `<div class="flag req">required</div>` : field.required === false ? `<div class="flag">optional</div>` : `<div></div>`}
+              ${flag}
             </div>`;
           })
-          .join("");
+          .join("")}</div>`;
       };
 
       const schemasInline = (fields, resBody) => {
@@ -3425,29 +3746,29 @@
       };
 
       const searchInput = document.getElementById("search");
-      searchInput.addEventListener("input", (event) => {
-        searchActiveIndex = 0;
-        renderSearchPanel(event.target.value);
-      });
-      searchInput.addEventListener("keydown", (event) => {
-        const panel = document.getElementById("search-panel");
+      const paletteInput = document.getElementById("search-palette-input");
+
+      const handleSearchKeys = (event, input, panelId) => {
+        const panel = document.getElementById(panelId);
         const hits = [...panel.querySelectorAll(".search-hit")];
         if (event.key === "Escape") {
           closeSearch({ clear: true });
-          searchInput.blur();
+          input.blur();
           return;
         }
         if (!hits.length) return;
         if (event.key === "ArrowDown") {
           event.preventDefault();
           searchActiveIndex = (searchActiveIndex + 1) % hits.length;
-          renderSearchPanel(searchInput.value);
-          document.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
+          if (panelId === "search-palette-panel") renderPalettePanel(input.value);
+          else renderSearchPanel(input.value);
+          panel.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
         } else if (event.key === "ArrowUp") {
           event.preventDefault();
           searchActiveIndex = (searchActiveIndex - 1 + hits.length) % hits.length;
-          renderSearchPanel(searchInput.value);
-          document.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
+          if (panelId === "search-palette-panel") renderPalettePanel(input.value);
+          else renderSearchPanel(input.value);
+          panel.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
         } else if (event.key === "Enter") {
           event.preventDefault();
           const target = hits[searchActiveIndex] || hits[0];
@@ -3456,21 +3777,45 @@
             closeSearch({ clear: true });
           }
         }
+      };
+
+      searchInput.addEventListener("input", (event) => {
+        searchActiveIndex = 0;
+        renderSearchPanel(event.target.value);
       });
+      searchInput.addEventListener("keydown", (event) => handleSearchKeys(event, searchInput, "search-panel"));
+      paletteInput.addEventListener("input", (event) => {
+        searchActiveIndex = 0;
+        renderPalettePanel(event.target.value);
+      });
+      paletteInput.addEventListener("keydown", (event) => handleSearchKeys(event, paletteInput, "search-palette-panel"));
       document.getElementById("search-backdrop").addEventListener("click", () => closeSearch({ clear: true }));
+      document.getElementById("search-palette-card").addEventListener("click", (event) => event.stopPropagation());
       document.getElementById("search-wrap").addEventListener("click", (event) => event.stopPropagation());
 
       document.addEventListener("click", () => {
         exampleOpen = false;
         document.querySelectorAll(".dd.open").forEach((el) => el.classList.remove("open"));
         document.getElementById("env-wrap").classList.remove("open");
+        setMoreOpen(false);
         if (document.body.classList.contains("searching")) closeSearch({ clear: true });
       });
 
       document.addEventListener("keydown", (event) => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
           event.preventDefault();
-          document.getElementById("search")?.focus();
+          if (document.body.classList.contains("search-palette")) closeSearch({ clear: true });
+          else openPalette();
+          return;
+        }
+        if (event.key === "Escape" && document.body.classList.contains("search-palette")) {
+          event.preventDefault();
+          closeSearch({ clear: true });
+          return;
+        }
+        if (event.key === "Escape" && moreWrap?.classList.contains("open")) {
+          event.preventDefault();
+          setMoreOpen(false);
           return;
         }
         if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
