@@ -2,21 +2,24 @@
 export const HTTP_VERBS = 'GET|POST|PUT|PATCH|DELETE|UPDATE|UPSERT|INSERT|MERGE|REPLACE';
 const METHODS = HTTP_VERBS;
 
+/** Trailing qualifiers such as `(integration)` or `(solution partner)`. */
+const QUALIFIER = '(?:\\s+\\([^)]*\\))*';
+
 const PATH_ONLY_BRACKET_RE = new RegExp(
-  `^(?<path>\\/\\S+)\\s+\\[(?<method>${METHODS})\\](?:\\s+\\(integration\\))?\\s*$`,
+  `^(?<path>\\/\\S+)\\s+\\[(?<method>${METHODS})\\]${QUALIFIER}\\s*$`,
   'i',
 );
 const TITLE_BRACKET_RE = new RegExp(
-  `^(?<title>.+?)\\s+(?<path>\\/\\S+)\\s+\\[(?<method>${METHODS})\\](?:\\s+\\(integration\\))?\\s*$`,
+  `^(?<title>.+?)\\s+(?<path>\\/\\S+)\\s+\\[(?<method>${METHODS})\\]${QUALIFIER}\\s*$`,
   'i',
 );
 /** `Create Mock Tbs — POST /v1/admin/mock-tbs` */
 const TITLE_DASH_RE = new RegExp(
-  `^(?<title>.+?)\\s+[—–-]\\s+(?<method>${METHODS})\\s+(?<path>\\/\\S+)(?:\\s+\\(integration\\))?\\s*$`,
+  `^(?<title>.+?)\\s+[—–-]\\s+(?<method>${METHODS})\\s+(?<path>\\/\\S+)${QUALIFIER}\\s*$`,
   'i',
 );
 const PATH_ONLY_DASH_RE = new RegExp(
-  `^(?<method>${METHODS})\\s+(?<path>\\/\\S+)(?:\\s+\\(integration\\))?\\s*$`,
+  `^(?<method>${METHODS})\\s+(?<path>\\/\\S+)${QUALIFIER}\\s*$`,
   'i',
 );
 
@@ -123,7 +126,7 @@ export function isHumanOperationTitle(title: string | undefined): boolean {
 function stripCaseTail(raw: string): string {
   return raw
     .replace(
-      /\s+(POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\b[\s\S]*$/i,
+      /\s+((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\b[\s\S]*$/i,
       '',
     )
     .trim();

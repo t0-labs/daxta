@@ -18,6 +18,11 @@ export type SpecInfo = {
 /** Named Try-it preset: own baseUrl + optional extra variables (tokens, etc.). */
 export type EnvPreset = {
   baseUrl: string;
+  /**
+   * Variable name that carries the base URL in Try-it and Postman exports.
+   * Default `baseUrl`; set e.g. `ONBOARDING_SERVICE` to match an existing collection.
+   */
+  baseUrlKey?: string;
   /** Extra variables merged into the preset (baseUrl wins from EnvPreset.baseUrl). */
   variables?: Record<string, string>;
 };
@@ -44,6 +49,13 @@ export type DaxtaConfig = {
    * Ops like POST …/{id}/lock sit under the parent resource. Default true.
    */
   treeSkipParams?: boolean;
+  /**
+   * Fold a leaf folder into its parent when it holds a single operation and no
+   * subfolders, so `merchants › tr › POST` becomes `merchants › POST onboard tr merchant`
+   * while `external-checkouts` keeps its folder because several ops live there.
+   * One level only. Default true.
+   */
+  treeCollapseSingle?: boolean;
   treePathOverrides?: Record<string, string[]>;
   /**
    * OpenAPI example + scenario labels:
@@ -89,6 +101,7 @@ export type ResolvedDaxtaConfig = Required<
     | 'treeLayout'
     | 'treePathOverrides'
     | 'treeSkipParams'
+    | 'treeCollapseSingle'
     | 'exampleLabelStyle'
     | 'port'
     | 'fieldsFile'
@@ -105,6 +118,7 @@ const DEFAULTS: ResolvedDaxtaConfig = {
   outDir: '.daxta/out',
   treeLayout: 'role-resource',
   treeSkipParams: true,
+  treeCollapseSingle: true,
   treePathOverrides: {},
   exampleLabelStyle: 'status-title-case',
   port: 5199,
@@ -168,6 +182,7 @@ export function resolveConfig(cwd = process.cwd(), overrides?: DaxtaConfig): Res
   };
   merged.treeLayout = normalizeTreeLayout(merged.treeLayout);
   if (merged.treeSkipParams == null) merged.treeSkipParams = DEFAULTS.treeSkipParams;
+  if (merged.treeCollapseSingle == null) merged.treeCollapseSingle = DEFAULTS.treeCollapseSingle;
   if (merged.exampleLabelStyle == null) merged.exampleLabelStyle = DEFAULTS.exampleLabelStyle;
   merged.envPresets = normalizeEnvPresets(merged.envPresets, merged.baseUrl);
   merged.docsPath = normalizeDocsPath(process.env.DAXTA_DOCS_PATH || merged.docsPath);
@@ -180,6 +195,63 @@ export function resolveConfig(cwd = process.cwd(), overrides?: DaxtaConfig): Res
     ? merged.viewerStoreFile
     : path.join(cwd, merged.viewerStoreFile);
   return merged;
+}
+
+/**
+ * Env name for a base URL when the config does not name it:
+ * loopback → local, host keywords (staging/dev/test/qa/sandbox) → that keyword,
+ * anything else → first non-generic subdomain, or `production` for plain api.* hosts.
+ */
+export function envNameFromUrl(url: string): string {
+  let host = String(url || '').trim();
+  try {
+    host = new URL(host).hostname;
+  } catch {
+    host = host.replace(/^[a-z]+:\/\//i, '').split('/')[0].split(':')[0];
+  }
+  host = host.toLowerCase();
+  if (!host) return 'local';
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1' || host.endsWith('.local')) {
+    return 'local';
+  }
+  const keywords: Array<[RegExp, string]> = [
+    [/\bstag(e|ing)\b/, 'staging'],
+    [/\b(dev|development)\b/, 'development'],
+    [/\b(test|testing)\b/, 'test'],
+    [/\bqa\b/, 'qa'],
+    [/\bsandbox\b/, 'sandbox'],
+    [/\b(preprod|pre-prod|uat)\b/, 'uat'],
+    [/\b(prod|production)\b/, 'production'],
+  ];
+  const labels = host.split('.');
+  for (const [pattern, name] of keywords) {
+    if (labels.some((label) => pattern.test(label))) return name;
+  }
+  // Only subdomains name an environment; the registrable domain is the product itself.
+  const generic = new Set(['api', 'www', 'app', 'gateway', 'edge']);
+  const subdomains = labels.slice(0, -2).filter((label) => label && !generic.has(label));
+  return subdomains[0] || 'production';
+}
+
+/** Unique-ified `{ url, description }` servers for the spec, one per env preset. */
+export function serversFromEnvPresets(
+  presets: Record<string, EnvPreset> | undefined,
+  fallbackBaseUrl: string,
+): Array<{ url: string; description: string }> {
+  const normalized = normalizeEnvPresets(presets, fallbackBaseUrl);
+  const seen = new Set<string>();
+  const servers: Array<{ url: string; description: string }> = [];
+  for (const [name, preset] of Object.entries(normalized)) {
+    const url = String(preset.baseUrl).replace(/\/$/, '');
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    servers.push({ url, description: name });
+  }
+  if (!servers.length) {
+    const url = String(fallbackBaseUrl).replace(/\/$/, '') || 'http://localhost:3000';
+    servers.push({ url, description: envNameFromUrl(url) });
+  }
+  return servers;
 }
 
 function normalizeEnvPresets(
@@ -198,10 +270,16 @@ function normalizeEnvPresets(
         variables[key] = String(value ?? '');
       }
     }
-    out[name] = Object.keys(variables).length ? { baseUrl, variables } : { baseUrl };
+    const baseUrlKey = typeof preset.baseUrlKey === 'string' ? preset.baseUrlKey.trim() : '';
+    out[name] = {
+      baseUrl,
+      ...(baseUrlKey && baseUrlKey !== 'baseUrl' ? { baseUrlKey } : {}),
+      ...(Object.keys(variables).length ? { variables } : {}),
+    };
   }
   if (!Object.keys(out).length) {
-    out.local = { baseUrl: String(fallbackBaseUrl).replace(/\/$/, '') || 'http://localhost:3000' };
+    const baseUrl = String(fallbackBaseUrl).replace(/\/$/, '') || 'http://localhost:3000';
+    out[envNameFromUrl(baseUrl)] = { baseUrl };
   }
   return out;
 }

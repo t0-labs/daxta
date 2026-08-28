@@ -63,6 +63,7 @@ function stripGitignore(cwd: string, dryRun: boolean): string[] {
   return [...remove].filter((entry) => lines.some((line) => line.trim() === entry));
 }
 
+/** Legacy cleanup: older installs wrote a DAXTA_DOCS gate before NODE_ENV took over. */
 function stripEnvDaxta(cwd: string, dryRun: boolean): string[] {
   const notes: string[] = [];
   for (const name of ['.env', '.env.local', '.env.development', '.env.development.local']) {
@@ -258,7 +259,7 @@ export async function uninstallDaxta(options: UninstallOptions = {}): Promise<vo
       const gi = stripGitignore(cwd, dryRun);
       if (gi.length) details.push(`.gitignore − ${gi.join(', ')}`);
       const env = stripEnvDaxta(cwd, dryRun);
-      if (env.length) details.push(`DAXTA_DOCS removed from ${env.join(', ')}`);
+      if (env.length) details.push(`legacy DAXTA_DOCS removed from ${env.join(', ')}`);
       if (!details.length) return 'nothing to clean';
       return { summary: 'cleaned', details };
     },

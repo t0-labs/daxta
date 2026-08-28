@@ -9,6 +9,8 @@ export type ViewerStoreRow = { key: string; value: string };
 export type ViewerEnvConfig = {
   variables: ViewerStoreRow[];
   headerGroups: Record<string, ViewerStoreRow[]>;
+  /** Name of the variable holding the base URL — renameable, e.g. `ONBOARDING_SERVICE`. */
+  baseUrlKey?: string;
 };
 
 export type ViewerEnvStore = {
@@ -47,9 +49,11 @@ export function normalizeViewerEnvStore(raw: unknown): ViewerEnvStore | null {
     if (!Object.keys(headerGroups).length) {
       headerGroups.default = [{ key: 'content-type', value: 'application/json' }];
     }
+    const baseUrlKey = typeof envObj.baseUrlKey === 'string' ? envObj.baseUrlKey.trim() : '';
     envs[name] = {
       variables: normalizeRows(envObj.variables),
       headerGroups,
+      ...(baseUrlKey && baseUrlKey !== 'baseUrl' ? { baseUrlKey } : {}),
     };
   }
   if (!Object.keys(envs).length) return null;
@@ -82,8 +86,9 @@ export function writeViewerEnvStore(raw: unknown): ViewerEnvStore {
 }
 
 /**
- * If viewer-store.json is missing, seed it from `envPresets` in daxta.config
- * (local / staging / production baseUrls). Does not overwrite an existing file.
+ * If viewer-store.json is missing, seed it from the resolved env presets
+ * (derived from baseUrl, plus any `envPresets` overrides in daxta.config).
+ * Does not overwrite an existing file.
  */
 export function ensureViewerStoreSeeded(): string | null {
   const filePath = getViewerStorePath();
@@ -94,14 +99,16 @@ export function ensureViewerStoreSeeded(): string | null {
   const envs: Record<string, ViewerEnvConfig> = {};
 
   for (const [name, preset] of Object.entries(presets)) {
-    const variables: ViewerStoreRow[] = [{ key: 'baseUrl', value: String(preset.baseUrl || config.baseUrl) }];
+    const baseUrlKey = preset.baseUrlKey?.trim() || 'baseUrl';
+    const variables: ViewerStoreRow[] = [{ key: baseUrlKey, value: String(preset.baseUrl || config.baseUrl) }];
     for (const [key, value] of Object.entries(preset.variables ?? {})) {
-      if (!key || key === 'baseUrl') continue;
+      if (!key || key === baseUrlKey) continue;
       variables.push({ key, value: String(value ?? '') });
     }
     envs[name] = {
       variables,
       headerGroups: { default: [{ key: 'content-type', value: 'application/json' }] },
+      ...(baseUrlKey !== 'baseUrl' ? { baseUrlKey } : {}),
     };
   }
 

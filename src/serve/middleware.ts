@@ -223,12 +223,22 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
 }
 
 /**
+ * `NODE_ENV` values that open the docs. The list is deliberately closed: an
+ * unset or unrecognised `NODE_ENV` keeps the docs off so a misconfigured
+ * deployment never exposes them.
+ */
+const WORKING_ENVS = new Set(['dev', 'development', 'test', 'sta', 'staging']);
+
+/** Docs follow `NODE_ENV`, and stay closed unless it names a known working env. */
+export function docsEnabled(): boolean {
+  const nodeEnv = String(process.env.NODE_ENV ?? '').trim().toLowerCase();
+  return WORKING_ENVS.has(nodeEnv);
+}
+
+/**
  * Mount generated API docs on a Nest / Express app (`app.use(...)`).
  *
- * Requires `DAXTA_DOCS` in the environment:
- * - missing / empty → throws
- * - `on` → serve docs
- * - `off` → no-op
+ * Served only when `NODE_ENV` is dev, development, test, sta or staging.
  *
  * Path defaults to `/docs`. Override with `DAXTA_DOCS_PATH` or `docsPath` in config.
  */
@@ -236,14 +246,6 @@ export function apiDocs(
   app: { use: (...handlers: unknown[]) => unknown },
   options: ApiDocsOptions = {},
 ): void {
-  const raw = process.env.DAXTA_DOCS;
-  if (raw == null || String(raw).trim() === '') {
-    throw new Error('DAxTA: DAXTA_DOCS is not set. Set DAXTA_DOCS=on or DAXTA_DOCS=off.');
-  }
-  const normalized = String(raw).trim().toLowerCase();
-  if (normalized !== 'on' && normalized !== 'off') {
-    throw new Error(`DAxTA: invalid DAXTA_DOCS="${raw}". Use on or off.`);
-  }
-  if (normalized === 'off') return;
+  if (!docsEnabled()) return;
   app.use(apiDocsHandler(options));
 }

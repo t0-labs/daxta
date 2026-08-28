@@ -150,11 +150,13 @@ export async function runTitleCheck(options: {
     return options.strict ? 1 : 0;
   }
 
-  banner('Test naming', 'runs before Jest — API docs / Postman labels');
-  console.log(`  ${c.dim('Title')}  Create Mock Tbs — POST /v1/admin/mock-tbs`);
-  console.log(`  ${c.dim('it()+')}  creates mock tbs when cyprus payload shape`);
-  console.log(`  ${c.dim('it()-')}  returns error when tax id already exists`);
-  console.log(`  ${c.dim('label')}  201 — cyprus payload shape`);
+  banner('Test naming', 'describe + it() → API docs labels');
+  console.log(`  ${c.dim('describe')}  Create Mock Tbs — POST /v1/admin/mock-tbs`);
+  console.log(`           ${c.dim('→ operation title in sidebar')}`);
+  console.log(`  ${c.dim('it()')}       creates mock tbs when cyprus payload shape`);
+  console.log(`           ${c.dim('→ scenario clause (text after')} ${c.ice('when')}${c.dim(')')}`);
+  console.log(`  ${c.dim('label')}     201 — Create Mock Tbs — cyprus payload shape`);
+  console.log(`           ${c.dim('→')} ${c.ice('exampleLabelStyle')} ${c.dim('in')} ${c.ice('daxta tree')} ${c.dim('· change with')} ${c.ice('2')} ${c.dim('for short labels')}`);
   const start = await readlineAsk(
     `  ${c.gold('?')} Review test names now?\n` +
       `    ${c.dim('Y')} yes · ${c.dim('n')} skip all\n  ${c.ice('›')} `,

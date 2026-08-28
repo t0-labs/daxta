@@ -1,5 +1,6 @@
 import { clearPartialMarker } from '../build/incremental';
 import { generateApiDocs } from '../build/build-spec';
+import { clearRunMarker } from '../recorder';
 
 /**
  * Optional jest globalTeardown — silent generate only.
@@ -11,5 +12,7 @@ export default async function daxtaGlobalTeardown(): Promise<void> {
     clearPartialMarker();
   } catch {
     // never fail teardown
+  } finally {
+    clearRunMarker();
   }
 }

@@ -123,12 +123,22 @@ async function pickSkipParams(current: boolean): Promise<boolean> {
 async function pickExampleStyle(current: ExampleLabelStyle): Promise<ExampleLabelStyle> {
   console.log('');
   console.log(`  ${c.bold('Example / scenario labels')}`);
-  console.log(`    ${c.ice('1')}  status-title-case`);
+  console.log(`  ${c.dim('Sidebar + OpenAPI export name for each test hit.')}`);
+  console.log(`  ${c.dim('From')} ${c.ice('it()')} ${c.dim('— text after')} ${c.ice('when')} ${c.dim('becomes the scenario clause.')}`);
+  console.log('');
+  console.log(`  ${c.dim('sample')} ${c.ice('creates mock tbs when cyprus payload shape')}`);
+  console.log('');
+  console.log(`    ${c.ice('1')}  status-title-case ${c.dim('(default)')}`);
+  console.log(`       ${c.dim('201 — Create Mock Tbs — cyprus payload shape')}`);
+  console.log(`       ${c.dim('status + operation title + scenario')}`);
+  console.log('');
+  console.log(`    ${c.ice('2')}  status-case ${c.dim('(short)')}`);
   console.log(`       ${c.dim('201 — cyprus payload shape')}`);
-  console.log(`    ${c.ice('2')}  status-case`);
-  console.log(`       ${c.dim('201 — cyprus payload shape')}`);
-  console.log(`    ${c.ice('3')}  full`);
+  console.log(`       ${c.dim('status + scenario only')}`);
+  console.log('');
+  console.log(`    ${c.ice('3')}  full ${c.dim('(verbose — path + section)')}`);
   console.log(`       ${c.dim('201 — Create Mock Tbs - POST /v1/admin/mock-tbs POSITIVE CASES cyprus payload shape')}`);
+  console.log('');
   console.log(`    ${c.ice('4')}  keep ${c.dim(`(${current})`)}`);
   const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
   if (!answer || answer === '4' || /^k(eep)?$/i.test(answer)) return current;

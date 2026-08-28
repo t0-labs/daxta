@@ -1,10 +1,11 @@
-import { clearWorkerHits } from '../recorder';
+import { clearWorkerHits, startRun } from '../recorder';
 import { runTitleCheck } from '../cli/titles';
 import { printNamingFindings, scanTestNaming } from '../titles/scan';
 import { c } from '../cli/ui';
 
 export default async function daxtaGlobalSetup(): Promise<void> {
   clearWorkerHits();
+  startRun();
   try {
     if (process.env.DAXTA_TITLE_CHECK === 'off') return;
     const strict = process.env.DAXTA_TITLE_CHECK === 'strict';
