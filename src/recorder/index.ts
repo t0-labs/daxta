@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 import * as path from 'path';
 
 import { getConfig } from '../config';
+import { getRunMarkerPath } from '../serve/paths';
 import { extractPathParams, templatize } from '../path.util';
 
 export type RecordedHit = {
@@ -139,9 +140,40 @@ export function install() {
   }
 }
 
+/** Hit files carry the run id so a later build can never pick up an earlier run's traffic. */
+export const HIT_FILE_PATTERN = /^hits-(?:r([A-Za-z0-9]+)-)?w[^-]+-p\d+\.json$/;
+
+export function readRunId(): string | null {
+  try {
+    const marker = JSON.parse(readFileSync(getRunMarkerPath(), 'utf8')) as { runId?: unknown };
+    return typeof marker.runId === 'string' && marker.runId ? marker.runId : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Called once per Jest run (global setup) so every worker tags its hits identically. */
+export function startRun(): string {
+  const dir = outDir();
+  mkdirSync(dir, { recursive: true });
+  const runId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  writeFileSync(getRunMarkerPath(), `${JSON.stringify({ runId, startedAt: new Date().toISOString() }, null, 2)}\n`);
+  return runId;
+}
+
+export function clearRunMarker() {
+  try {
+    rmSync(getRunMarkerPath());
+  } catch {
+    // ignore
+  }
+}
+
 function hitFilePath() {
   const workerId = process.env.JEST_WORKER_ID ?? '0';
-  return path.join(outDir(), `hits-w${workerId}-p${process.pid}.json`);
+  const runId = readRunId();
+  const prefix = runId ? `hits-r${runId}-` : 'hits-';
+  return path.join(outDir(), `${prefix}w${workerId}-p${process.pid}.json`);
 }
 
 export function flush() {
@@ -154,9 +186,7 @@ export function clearWorkerHits() {
   const dir = outDir();
   if (!existsSync(dir)) return;
   for (const fileName of readdirSync(dir)) {
-    if (fileName.startsWith('hits-w') && fileName.endsWith('.json')) {
-      rmSync(path.join(dir, fileName));
-    }
+    if (HIT_FILE_PATTERN.test(fileName)) rmSync(path.join(dir, fileName));
   }
 }
 

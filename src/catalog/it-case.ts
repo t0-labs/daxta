@@ -21,6 +21,7 @@ const GENERIC_IT = new Set([
 export function parseCaseSection(raw?: string): CaseSection | undefined {
   if (!raw) return undefined;
   if (/SEMANTIC ERROR CASES\s*-\s*AUTH/i.test(raw)) return 'auth';
+  if (/FALSE\s+POSITIVE CASES/i.test(raw)) return 'semantic';
   if (/POSITIVE CASES/i.test(raw)) return 'positive';
   if (/SEMANTIC ERROR CASES/i.test(raw)) return 'semantic';
   if (/INVALID CASES/i.test(raw)) return 'invalid';

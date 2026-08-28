@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
-import { caseGroup, CASE_GROUP_ORDER, caseName, docsScenarioClause, declaredMethods, exampleLabel, parseCaseSection, type FieldDoc, type OperationDoc, operationSummary, operationTag, STATUS_TEXT, treePathSegments, viewerTreeConfig } from '../catalog';
+import { caseGroup, CASE_GROUP_ORDER, declaredMethods, exampleLabel, parseCaseSection, parseOperationLabel, type FieldDoc, type OperationDoc, operationSummary, operationTag, STATUS_TEXT, treePathSegments, viewerTreeConfig } from '../catalog';
 
 
-import { getConfig } from '../config';
+import { getConfig, serversFromEnvPresets } from '../config';
 import { dtoRequired } from '../fields/dto-fields';
 import { extractPathParams, materializePath, pathParamNames, templatize } from '../path.util';
-import { clearWorkerHits, type RecordedHit } from '../recorder';
+import { clearWorkerHits, HIT_FILE_PATTERN, readRunId, type RecordedHit } from '../recorder';
 import { getFaviconAssetPath, getFaviconLightAssetPath, getHitsJsonPath, getHtmlPath, getOutDir, getSpecJsonPath, getViewerAssetPath } from '../serve/paths';
 import { ensureViewerStoreSeeded } from '../serve/viewer-store';
 
@@ -228,12 +228,98 @@ function selectHitsForDocs(hits: RecordedHit[]): RecordedHit[] {
   return selected;
 }
 
+/** `/v1/users/:id` and `/v1/users/{userId}` describe the same route. */
+function normalizedPathSegments(pathTemplate: string): string[] {
+  return String(pathTemplate)
+    .split('?')[0]
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => (segment.startsWith('{') || segment.startsWith(':') ? '*' : segment.toLowerCase()));
+}
+
+/**
+ * The declared path may omit a global prefix (`/api`) that the recorded URL carries,
+ * so a suffix match counts as the same route.
+ */
+function sameRoute(declaredPath: string, hitPath: string): boolean {
+  const declared = normalizedPathSegments(declaredPath);
+  const actual = normalizedPathSegments(hitPath);
+  if (!declared.length || !actual.length) return true;
+  const [shorter, longer] = declared.length <= actual.length ? [declared, actual] : [actual, declared];
+  const offset = longer.length - shorter.length;
+  // A literal in the title can face a `{param}` in the recorded path (and vice versa)
+  // because templating happens after recording.
+  return shorter.every((segment, index) => {
+    const other = longer[offset + index];
+    return segment === other || segment === '*' || other === '*';
+  });
+}
+
+/**
+ * A test documents the endpoint named in its title. Arrange/teardown calls the test
+ * makes to *other* endpoints share the same Jest name, so they are filtered out here —
+ * otherwise those setup routes show up as their own operations carrying this test's case label.
+ */
 function isPrimaryHit(hit: RecordedHit): boolean {
   if (!hit.test) return false;
   if (getConfig().includeHit?.(hit.method, hit.path, hit.test) === false) return false;
+  const label = parseOperationLabel(hit.test);
+  if (label?.path && !sameRoute(label.path, hit.path)) return false;
   const methods = declaredMethods(hit.test);
   if (!methods) return true;
   return methods.includes(hit.method);
+}
+
+const CASE_TAIL_RE =
+  /\s+((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\b[\s\S]*$/i;
+
+/** All case sections of one describe collapse to the same suite, e.g. "Onboard Tr Merchant API". */
+function suiteKey(test: string): string {
+  return test.replace(CASE_TAIL_RE, '').trim() || test;
+}
+
+function routeKey(hit: RecordedHit): string {
+  return `${hit.method} ${hit.path}`;
+}
+
+/**
+ * When the test title does not name a path, infer the endpoint under test: the Act call
+ * is the last request an it() makes, so each case votes with its final route and the
+ * suite's winner wins. Arrange helpers (`insertMerchantWithKyc`, checkout flows, …) only
+ * ever appear mid-test, so they lose and stay out of the docs.
+ */
+function subjectRouteBySuite(hits: RecordedHit[]): Map<string, string> {
+  const finalRouteByTest = new Map<string, string>();
+  for (const hit of hits) {
+    if (!hit.test) continue;
+    if (parseOperationLabel(hit.test)?.path) continue;
+    finalRouteByTest.set(hit.test, routeKey(hit));
+  }
+
+  const votes = new Map<string, Map<string, number>>();
+  for (const [test, route] of finalRouteByTest) {
+    const suite = votes.get(suiteKey(test)) ?? new Map<string, number>();
+    suite.set(route, (suite.get(route) ?? 0) + 1);
+    votes.set(suiteKey(test), suite);
+  }
+
+  const winners = new Map<string, string>();
+  for (const [suite, routes] of votes) {
+    const best = [...routes.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0];
+    if (best) winners.set(suite, best[0]);
+  }
+  return winners;
+}
+
+/** `isPrimaryHit` plus the inferred-subject pass for suites whose titles carry no path. */
+function primaryHits(hits: RecordedHit[]): RecordedHit[] {
+  const allowed = hits.filter(isPrimaryHit);
+  const winners = subjectRouteBySuite(allowed);
+  if (!winners.size) return allowed;
+  return allowed.filter((hit) => {
+    const winner = hit.test ? winners.get(suiteKey(hit.test)) : undefined;
+    return !winner || routeKey(hit) === winner;
+  });
 }
 
 function pathParamsFromHit(hit: RecordedHit): Record<string, string> {
@@ -397,7 +483,7 @@ function securityForHits(opHits: RecordedHit[]): Array<Record<string, unknown[]>
 }
 
 function scenarioDisplayName(hit: RecordedHit): string {
-  return docsScenarioClause(caseName(hit.test));
+  return exampleLabel(hit);
 }
 
 function toScenario(hit: RecordedHit): Scenario {
@@ -447,19 +533,34 @@ function dedupeScenarios(scenarios: Scenario[]): Scenario[] {
   });
 }
 
-/** `hits-w{workerId}-p{pid}.json` leftover from a previous Jest run must not stack. */
+/**
+ * Hit files belonging to the run in progress. Files tagged with a different run id
+ * (or untagged leftovers from an older run) never stack onto the current one.
+ */
 function currentRunWorkerFiles(outDir: string): string[] {
-  const names = readdirSync(outDir).filter((fileName) => fileName.startsWith('hits-w') && fileName.endsWith('.json'));
-  if (!names.length) return [];
+  const runId = readRunId();
+  const tagged: Array<{ fileName: string; runId: string | null }> = [];
+  for (const fileName of readdirSync(outDir)) {
+    const match = fileName.match(HIT_FILE_PATTERN);
+    if (match) tagged.push({ fileName, runId: match[1] ?? null });
+  }
+  if (!tagged.length) return [];
 
-  const hitsJsonPath = getHitsJsonPath();
-  const watermark = existsSync(hitsJsonPath) ? statSync(hitsJsonPath).mtimeMs - 1000 : 0;
-  const fromThisRun = names.filter((fileName) => statSync(path.join(outDir, fileName)).mtimeMs >= watermark);
-  const pool = fromThisRun.length ? fromThisRun : names;
+  let pool = tagged;
+  if (runId) {
+    pool = tagged.filter((entry) => entry.runId === runId);
+    if (!pool.length) return [];
+  } else {
+    // No run marker (e.g. plain `daxta generate`) — fall back to mtime proximity.
+    const hitsJsonPath = getHitsJsonPath();
+    const watermark = existsSync(hitsJsonPath) ? statSync(hitsJsonPath).mtimeMs - 1000 : 0;
+    const fresh = tagged.filter((entry) => statSync(path.join(outDir, entry.fileName)).mtimeMs >= watermark);
+    pool = fresh.length ? fresh : tagged;
+  }
 
   const newestByWorker = new Map<string, { fileName: string; mtime: number }>();
-  for (const fileName of pool) {
-    const workerId = fileName.match(/^hits-w([^-]+)-p\d+\.json$/)?.[1] ?? fileName;
+  for (const { fileName } of pool) {
+    const workerId = fileName.match(/w([^-]+)-p\d+\.json$/)?.[1] ?? fileName;
     const mtime = statSync(path.join(outDir, fileName)).mtimeMs;
     const prev = newestByWorker.get(workerId);
     if (!prev || mtime >= prev.mtime) newestByWorker.set(workerId, { fileName, mtime });
@@ -487,6 +588,10 @@ export function loadHits(): RecordedHit[] {
     if (loaded.length) return loaded;
   }
 
+  // Inside a Jest run the marker is authoritative: no hit files means this run
+  // recorded nothing, so never resurrect an earlier run's traffic from hits.json.
+  if (readRunId()) return [];
+
   // Fallback after workers were cleaned — last completed run's hits.json
   if (!existsSync(getHitsJsonPath())) return [];
   return canonicalizeHits(readHitFile(getHitsJsonPath(), 'hits.json'));
@@ -510,9 +615,47 @@ function sortOperations<T>(entries: [string, T][]): [string, T][] {
   });
 }
 
+/**
+ * A URL segment earns a folder only when it holds more than one thing. A leaf that
+ * carries a single operation and no subfolders folds into its parent, so
+ * `merchants › tr › POST onboard` reads `merchants › POST onboard tr merchant`
+ * while `external-checkouts` (GET + POST + PUT …) keeps its folder. One level only.
+ */
+function collapseLonelyLeafFolders(paths: Record<string, any>): void {
+  if (getConfig().treeCollapseSingle === false) return;
+
+  const entries: Array<{ operation: any; segments: string[]; foldable: boolean }> = [];
+  for (const [pathTemplate, pathItem] of Object.entries(paths)) {
+    const pathParts = pathTemplate.split('/').filter(Boolean);
+    for (const [method, operation] of Object.entries(pathItem as Record<string, any>)) {
+      if (!(method in METHOD_RANK) || !operation || typeof operation !== 'object') continue;
+      const segments = operation['x-tree-segments'];
+      if (!Array.isArray(segments) || !segments.length) continue;
+      // Segments shorter than the URL were already shaped by param folding or an
+      // override; that folder is a deliberate grouping, so leave it alone.
+      entries.push({ operation, segments, foldable: segments.length === pathParts.length });
+    }
+  }
+
+  const opsPerFolder = new Map<string, number>();
+  for (const { segments } of entries) {
+    const folder = segments.join('/');
+    opsPerFolder.set(folder, (opsPerFolder.get(folder) ?? 0) + 1);
+  }
+  const folders = [...opsPerFolder.keys()];
+
+  for (const entry of entries) {
+    if (!entry.foldable || entry.segments.length < 2) continue;
+    const folder = entry.segments.join('/');
+    if (opsPerFolder.get(folder) !== 1) continue;
+    if (folders.some((other) => other.startsWith(`${folder}/`))) continue;
+    entry.operation['x-tree-segments'] = entry.segments.slice(0, -1);
+  }
+}
+
 function buildSpec(hits: RecordedHit[]): OpenApiSpec {
   const grouped = new Map<string, RecordedHit[]>();
-  for (const hit of selectHitsForDocs(hits.filter(isPrimaryHit))) {
+  for (const hit of selectHitsForDocs(primaryHits(hits))) {
     const key = `${hit.method} ${hit.path}`;
     const opHits = grouped.get(key) ?? [];
     opHits.push(hit);
@@ -584,6 +727,8 @@ function buildSpec(hits: RecordedHit[]): OpenApiSpec {
     operation['x-scenarios'] = sortScenarios(dedupeScenarios(opHits.map(toScenario)));
   }
 
+  collapseLonelyLeafFolders(paths);
+
   const info = specInfo();
   return {
     openapi: '3.0.3',
@@ -594,11 +739,17 @@ function buildSpec(hits: RecordedHit[]): OpenApiSpec {
       'x-workspace': info.workspace,
     },
     'x-viewer': viewerTreeConfig(),
-    servers: [{ url: getConfig().baseUrl }],
+    servers: specServers(),
     tags: [...tags].sort().map((name) => ({ name })),
     paths,
     components: { securitySchemes },
   };
+}
+
+/** One server entry per env preset; `description` carries the env name for the viewer. */
+function specServers() {
+  const config = getConfig();
+  return serversFromEnvPresets(config.envPresets, config.baseUrl);
 }
 
 function writeJson(filePath: string, value: unknown) {
@@ -712,8 +863,8 @@ function hitSignature(hit: RecordedHit): string {
 
 function hitsStructureSame(existing: RecordedHit[] | null, fresh: RecordedHit[]): boolean {
   if (!existing) return false;
-  const left = existing.filter(isPrimaryHit).map(hitSignature).sort();
-  const right = fresh.filter(isPrimaryHit).map(hitSignature).sort();
+  const left = primaryHits(existing).map(hitSignature).sort();
+  const right = primaryHits(fresh).map(hitSignature).sort();
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
@@ -794,7 +945,7 @@ function applyViewerMeta(spec: OpenApiSpec): OpenApiSpec {
       'x-workspace': info.workspace,
     },
     'x-viewer': viewerTreeConfig(),
-    servers: [{ url: getConfig().baseUrl }],
+    servers: specServers(),
   };
 }
 

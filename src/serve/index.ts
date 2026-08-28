@@ -8,7 +8,7 @@ import { CORS_PREFLIGHT_HEADERS, forwardProxyRequest } from './proxy';
 import { readStrippedOpenApiJson } from './spec-utils';
 import { readViewerEnvStore, writeViewerEnvStore } from './viewer-store';
 
-export { apiDocs, apiDocsHandler, type ApiDocsHandler, type ApiDocsOptions } from './middleware';
+export { apiDocs, apiDocsHandler, docsEnabled, type ApiDocsHandler, type ApiDocsOptions } from './middleware';
 export { getApiDocs, getApiDocUrl, getDocsBasePath, getHtmlPath, getOutDir, getSpecJsonPath } from './paths';
 
 function send(res: http.ServerResponse, status: number, body: string | Buffer, headers: Record<string, string> = {}) {

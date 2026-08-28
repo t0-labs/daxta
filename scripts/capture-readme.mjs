@@ -189,9 +189,9 @@ async function main() {
     <div class="line" style="margin:14px 0 8px"><span class="dim">Test Suites:</span> <span class="green">2 passed</span><span class="dim">, 2 total</span></div>
     <div class="line" style="margin-top:22px"><span class="bold">API docs ready</span></div>
     <div class="line">  <span class="dim">│</span> <span class="green">✔</span> <span class="cyan">http://localhost:3000/api-docs</span> <span class="dim">(48 hits · 12 ops)</span></div>
-    <div class="line">  <span class="dim">│</span> <span class="dim">DAXTA_DOCS=true</span> required on app start</div>
+    <div class="line">  <span class="dim">│</span> <span class="dim">served when NODE_ENV is dev/test/staging</span></div>
     <div class="line" style="margin-top:16px"><span class="bold">Next</span></div>
-    <div class="line">  <span class="cyan">$</span> <span class="bold">DAXTA_DOCS=true pnpm start:dev</span></div>
+    <div class="line">  <span class="cyan">$</span> <span class="bold">pnpm start:dev</span></div>
     <div class="line">    <span class="dim">open http://localhost:3000/api-docs</span></div>
   </body></html>`);
   await term.screenshot({ path: path.join(outDir, 'terminal-docs-ready.png') });

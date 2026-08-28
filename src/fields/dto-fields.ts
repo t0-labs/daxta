@@ -20,9 +20,22 @@ type Ts = typeof import('typescript');
 
 function loadTypescript(): Ts {
   const mod = tsImport as Ts & { default?: Ts };
-  if (mod.ScriptTarget && mod.ScriptTarget.Latest != null) return mod;
-  if (mod.default?.ScriptTarget && mod.default.ScriptTarget.Latest != null) return mod.default;
-  return mod;
+  const candidates: Ts[] = [];
+  if (mod) candidates.push(mod);
+  if (mod.default) candidates.push(mod.default);
+  for (const candidate of candidates) {
+    if (typeof candidate.createSourceFile === 'function') return candidate;
+  }
+  try {
+    // CJS interop: namespace import can expose enums without compiler APIs.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const req = require('typescript') as Ts & { default?: Ts };
+    const fromReq = typeof req.createSourceFile === 'function' ? req : req.default;
+    if (fromReq && typeof fromReq.createSourceFile === 'function') return fromReq;
+  } catch {
+    // ignore — fall through
+  }
+  throw new Error('Could not load TypeScript compiler API (createSourceFile missing)');
 }
 
 const ts = loadTypescript();

@@ -19,6 +19,11 @@ export function getHitsJsonPath(): string {
   return path.join(getOutDir(), 'hits.json');
 }
 
+/** Marker written by the Jest global setup; scopes hit files to the current run. */
+export function getRunMarkerPath(): string {
+  return path.join(getOutDir(), 'run.json');
+}
+
 /** Try-it env/headers — outside outDir so rebuild does not wipe it. */
 export function getViewerStorePath(): string {
   return getConfig().viewerStoreFile;

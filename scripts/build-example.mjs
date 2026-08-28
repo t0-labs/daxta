@@ -45,13 +45,12 @@ const spec = {
     treeLayout: 'role-resource',
     treeSkipParams: true,
     exampleLabelStyle: 'status-title-case',
-    envPresets: {
-      local: { baseUrl: 'http://localhost:3000' },
-      staging: { baseUrl: 'https://api.staging.daxta.example' },
-      production: { baseUrl: 'https://api.daxta.example' },
-    },
   },
-  servers: [{ url: 'http://localhost:3000' }],
+  servers: [
+    { url: 'http://localhost:3000', description: 'local' },
+    { url: 'https://api.staging.daxta.example', description: 'staging' },
+    { url: 'https://api.daxta.example', description: 'production' },
+  ],
   tags: [{ name: 'titles' }, { name: 'copies' }, { name: 'holds' }, { name: 'loans' }, { name: 'rooms' }],
   components: {
     securitySchemes: {
@@ -519,6 +518,64 @@ const spec = {
     },
   },
 };
+
+const STATUS_TEXT = {
+  200: 'OK',
+  201: 'Created',
+  204: 'No Content',
+  400: 'Bad Request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not Found',
+  409: 'Conflict',
+  422: 'Unprocessable Entity',
+};
+
+function exampleKey(name, index) {
+  const slug = String(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${slug || 'example'}-${index + 1}`;
+}
+
+/**
+ * A recorded spec carries every scenario as an OpenAPI example, which is what the
+ * export modal lists. The sample spec only declares `x-scenarios`, so mirror them
+ * into requestBody / responses the same way build-spec does.
+ */
+function materializeExamples(operation, method) {
+  const scenarios = operation['x-scenarios'] || [];
+  scenarios.forEach((item, index) => {
+    const key = exampleKey(item.name, index);
+    const summary = item.name;
+
+    if (item.reqBody !== undefined) {
+      operation.requestBody ??= {
+        required: method === 'post' || method === 'put',
+        content: { 'application/json': { schema: { type: 'object' }, examples: {} } },
+      };
+      operation.requestBody.content['application/json'].examples[key] = { summary, value: item.reqBody };
+    }
+
+    const status = String(item.status);
+    operation.responses ??= {};
+    operation.responses[status] ??= {
+      description: STATUS_TEXT[status] || status,
+      ...(item.resBody === undefined
+        ? {}
+        : { content: { 'application/json': { schema: { type: 'object' }, examples: {} } } }),
+    };
+    const content = operation.responses[status].content;
+    if (content && item.resBody !== undefined) {
+      content['application/json'].examples[key] = { summary, value: item.resBody };
+    }
+  });
+}
+
+for (const pathItem of Object.values(spec.paths)) {
+  for (const [method, operation] of Object.entries(pathItem)) materializeExamples(operation, method);
+}
 
 function pngDataUri(filePath) {
   return `data:image/png;base64,${fs.readFileSync(filePath).toString('base64')}`;

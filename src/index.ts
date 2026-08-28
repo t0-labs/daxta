@@ -1,12 +1,13 @@
 export { defineConfig, getConfig, resolveConfig, normalizeTreeLayout, type DaxtaConfig, type EnvPreset, type TreeLayout, type ExampleLabelStyle, type SpecInfo } from './config';
 export { generateApiDocs, buildDaxtaSpec, buildOpenApi, loadHits, type BuildResult, type Scenario } from './build/build-spec';
 export { rebuildFromDisk, flushAndRebuild, clearPartialMarker, touchPartialMarker } from './build/incremental';
-export { install, flush, clearWorkerHits, getHits, type RecordedHit } from './recorder';
+export { install, flush, clearWorkerHits, clearRunMarker, startRun, readRunId, getHits, type RecordedHit } from './recorder';
 export { dtoRequired, type FieldLocation } from './fields/dto-fields';
 export { buildFieldsFile, writeFieldsFile, readFieldsFile, type FieldsFile } from './fields/export-fields';
 export {
   apiDocs,
   apiDocsHandler,
+  docsEnabled,
   serveApiDocs,
   getApiDocs,
   getApiDocUrl,

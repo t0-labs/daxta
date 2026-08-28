@@ -16,10 +16,10 @@ function printDocsReady(hits: number, operations: number): void {
     console.log('');
     console.log(`  ${bold('API docs ready')}`);
     console.log(`  ${dim('│')} ${green('✔')} ${cyan(url)} ${dim(`(${hits} hits · ${operations} ops)`)}`);
-    console.log(`  ${dim('│')} ${dim('DAXTA_DOCS=on')} required on app start`);
+    console.log(`  ${dim('│')} ${dim('served when NODE_ENV is dev/test/staging')}`);
     console.log('');
     console.log(`  ${bold('Next')}`);
-    console.log(`  ${cyan('$')} ${bold('DAXTA_DOCS=on pnpm start:dev')}`);
+    console.log(`  ${cyan('$')} ${bold('pnpm start:dev')}`);
     console.log(`    ${dim(`open ${url}`)}`);
     console.log('');
   } catch {
@@ -32,6 +32,18 @@ function printDocsReady(hits: number, operations: number): void {
  * During the run we only record hits (superagent hook + flush); no mid-run rebuilds.
  */
 class DaxtaJestReporter {
+  /** Stamp the run before workers start so this run's docs only reflect this run's traffic. */
+  onRunStart(): void {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const recorder = require('../recorder') as { clearWorkerHits: () => void; startRun: () => string };
+      recorder.clearWorkerHits();
+      recorder.startRun();
+    } catch {
+      // never fail the test run
+    }
+  }
+
   onRunComplete(): void {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -56,6 +68,13 @@ class DaxtaJestReporter {
       if (!build.skipped) printDocsReady(build.hits, build.operations);
     } catch {
       // never fail the test run
+    } finally {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        (require('../recorder') as { clearRunMarker: () => void }).clearRunMarker();
+      } catch {
+        // ignore
+      }
     }
   }
 }

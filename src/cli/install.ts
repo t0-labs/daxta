@@ -114,14 +114,13 @@ export default defineConfig({
   docsPath: '/docs',
   treeLayout: 'role-resource',
   treeSkipParams: true,
+  treeCollapseSingle: true,
   exampleLabelStyle: 'status-title-case',
   fieldsFile: '.daxta/out/fields.json',
   viewerStoreFile: '.daxta/viewer-store.json',
-  envPresets: {
-    local: { baseUrl: 'http://localhost:3000' },
-    staging: { baseUrl: 'https://api.staging.example.com' },
-    production: { baseUrl: 'https://api.example.com' },
-  },
+  // Try-it envs are derived from baseUrl / spec servers. Add envPresets only to
+  // override or add extra environments:
+  // envPresets: { staging: { baseUrl: 'https://api.staging.example.com' } },
 });
 `;
   if (!dryRun) writeFileSync(configPath, body);
@@ -150,19 +149,22 @@ function ensureGitignore(cwd: string, dryRun: boolean): string[] {
 
 const ENV_CANDIDATES = ['.env', '.env.local', '.env.development', '.env.development.local'] as const;
 
-/** Ensure DAXTA_DOCS is present (default on). Mirrors uninstall strip. */
-function ensureEnvDaxtaDocs(cwd: string, dryRun: boolean): string {
+/**
+ * Docs are gated on NODE_ENV, so the project needs one. Seed `development` only when
+ * no env file declares it; an existing value is the project's call and stays untouched.
+ */
+function ensureEnvNodeEnv(cwd: string, dryRun: boolean): string {
   for (const name of ENV_CANDIDATES) {
     const filePath = path.join(cwd, name);
     if (!existsSync(filePath)) continue;
-    const text = readFileSync(filePath, 'utf8');
-    if (/^\s*DAXTA_DOCS\s*=/m.test(text)) return `${name} · DAXTA_DOCS already set`;
+    const match = readFileSync(filePath, 'utf8').match(/^\s*NODE_ENV\s*=\s*(\S*)/m);
+    if (match) return `${name} · NODE_ENV=${match[1] || '(empty)'} — kept`;
   }
 
   const targetName = ENV_CANDIDATES.find((name) => existsSync(path.join(cwd, name))) ?? '.env';
   const targetPath = path.join(cwd, targetName);
   const created = !existsSync(targetPath);
-  const line = 'DAXTA_DOCS=on';
+  const line = 'NODE_ENV=development';
   if (!dryRun) {
     if (created) {
       writeFileSync(targetPath, `${line}\n`);
@@ -172,7 +174,7 @@ function ensureEnvDaxtaDocs(cwd: string, dryRun: boolean): string {
       writeFileSync(targetPath, next);
     }
   }
-  return created ? `created ${targetName} (+ DAXTA_DOCS=on)` : `${targetName} += DAXTA_DOCS=on`;
+  return created ? `created ${targetName} (+ ${line})` : `${targetName} += ${line}`;
 }
 
 function runPackageInstall(cwd: string, pm: 'pnpm' | 'yarn' | 'npm', version: string, dryRun: boolean) {
@@ -224,7 +226,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
     }
   }
 
-  phase(2, of, 'Workspace files', 'config, gitignore, API docs env flag');
+  phase(2, of, 'Workspace files', 'config, gitignore, NODE_ENV');
 
   await step(
     'Write daxta.config.ts',
@@ -269,11 +271,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
     { paceMs, n: 2, of },
   );
 
-  await step(
-    'Set DAXTA_DOCS in env',
-    () => ensureEnvDaxtaDocs(cwd, dryRun),
-    { paceMs, n: 2, of },
-  );
+  await step('Ensure NODE_ENV in env', () => ensureEnvNodeEnv(cwd, dryRun), { paceMs, n: 2, of });
 
   phase(3, of, 'Nest', 'apiDocs(app) on the HTTP bootstrap');
 
@@ -386,7 +384,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
 
   box('Ready', [
     `${c.mint('✔')}  ${c.bold(project)}  ·  DAxTA ${c.gold(`v${version}`)}`,
-    `${c.dim('api docs')} ${c.ice('/docs')}  ·  ${c.ice('DAXTA_DOCS=on')}`,
+    `${c.dim('api docs')} ${c.ice('/docs')}  ·  on when ${c.ice('NODE_ENV')} is dev/test/staging`,
     `${c.dim('tests')}    same script — titles first, spec after`,
     `${c.dim('retune')}   ${c.ice('daxta tree')}  ·  ${c.ice('daxta titles')}`,
   ]);
@@ -399,7 +397,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
     },
     {
       cmd: `${pm} start:dev`,
-      why: 'open /docs (DAXTA_DOCS=on already in .env)',
+      why: 'open /docs — served outside production',
     },
   ]);
 }

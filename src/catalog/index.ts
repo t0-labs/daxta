@@ -40,7 +40,7 @@ const METHOD_ALIASES: Record<string, string[]> = {
 };
 
 const CASE_SECTION_RE =
-  /^(POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\s+/i;
+  /^((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\s+/i;
 
 export function declaredMethods(test?: string): string[] | null {
   if (!test) return null;
@@ -98,6 +98,7 @@ export function viewerTreeConfig() {
     docsPath: config.docsPath,
     treeLayout: normalizeTreeLayout(config.treeLayout),
     treeSkipParams: config.treeSkipParams !== false,
+    treeCollapseSingle: config.treeCollapseSingle !== false,
     treePathOverrides: config.treePathOverrides,
     exampleLabelStyle: config.exampleLabelStyle ?? 'status-title-case',
     envPresets: config.envPresets,
@@ -140,6 +141,8 @@ export const CASE_GROUP_ORDER: string[] = [
 export function caseGroup(test?: string): string {
   if (!test) return 'Other';
   if (/SEMANTIC ERROR CASES\s*-\s*AUTH/i.test(test)) return 'SEMANTIC ERROR CASES - AUTH';
+  // "FALSE POSITIVE CASES" is the same bucket the viewer renders as "False positive cases".
+  if (/FALSE\s+POSITIVE CASES/i.test(test)) return 'SEMANTIC ERROR CASES';
   if (/POSITIVE CASES/i.test(test)) return 'POSITIVE CASES';
   if (/SEMANTIC ERROR CASES/i.test(test)) return 'SEMANTIC ERROR CASES';
   if (/INVALID CASES/i.test(test)) return 'INVALID CASES';
@@ -150,7 +153,7 @@ export function caseGroup(test?: string): string {
 export function caseSectionLabel(test?: string): string {
   if (!test) return '';
   const match = test.match(
-    /(POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)/i,
+    /((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)/i,
   );
   return match?.[1]?.toUpperCase() ?? '';
 }
@@ -179,24 +182,34 @@ export function apiTitle(test?: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Drop a describe-level qualifier that only precedes the case section, e.g.
+ * "(solution partner) INVALID CASES field - should not be empty". The section itself
+ * is already shown as the example's group, so both are redundant in the label.
+ */
+function stripSectionPrefix(value: string): string {
+  let rest = value.replace(CASE_SECTION_RE, '').trim();
+  const qualifier = rest.match(/^\(([^)]*)\)\s*/);
+  if (qualifier && CASE_SECTION_RE.test(rest.slice(qualifier[0].length))) {
+    rest = rest.slice(qualifier[0].length).replace(CASE_SECTION_RE, '').trim();
+  }
+  return rest;
+}
+
 export function caseName(test?: string): string {
   if (!test) return 'example';
   let rest = test
     .replace(new RegExp(`^.+?\\s+[—–-]\\s+(?:${HTTP_VERBS})\\s+\\S+\\s*`, 'i'), '')
-    .replace(new RegExp(`^.*?\\[(?:${HTTP_VERBS})\\]\\s*(?:\\(integration\\))?\\s*`, 'i'), '')
-    .replace(CASE_SECTION_RE, '')
-    .trim();
+    .replace(new RegExp(`^.*?\\[(?:${HTTP_VERBS})\\]\\s*(?:\\(integration\\))?\\s*`, 'i'), '');
+  rest = stripSectionPrefix(rest.trim());
 
   // "Admin Find One Basket By Id API - GET /path POSITIVE CASES returns…"
-  rest = rest
-    .replace(/^.+?\bAPI\s*[-–—]\s*(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+/i, '')
-    .replace(CASE_SECTION_RE, '')
-    .trim();
+  rest = stripSectionPrefix(rest.replace(/^.+?\bAPI\s*[-–—]\s*(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+/i, ''));
 
   // Drop leading human title if still present before the case text
   const title = apiTitle(test);
   if (title && rest.startsWith(title)) {
-    rest = rest.slice(title.length).replace(/^[-–—\s]+/, '').replace(CASE_SECTION_RE, '').trim();
+    rest = stripSectionPrefix(rest.slice(title.length).replace(/^[-–—\s]+/, ''));
   }
 
   return rest || test;

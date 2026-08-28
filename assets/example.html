@@ -111,6 +111,10 @@
         max-width: 100%;
       }
       .ep-name {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
         font-size: 14px;
         font-weight: 600;
         letter-spacing: -0.02em;
@@ -118,6 +122,18 @@
         overflow: hidden;
         text-overflow: ellipsis;
         color: var(--obsidian);
+      }
+      .ep-status {
+        flex: none;
+        font: 600 14px/1.4 var(--mono);
+        letter-spacing: -0.02em;
+        color: var(--ok);
+      }
+      .ep-status.err { color: var(--err); }
+      .ep-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .prefix-bar {
         display: flex;
@@ -519,8 +535,7 @@
         margin-top: 8px;
       }
       .env-kv.base-url .env-cell[data-field="key"] {
-        opacity: 0.7;
-        pointer-events: none;
+        font-weight: 600;
       }
       .env-add {
         height: 32px;
@@ -777,15 +792,43 @@
       .nav-ex-group.warn > .nav-ex-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
       .nav-ex-group.omit > .nav-ex-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
       .nav-ex-group.err > .nav-ex-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
+      .nav-ex-group.collapsed > .nav-ex-items { display: none; }
       .nav-ex-group-label {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: 6px 0 2px 4px;
+        width: 100%;
+        border: 0;
+        border-radius: 2px;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+        padding: 6px 4px 2px 4px;
         font: 600 10px/1.2 var(--sans);
         letter-spacing: 0.04em;
         color: var(--charcoal);
+      }
+      .nav-ex-group-label:hover { background: var(--inset); }
+      .nav-ex-group-head {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+      .nav-ex-group-label .chev {
+        width: 6px;
+        height: 6px;
+        flex: none;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(45deg);
+        opacity: 0.7;
+        transition: transform 0.15s ease;
+      }
+      .nav-ex-group.collapsed > .nav-ex-group-label .chev {
+        transform: rotate(-45deg);
+        margin-top: -2px;
       }
       .nav-ex-group-label.ok { color: var(--ok); }
       .nav-ex-group-label.warn { color: var(--warn); }
@@ -902,28 +945,160 @@
       .export-toolbar {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        align-items: center;
+        gap: 6px;
         padding: 10px 20px;
         border-bottom: 1px solid var(--hairline);
       }
+      .export-tool-label {
+        font: 600 10px/1.6 var(--sans);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--stone);
+        margin-right: 2px;
+      }
+      .export-tool-sep {
+        width: 1px;
+        height: 16px;
+        margin: 0 4px;
+        background: var(--hairline);
+      }
+      .export-tool-sep[hidden] { display: none; }
+      .export-tool-chips {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-width: 0;
+      }
+      .section-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border: 1px solid var(--hairline);
+        border-radius: 999px;
+        background: var(--paper);
+        color: var(--charcoal);
+        font: 500 12px/1.5 var(--sans);
+        cursor: pointer;
+        transition: border-color 0.12s ease, background 0.12s ease;
+      }
+      .section-chip .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        flex: none;
+      }
+      .section-chip.ok .dot { background: var(--ok); }
+      .section-chip.warn .dot { background: var(--warn); }
+      .section-chip.omit .dot { background: var(--accent); }
+      .section-chip.err .dot { background: var(--err); }
+      .section-chip.plain { color: var(--obsidian); }
+      .section-chip:hover { background: var(--inset); }
+      .section-chip .dot { opacity: 0.35; }
+      .section-chip.on .dot,
+      .section-chip.part .dot { opacity: 1; }
+      .section-chip.part .dot {
+        background: none;
+        border: 1.5px solid currentColor;
+      }
+      .section-chip.on { color: var(--obsidian); }
+      .section-chip.ok.on { border-color: color-mix(in srgb, var(--ok) 55%, var(--hairline)); background: color-mix(in srgb, var(--ok) 10%, var(--paper)); }
+      .section-chip.warn.on { border-color: color-mix(in srgb, var(--warn) 55%, var(--hairline)); background: color-mix(in srgb, var(--warn) 10%, var(--paper)); }
+      .section-chip.omit.on { border-color: color-mix(in srgb, var(--accent) 55%, var(--hairline)); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
+      .section-chip.err.on { border-color: color-mix(in srgb, var(--err) 55%, var(--hairline)); background: color-mix(in srgb, var(--err) 10%, var(--paper)); }
+      .section-chip.ok.part .dot { color: var(--ok); }
+      .section-chip.warn.part .dot { color: var(--warn); }
+      .section-chip.omit.part .dot { color: var(--accent); }
+      .section-chip.err.part .dot { color: var(--err); }
       .export-body {
         flex: 1;
         overflow: auto;
         padding: 8px 12px 16px;
       }
+      .export-folder { margin: 0; }
+      .export-folder.collapsed > .export-folder-children { display: none; }
+      .export-folder-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 4px;
+        border: 0;
+        background: none;
+        text-align: left;
+        font: 500 12px/1.4 var(--sans);
+        color: var(--charcoal);
+        cursor: pointer;
+      }
+      .export-folder-head:hover { background: var(--inset); }
+      .export-folder-head .chev {
+        width: 6px;
+        height: 6px;
+        flex: none;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(45deg);
+        margin-top: -3px;
+        opacity: 0.7;
+        transition: transform 0.15s ease;
+      }
+      .export-folder.collapsed > .export-folder-head .chev {
+        transform: rotate(-45deg);
+        margin-top: -2px;
+      }
+      .export-folder-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .export-folder-children {
+        margin-left: 7px;
+        padding-left: 8px;
+        border-left: 1px solid var(--hairline);
+      }
       .export-op {
-        padding: 10px 8px;
-        border-bottom: 1px solid var(--hairline);
+        padding: 0;
       }
       .export-op:last-child { border-bottom: 0; }
+      .export-op.collapsed > .export-op-groups { display: none; }
       .export-op-title {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 8px;
+        width: 100%;
+        padding: 6px 4px;
+        border: 0;
+        background: none;
+        text-align: left;
         font-size: 12px;
         color: var(--obsidian);
+        cursor: pointer;
       }
+      .export-op-title:hover { background: var(--inset); }
+      .export-op-title .chev {
+        width: 6px;
+        height: 6px;
+        flex: none;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(45deg);
+        margin-top: -3px;
+        opacity: 0.7;
+        transition: transform 0.15s ease;
+      }
+      .export-op.collapsed > .export-op-title .chev {
+        transform: rotate(-45deg);
+        margin-top: -2px;
+      }
+      .export-op-count {
+        margin-left: auto;
+        flex: none;
+        font: 600 10px/1.4 var(--mono);
+        color: var(--stone);
+      }
+      .export-op-groups { padding: 2px 0 8px; }
       .export-op-title .path {
         font-family: var(--mono);
         font-size: 11px;
@@ -931,6 +1106,58 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .export-group { margin: 0 0 6px; }
+      .export-group:last-child { margin-bottom: 0; }
+      .export-group-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 4px 4px 2px;
+        font: 600 10px/1.2 var(--sans);
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        color: var(--charcoal);
+      }
+      .export-group-head.ok { color: var(--ok); }
+      .export-group-head.warn { color: var(--warn); }
+      .export-group-head.omit { color: var(--accent); }
+      .export-group-head.err { color: var(--err); }
+      .export-group-count {
+        font: 600 10px/1.4 var(--mono);
+        color: var(--stone);
+      }
+      .export-group-items {
+        margin-left: 8px;
+        padding-left: 8px;
+        border-left: 1px solid var(--hairline);
+      }
+      .export-group.collapsed > .export-group-items { display: none; }
+      .export-group-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+      }
+      .export-group-toggle .chev {
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(45deg);
+        margin-top: -3px;
+        opacity: 0.7;
+        transition: transform 0.15s ease;
+      }
+      .export-group.collapsed .export-group-toggle .chev {
+        transform: rotate(-45deg);
+        margin-top: -2px;
       }
       .export-ex {
         display: flex;
@@ -1533,14 +1760,16 @@
         <div class="export-options">
           <label class="export-check">
             <input type="checkbox" id="export-include-tryit" checked />
-            <span>Include env + headers <span style="color:var(--stone)">(Collection uses <code>{{baseUrl}}</code> / <code>{{vars}}</code> + environment file)</span></span>
+            <span>Include env + headers <span style="color:var(--stone)">(Collection uses <code id="export-base-var">{{baseUrl}}</code> / <code>{{vars}}</code> + environment file)</span></span>
           </label>
           <div class="export-tryit-meta" id="export-tryit-meta">—</div>
         </div>
         <div class="export-toolbar">
-          <button type="button" class="btn sm" id="export-all">All</button>
-          <button type="button" class="btn sm" id="export-none">None</button>
-          <button type="button" class="btn sm" id="export-success">Success only</button>
+          <span class="export-tool-label">Examples</span>
+          <button type="button" class="section-chip plain" id="export-all">All</button>
+          <button type="button" class="section-chip plain" id="export-none">None</button>
+          <span class="export-tool-sep" id="export-sections-sep" hidden></span>
+          <span class="export-tool-chips" id="export-sections"></span>
         </div>
         <div class="export-body" id="export-body"></div>
         <div class="export-foot">
@@ -1570,7 +1799,7 @@
       </div>
     </div>
     <script>
-      window.__SPEC__ = {"openapi":"3.0.3","info":{"title":"DAxTA","version":"2.1.0","description":"Generated from observed test execution","x-workspace":"daxta"},"x-viewer":{"workspace":"daxta","baseUrl":"http://localhost:3000","docsPath":"/api-docs","treeLayout":"role-resource","treeSkipParams":true,"exampleLabelStyle":"status-title-case","envPresets":{"local":{"baseUrl":"http://localhost:3000"},"staging":{"baseUrl":"https://api.staging.daxta.example"},"production":{"baseUrl":"https://api.daxta.example"}}},"servers":[{"url":"http://localhost:3000"}],"tags":[{"name":"titles"},{"name":"copies"},{"name":"holds"},{"name":"loans"},{"name":"rooms"}],"components":{"securitySchemes":{"staffId":{"type":"apiKey","in":"header","name":"x-staff-id"},"patronId":{"type":"apiKey","in":"header","name":"x-patron-id"},"authorization":{"type":"apiKey","in":"header","name":"authorization"}}},"paths":{"/v1/staff/titles":{"post":{"tags":["titles"],"summary":"Create Title","security":[{"staffId":[]}],"x-tree-segments":["v1","titles","staff"],"x-docs":{"title":"Create Title","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"isbn","in":"body","type":"string","required":true},{"name":"name","in":"body","type":"string","required":true},{"name":"copies","in":"body","type":"array\u003cobject>","required":false},{"name":"copies[].count","in":"body","type":"integer","required":false},{"name":"copies[].binding","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Creates title when counted paperback copies are provided","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice","copies":[{"count":4}]},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01PP","isbn":"9780141439518","copyCount":4}}},{"name":"Creates title when hardcover binding specs are provided","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice","copies":[{"count":2,"binding":"hardcover"}]},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01PP","bindings":["hardcover"]}}},{"name":"Returns error when isbn already exists","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"ISBN already exists"}},{"name":"Returns error when publisher catalog has no match","group":"SEMANTIC ERROR CASES","status":404,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"0000000000000","name":"Unknown Volume"},"resBody":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"Publisher catalog has no match"}},{"name":"Returns error when isbn is an array","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":["9780141439518"],"name":"Pride and Prejudice"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"isbn should not be array"}},{"name":"Returns error when isbn has invalid format","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"abc","name":"Pride and Prejudice"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"isbn has invalid format"}},{"name":"Creates title when copies are omitted","group":"OMITTED CASES","status":201,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780061120084","name":"To Kill a Mockingbird"},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01MK","copyCount":0}}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{"content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice"},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"Unauthorized"}}]}},"/v1/staff/copies":{"get":{"tags":["copies"],"summary":"List Copies","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"List Copies","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"status","in":"query","type":"string","required":false},{"name":"page","in":"query","type":"integer","required":false},{"name":"limit","in":"query","type":"integer","required":false}]},"x-scenarios":[{"name":"Lists copies when query is valid","group":"POSITIVE CASES","status":200,"pathParams":{},"query":{"status":"SHELVED","page":"1","limit":"20"},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[{"id":"cpy_01AA","barcode":"LUM-1001","binding":"paperback","status":"SHELVED"},{"id":"cpy_01AB","barcode":"LUM-1002","binding":"hardcover","status":"SHELVED"}],"meta":{"page":1,"limit":20,"total":2}}},{"name":"Lists copies when filters are omitted","group":"OMITTED CASES","status":200,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[],"meta":{"page":1,"limit":20,"total":0}}},{"name":"Returns error when page is not a number","group":"INVALID CASES","status":400,"pathParams":{},"query":{"page":"first"},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"page must be an integer"}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}]}},"/v1/staff/copies/{copyId}":{"get":{"tags":["copies"],"summary":"Get Copy","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"Get Copy","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"copyId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Returns copy when id exists","group":"POSITIVE CASES","status":200,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"cpy_01AA","barcode":"LUM-1001","binding":"paperback","status":"SHELVED","branch":"river-north"}}},{"name":"Returns error when copy does not exist","group":"SEMANTIC ERROR CASES","status":404,"pathParams":{"copyId":"cpy_missing"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy not found"}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}]},"patch":{"tags":["copies"],"summary":"Update Copy","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"Update Copy","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"copyId","in":"path","type":"string","required":true},{"name":"status","in":"body","type":"string","required":false},{"name":"shelf","in":"body","type":"string","required":false},{"name":"condition.notes","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Updates copy when status is valid","group":"POSITIVE CASES","status":200,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"status":"REPAIR","shelf":"B-14","condition":{"notes":"loose spine"}},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"cpy_01AA","status":"REPAIR","shelf":"B-14"}}},{"name":"Returns error when status is unknown","group":"INVALID CASES","status":400,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"status":"LOST-IN-SPACE"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"status must be one of SHELVED, LOANED, REPAIR, WITHDRAWN"}},{"name":"Returns error when copy is already withdrawn","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{"copyId":"cpy_withdrawn"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"status":"SHELVED"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Withdrawn copies cannot be reshelved"}}]},"delete":{"tags":["copies"],"summary":"Delete Copy","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"Delete Copy","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"copyId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Deletes copy when it is unused","group":"POSITIVE CASES","status":204,"pathParams":{"copyId":"cpy_01AB"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"}},{"name":"Returns error when copy is on loan","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy is on loan"}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{"copyId":"cpy_01AB"},"query":{},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}]}},"/v1/patron/holds":{"post":{"tags":["holds"],"summary":"Create Hold","security":[{"patronId":[]}],"x-tree-segments":["v1","holds","patron"],"x-docs":{"title":"Create Hold","fields":[{"name":"x-patron-id","in":"header","type":"string","required":true},{"name":"titleId","in":"body","type":"string","required":true},{"name":"pickup.branch","in":"body","type":"string","required":true},{"name":"pickup.by","in":"body","type":"string","required":false},{"name":"notes","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Creates hold when pickup branch is open","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"river-north","by":"2026-09-01"},"notes":"large print if available"},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","status":"QUEUED","position":2}}},{"name":"Returns error when patron already holds this title","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"river-north"}},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"A hold already exists for this title"}},{"name":"Returns error when branch code is invalid","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"moon-base"}},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"pickup.branch must be a known branch"}},{"name":"Returns error when titleId is omitted","group":"OMITTED CASES","status":400,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"pickup":{"branch":"river-north"}},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"titleId should not be empty"}},{"name":"Returns error when x-patron-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{"content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"river-north"}},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}]}},"/v1/patron/holds/{holdId}":{"get":{"tags":["holds"],"summary":"Get Hold","security":[{"patronId":[]}],"x-tree-segments":["v1","holds","patron"],"x-docs":{"title":"Get Hold","fields":[{"name":"x-patron-id","in":"header","type":"string","required":true},{"name":"holdId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Returns hold when it belongs to patron","group":"POSITIVE CASES","status":200,"pathParams":{"holdId":"hld_01PP"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","status":"QUEUED","titleId":"ttl_01PP"}}},{"name":"Returns error when hold belongs to another patron","group":"SEMANTIC ERROR CASES","status":403,"pathParams":{"holdId":"hld_other"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6"},"resBody":{"statusCode":403,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Forbidden"}}]},"put":{"tags":["holds"],"summary":"Replace Hold","security":[{"patronId":[]}],"x-tree-segments":["v1","holds","patron"],"x-docs":{"title":"Replace Hold","fields":[{"name":"x-patron-id","in":"header","type":"string","required":true},{"name":"holdId","in":"path","type":"string","required":true},{"name":"titleId","in":"body","type":"string","required":true},{"name":"pickup.branch","in":"body","type":"string","required":true},{"name":"pickup.by","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Replaces hold when pickup branch is valid","group":"POSITIVE CASES","status":200,"pathParams":{"holdId":"hld_01PP"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"west-end","by":"2026-09-08"}},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","pickup":{"branch":"west-end"},"status":"QUEUED"}}},{"name":"Returns error when hold is already ready","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{"holdId":"hld_ready"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"west-end"}},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Ready holds cannot be replaced"}}]}},"/v1/loans":{"get":{"tags":["loans"],"summary":"List Loans","security":[{"authorization":[]}],"x-tree-segments":["v1","loans"],"x-docs":{"title":"List Loans","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"from","in":"query","type":"string","required":false},{"name":"to","in":"query","type":"string","required":false},{"name":"status","in":"query","type":"string","required":false},{"name":"cursor","in":"query","type":"string","required":false}]},"x-scenarios":[{"name":"Lists loans when date range is valid","group":"POSITIVE CASES","status":200,"pathParams":{},"query":{"from":"2026-08-01","to":"2026-08-22","status":"OPEN"},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[{"id":"lon_9f2a","copyId":"cpy_01AA","dueOn":"2026-09-05","status":"OPEN"}],"nextCursor":null}},{"name":"Returns error when from is after to","group":"INVALID CASES","status":400,"pathParams":{},"query":{"from":"2026-08-22","to":"2026-08-01"},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"from must be before to"}},{"name":"Returns error when authorization is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{"from":"2026-08-01","to":"2026-08-22"},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}]},"post":{"tags":["loans"],"summary":"Create Loan","security":[{"authorization":[]}],"x-tree-segments":["v1","loans"],"x-docs":{"title":"Create Loan","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"copyId","in":"body","type":"string","required":true},{"name":"patronId","in":"body","type":"string","required":true},{"name":"days","in":"body","type":"integer","required":true},{"name":"idempotencyKey","in":"body","type":"string","required":true},{"name":"notice.email","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Creates loan when copy is shelved","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_88","notice":{"email":"reader@example.com"}},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","status":"OPEN","dueOn":"2026-09-12"}}},{"name":"Returns open loan when idempotency key is reused","group":"POSITIVE CASES","status":200,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_88"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","status":"OPEN","dueOn":"2026-09-12"}}},{"name":"Returns error when copy is in repair","group":"SEMANTIC ERROR CASES","status":422,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_repair","patronId":"ptr_3b18d0f6","days":14,"idempotencyKey":"chk_89"},"resBody":{"statusCode":422,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy is not available for loan"}},{"name":"Returns error when days is negative","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":-1,"idempotencyKey":"chk_90"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"days must be a positive integer"}},{"name":"Returns error when patronId is omitted","group":"OMITTED CASES","status":400,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","days":21,"idempotencyKey":"chk_91"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"patronId should not be empty"}},{"name":"Returns error when authorization is expired","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{"authorization":"Bearer expired","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_92"},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}]}},"/v1/loans/{loanId}":{"get":{"tags":["loans"],"summary":"Get Loan","security":[{"authorization":[]}],"x-tree-segments":["v1","loans"],"x-docs":{"title":"Get Loan","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"loanId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Returns loan when it exists","group":"POSITIVE CASES","status":200,"pathParams":{"loanId":"lon_9f2a"},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","status":"OPEN","dueOn":"2026-09-12"}}},{"name":"Returns error when loan does not exist","group":"SEMANTIC ERROR CASES","status":404,"pathParams":{"loanId":"lon_missing"},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Loan not found"}}]}},"/v1/rooms/bookings":{"post":{"tags":["rooms"],"summary":"Create Booking","security":[{"authorization":[]}],"x-tree-segments":["v1","rooms","bookings"],"x-docs":{"title":"Create Booking","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"roomId","in":"body","type":"string","required":true},{"name":"slot","in":"body","type":"string","required":true},{"name":"seats","in":"body","type":"integer","required":false}]},"x-scenarios":[{"name":"Creates booking when room is free","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_quiet","slot":"2026-08-24T10:00:00Z","seats":4},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"bkg_9f2a","roomId":"rm_quiet","status":"CONFIRMED"}}},{"name":"Returns error when slot overlaps an existing booking","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_quiet","slot":"2026-08-24T10:00:00Z"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Room is already booked for this slot"}},{"name":"Returns error when slot is not ISO-8601","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_quiet","slot":"tomorrow-morning"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"slot must be an ISO-8601 datetime"}},{"name":"Creates booking when seats are omitted","group":"OMITTED CASES","status":201,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_map","slot":"2026-08-24T15:00:00Z"},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"bkg_map","roomId":"rm_map","seats":1,"status":"CONFIRMED"}}}]}}}};
+      window.__SPEC__ = {"openapi":"3.0.3","info":{"title":"DAxTA","version":"2.1.0","description":"Generated from observed test execution","x-workspace":"daxta"},"x-viewer":{"workspace":"daxta","baseUrl":"http://localhost:3000","docsPath":"/api-docs","treeLayout":"role-resource","treeSkipParams":true,"exampleLabelStyle":"status-title-case"},"servers":[{"url":"http://localhost:3000","description":"local"},{"url":"https://api.staging.daxta.example","description":"staging"},{"url":"https://api.daxta.example","description":"production"}],"tags":[{"name":"titles"},{"name":"copies"},{"name":"holds"},{"name":"loans"},{"name":"rooms"}],"components":{"securitySchemes":{"staffId":{"type":"apiKey","in":"header","name":"x-staff-id"},"patronId":{"type":"apiKey","in":"header","name":"x-patron-id"},"authorization":{"type":"apiKey","in":"header","name":"authorization"}}},"paths":{"/v1/staff/titles":{"post":{"tags":["titles"],"summary":"Create Title","security":[{"staffId":[]}],"x-tree-segments":["v1","titles","staff"],"x-docs":{"title":"Create Title","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"isbn","in":"body","type":"string","required":true},{"name":"name","in":"body","type":"string","required":true},{"name":"copies","in":"body","type":"array\u003cobject>","required":false},{"name":"copies[].count","in":"body","type":"integer","required":false},{"name":"copies[].binding","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Creates title when counted paperback copies are provided","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice","copies":[{"count":4}]},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01PP","isbn":"9780141439518","copyCount":4}}},{"name":"Creates title when hardcover binding specs are provided","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice","copies":[{"count":2,"binding":"hardcover"}]},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01PP","bindings":["hardcover"]}}},{"name":"Returns error when isbn already exists","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"ISBN already exists"}},{"name":"Returns error when publisher catalog has no match","group":"SEMANTIC ERROR CASES","status":404,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"0000000000000","name":"Unknown Volume"},"resBody":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"Publisher catalog has no match"}},{"name":"Returns error when isbn is an array","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":["9780141439518"],"name":"Pride and Prejudice"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"isbn should not be array"}},{"name":"Returns error when isbn has invalid format","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"abc","name":"Pride and Prejudice"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"isbn has invalid format"}},{"name":"Creates title when copies are omitted","group":"OMITTED CASES","status":201,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"isbn":"9780061120084","name":"To Kill a Mockingbird"},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01MK","copyCount":0}}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{"content-type":"application/json"},"reqBody":{"isbn":"9780141439518","name":"Pride and Prejudice"},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"Unauthorized"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-title-when-counted-paperback-copies-are-provided-1":{"summary":"Creates title when counted paperback copies are provided","value":{"isbn":"9780141439518","name":"Pride and Prejudice","copies":[{"count":4}]}},"creates-title-when-hardcover-binding-specs-are-provided-2":{"summary":"Creates title when hardcover binding specs are provided","value":{"isbn":"9780141439518","name":"Pride and Prejudice","copies":[{"count":2,"binding":"hardcover"}]}},"returns-error-when-isbn-already-exists-3":{"summary":"Returns error when isbn already exists","value":{"isbn":"9780141439518","name":"Pride and Prejudice"}},"returns-error-when-publisher-catalog-has-no-match-4":{"summary":"Returns error when publisher catalog has no match","value":{"isbn":"0000000000000","name":"Unknown Volume"}},"returns-error-when-isbn-is-an-array-5":{"summary":"Returns error when isbn is an array","value":{"isbn":["9780141439518"],"name":"Pride and Prejudice"}},"returns-error-when-isbn-has-invalid-format-6":{"summary":"Returns error when isbn has invalid format","value":{"isbn":"abc","name":"Pride and Prejudice"}},"creates-title-when-copies-are-omitted-7":{"summary":"Creates title when copies are omitted","value":{"isbn":"9780061120084","name":"To Kill a Mockingbird"}},"returns-error-when-x-staff-id-is-missing-8":{"summary":"Returns error when x-staff-id is missing","value":{"isbn":"9780141439518","name":"Pride and Prejudice"}}}}}},"responses":{"201":{"description":"Created","content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-title-when-counted-paperback-copies-are-provided-1":{"summary":"Creates title when counted paperback copies are provided","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01PP","isbn":"9780141439518","copyCount":4}}},"creates-title-when-hardcover-binding-specs-are-provided-2":{"summary":"Creates title when hardcover binding specs are provided","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01PP","bindings":["hardcover"]}}},"creates-title-when-copies-are-omitted-7":{"summary":"Creates title when copies are omitted","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":null,"data":{"id":"ttl_01MK","copyCount":0}}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-isbn-is-an-array-5":{"summary":"Returns error when isbn is an array","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"isbn should not be array"}},"returns-error-when-isbn-has-invalid-format-6":{"summary":"Returns error when isbn has invalid format","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"isbn has invalid format"}}}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-x-staff-id-is-missing-8":{"summary":"Returns error when x-staff-id is missing","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"Unauthorized"}}}}}},"404":{"description":"Not Found","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-publisher-catalog-has-no-match-4":{"summary":"Returns error when publisher catalog has no match","value":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"Publisher catalog has no match"}}}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-isbn-already-exists-3":{"summary":"Returns error when isbn already exists","value":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","path":"/v1/staff/titles","error":"ISBN already exists"}}}}}}}}},"/v1/staff/copies":{"get":{"tags":["copies"],"summary":"List Copies","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"List Copies","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"status","in":"query","type":"string","required":false},{"name":"page","in":"query","type":"integer","required":false},{"name":"limit","in":"query","type":"integer","required":false}]},"x-scenarios":[{"name":"Lists copies when query is valid","group":"POSITIVE CASES","status":200,"pathParams":{},"query":{"status":"SHELVED","page":"1","limit":"20"},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[{"id":"cpy_01AA","barcode":"LUM-1001","binding":"paperback","status":"SHELVED"},{"id":"cpy_01AB","barcode":"LUM-1002","binding":"hardcover","status":"SHELVED"}],"meta":{"page":1,"limit":20,"total":2}}},{"name":"Lists copies when filters are omitted","group":"OMITTED CASES","status":200,"pathParams":{},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[],"meta":{"page":1,"limit":20,"total":0}}},{"name":"Returns error when page is not a number","group":"INVALID CASES","status":400,"pathParams":{},"query":{"page":"first"},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"page must be an integer"}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}],"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"lists-copies-when-query-is-valid-1":{"summary":"Lists copies when query is valid","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[{"id":"cpy_01AA","barcode":"LUM-1001","binding":"paperback","status":"SHELVED"},{"id":"cpy_01AB","barcode":"LUM-1002","binding":"hardcover","status":"SHELVED"}],"meta":{"page":1,"limit":20,"total":2}}},"lists-copies-when-filters-are-omitted-2":{"summary":"Lists copies when filters are omitted","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[],"meta":{"page":1,"limit":20,"total":0}}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-page-is-not-a-number-3":{"summary":"Returns error when page is not a number","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"page must be an integer"}}}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-x-staff-id-is-missing-4":{"summary":"Returns error when x-staff-id is missing","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}}}}}}}},"/v1/staff/copies/{copyId}":{"get":{"tags":["copies"],"summary":"Get Copy","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"Get Copy","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"copyId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Returns copy when id exists","group":"POSITIVE CASES","status":200,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"cpy_01AA","barcode":"LUM-1001","binding":"paperback","status":"SHELVED","branch":"river-north"}}},{"name":"Returns error when copy does not exist","group":"SEMANTIC ERROR CASES","status":404,"pathParams":{"copyId":"cpy_missing"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy not found"}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}],"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-copy-when-id-exists-1":{"summary":"Returns copy when id exists","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"cpy_01AA","barcode":"LUM-1001","binding":"paperback","status":"SHELVED","branch":"river-north"}}}}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-x-staff-id-is-missing-3":{"summary":"Returns error when x-staff-id is missing","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}}}}},"404":{"description":"Not Found","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-copy-does-not-exist-2":{"summary":"Returns error when copy does not exist","value":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy not found"}}}}}}}},"patch":{"tags":["copies"],"summary":"Update Copy","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"Update Copy","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"copyId","in":"path","type":"string","required":true},{"name":"status","in":"body","type":"string","required":false},{"name":"shelf","in":"body","type":"string","required":false},{"name":"condition.notes","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Updates copy when status is valid","group":"POSITIVE CASES","status":200,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"status":"REPAIR","shelf":"B-14","condition":{"notes":"loose spine"}},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"cpy_01AA","status":"REPAIR","shelf":"B-14"}}},{"name":"Returns error when status is unknown","group":"INVALID CASES","status":400,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"status":"LOST-IN-SPACE"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"status must be one of SHELVED, LOANED, REPAIR, WITHDRAWN"}},{"name":"Returns error when copy is already withdrawn","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{"copyId":"cpy_withdrawn"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4","content-type":"application/json"},"reqBody":{"status":"SHELVED"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Withdrawn copies cannot be reshelved"}}],"requestBody":{"required":false,"content":{"application/json":{"schema":{"type":"object"},"examples":{"updates-copy-when-status-is-valid-1":{"summary":"Updates copy when status is valid","value":{"status":"REPAIR","shelf":"B-14","condition":{"notes":"loose spine"}}},"returns-error-when-status-is-unknown-2":{"summary":"Returns error when status is unknown","value":{"status":"LOST-IN-SPACE"}},"returns-error-when-copy-is-already-withdrawn-3":{"summary":"Returns error when copy is already withdrawn","value":{"status":"SHELVED"}}}}}},"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"updates-copy-when-status-is-valid-1":{"summary":"Updates copy when status is valid","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"cpy_01AA","status":"REPAIR","shelf":"B-14"}}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-status-is-unknown-2":{"summary":"Returns error when status is unknown","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"status must be one of SHELVED, LOANED, REPAIR, WITHDRAWN"}}}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-copy-is-already-withdrawn-3":{"summary":"Returns error when copy is already withdrawn","value":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Withdrawn copies cannot be reshelved"}}}}}}}},"delete":{"tags":["copies"],"summary":"Delete Copy","security":[{"staffId":[]}],"x-tree-segments":["v1","copies","staff"],"x-docs":{"title":"Delete Copy","fields":[{"name":"x-staff-id","in":"header","type":"string","required":true},{"name":"copyId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Deletes copy when it is unused","group":"POSITIVE CASES","status":204,"pathParams":{"copyId":"cpy_01AB"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"}},{"name":"Returns error when copy is on loan","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{"copyId":"cpy_01AA"},"query":{},"headers":{"x-staff-id":"stf_7c91e2a4"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy is on loan"}},{"name":"Returns error when x-staff-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{"copyId":"cpy_01AB"},"query":{},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}],"responses":{"204":{"description":"No Content"},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-x-staff-id-is-missing-3":{"summary":"Returns error when x-staff-id is missing","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-copy-is-on-loan-2":{"summary":"Returns error when copy is on loan","value":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy is on loan"}}}}}}}}},"/v1/patron/holds":{"post":{"tags":["holds"],"summary":"Create Hold","security":[{"patronId":[]}],"x-tree-segments":["v1","holds","patron"],"x-docs":{"title":"Create Hold","fields":[{"name":"x-patron-id","in":"header","type":"string","required":true},{"name":"titleId","in":"body","type":"string","required":true},{"name":"pickup.branch","in":"body","type":"string","required":true},{"name":"pickup.by","in":"body","type":"string","required":false},{"name":"notes","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Creates hold when pickup branch is open","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"river-north","by":"2026-09-01"},"notes":"large print if available"},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","status":"QUEUED","position":2}}},{"name":"Returns error when patron already holds this title","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"river-north"}},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"A hold already exists for this title"}},{"name":"Returns error when branch code is invalid","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"moon-base"}},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"pickup.branch must be a known branch"}},{"name":"Returns error when titleId is omitted","group":"OMITTED CASES","status":400,"pathParams":{},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"pickup":{"branch":"river-north"}},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"titleId should not be empty"}},{"name":"Returns error when x-patron-id is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{"content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"river-north"}},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-hold-when-pickup-branch-is-open-1":{"summary":"Creates hold when pickup branch is open","value":{"titleId":"ttl_01PP","pickup":{"branch":"river-north","by":"2026-09-01"},"notes":"large print if available"}},"returns-error-when-patron-already-holds-this-title-2":{"summary":"Returns error when patron already holds this title","value":{"titleId":"ttl_01PP","pickup":{"branch":"river-north"}}},"returns-error-when-branch-code-is-invalid-3":{"summary":"Returns error when branch code is invalid","value":{"titleId":"ttl_01PP","pickup":{"branch":"moon-base"}}},"returns-error-when-titleid-is-omitted-4":{"summary":"Returns error when titleId is omitted","value":{"pickup":{"branch":"river-north"}}},"returns-error-when-x-patron-id-is-missing-5":{"summary":"Returns error when x-patron-id is missing","value":{"titleId":"ttl_01PP","pickup":{"branch":"river-north"}}}}}}},"responses":{"201":{"description":"Created","content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-hold-when-pickup-branch-is-open-1":{"summary":"Creates hold when pickup branch is open","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","status":"QUEUED","position":2}}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-branch-code-is-invalid-3":{"summary":"Returns error when branch code is invalid","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"pickup.branch must be a known branch"}},"returns-error-when-titleid-is-omitted-4":{"summary":"Returns error when titleId is omitted","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"titleId should not be empty"}}}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-x-patron-id-is-missing-5":{"summary":"Returns error when x-patron-id is missing","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-patron-already-holds-this-title-2":{"summary":"Returns error when patron already holds this title","value":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"A hold already exists for this title"}}}}}}}}},"/v1/patron/holds/{holdId}":{"get":{"tags":["holds"],"summary":"Get Hold","security":[{"patronId":[]}],"x-tree-segments":["v1","holds","patron"],"x-docs":{"title":"Get Hold","fields":[{"name":"x-patron-id","in":"header","type":"string","required":true},{"name":"holdId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Returns hold when it belongs to patron","group":"POSITIVE CASES","status":200,"pathParams":{"holdId":"hld_01PP"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","status":"QUEUED","titleId":"ttl_01PP"}}},{"name":"Returns error when hold belongs to another patron","group":"SEMANTIC ERROR CASES","status":403,"pathParams":{"holdId":"hld_other"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6"},"resBody":{"statusCode":403,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Forbidden"}}],"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-hold-when-it-belongs-to-patron-1":{"summary":"Returns hold when it belongs to patron","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","status":"QUEUED","titleId":"ttl_01PP"}}}}}}},"403":{"description":"Forbidden","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-hold-belongs-to-another-patron-2":{"summary":"Returns error when hold belongs to another patron","value":{"statusCode":403,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Forbidden"}}}}}}}},"put":{"tags":["holds"],"summary":"Replace Hold","security":[{"patronId":[]}],"x-tree-segments":["v1","holds","patron"],"x-docs":{"title":"Replace Hold","fields":[{"name":"x-patron-id","in":"header","type":"string","required":true},{"name":"holdId","in":"path","type":"string","required":true},{"name":"titleId","in":"body","type":"string","required":true},{"name":"pickup.branch","in":"body","type":"string","required":true},{"name":"pickup.by","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Replaces hold when pickup branch is valid","group":"POSITIVE CASES","status":200,"pathParams":{"holdId":"hld_01PP"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"west-end","by":"2026-09-08"}},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","pickup":{"branch":"west-end"},"status":"QUEUED"}}},{"name":"Returns error when hold is already ready","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{"holdId":"hld_ready"},"query":{},"headers":{"x-patron-id":"ptr_3b18d0f6","content-type":"application/json"},"reqBody":{"titleId":"ttl_01PP","pickup":{"branch":"west-end"}},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Ready holds cannot be replaced"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"},"examples":{"replaces-hold-when-pickup-branch-is-valid-1":{"summary":"Replaces hold when pickup branch is valid","value":{"titleId":"ttl_01PP","pickup":{"branch":"west-end","by":"2026-09-08"}}},"returns-error-when-hold-is-already-ready-2":{"summary":"Returns error when hold is already ready","value":{"titleId":"ttl_01PP","pickup":{"branch":"west-end"}}}}}}},"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"replaces-hold-when-pickup-branch-is-valid-1":{"summary":"Replaces hold when pickup branch is valid","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"hld_01PP","pickup":{"branch":"west-end"},"status":"QUEUED"}}}}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-hold-is-already-ready-2":{"summary":"Returns error when hold is already ready","value":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Ready holds cannot be replaced"}}}}}}}}},"/v1/loans":{"get":{"tags":["loans"],"summary":"List Loans","security":[{"authorization":[]}],"x-tree-segments":["v1","loans"],"x-docs":{"title":"List Loans","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"from","in":"query","type":"string","required":false},{"name":"to","in":"query","type":"string","required":false},{"name":"status","in":"query","type":"string","required":false},{"name":"cursor","in":"query","type":"string","required":false}]},"x-scenarios":[{"name":"Lists loans when date range is valid","group":"POSITIVE CASES","status":200,"pathParams":{},"query":{"from":"2026-08-01","to":"2026-08-22","status":"OPEN"},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[{"id":"lon_9f2a","copyId":"cpy_01AA","dueOn":"2026-09-05","status":"OPEN"}],"nextCursor":null}},{"name":"Returns error when from is after to","group":"INVALID CASES","status":400,"pathParams":{},"query":{"from":"2026-08-22","to":"2026-08-01"},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"from must be before to"}},{"name":"Returns error when authorization is missing","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{"from":"2026-08-01","to":"2026-08-22"},"headers":{},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}],"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"lists-loans-when-date-range-is-valid-1":{"summary":"Lists loans when date range is valid","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":[{"id":"lon_9f2a","copyId":"cpy_01AA","dueOn":"2026-09-05","status":"OPEN"}],"nextCursor":null}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-from-is-after-to-2":{"summary":"Returns error when from is after to","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"from must be before to"}}}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-authorization-is-missing-3":{"summary":"Returns error when authorization is missing","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}}}}}}},"post":{"tags":["loans"],"summary":"Create Loan","security":[{"authorization":[]}],"x-tree-segments":["v1","loans"],"x-docs":{"title":"Create Loan","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"copyId","in":"body","type":"string","required":true},{"name":"patronId","in":"body","type":"string","required":true},{"name":"days","in":"body","type":"integer","required":true},{"name":"idempotencyKey","in":"body","type":"string","required":true},{"name":"notice.email","in":"body","type":"string","required":false}]},"x-scenarios":[{"name":"Creates loan when copy is shelved","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_88","notice":{"email":"reader@example.com"}},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","status":"OPEN","dueOn":"2026-09-12"}}},{"name":"Returns open loan when idempotency key is reused","group":"POSITIVE CASES","status":200,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_88"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","status":"OPEN","dueOn":"2026-09-12"}}},{"name":"Returns error when copy is in repair","group":"SEMANTIC ERROR CASES","status":422,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_repair","patronId":"ptr_3b18d0f6","days":14,"idempotencyKey":"chk_89"},"resBody":{"statusCode":422,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy is not available for loan"}},{"name":"Returns error when days is negative","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":-1,"idempotencyKey":"chk_90"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"days must be a positive integer"}},{"name":"Returns error when patronId is omitted","group":"OMITTED CASES","status":400,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","days":21,"idempotencyKey":"chk_91"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"patronId should not be empty"}},{"name":"Returns error when authorization is expired","group":"SEMANTIC ERROR CASES - AUTH","status":401,"pathParams":{},"query":{},"headers":{"authorization":"Bearer expired","content-type":"application/json"},"reqBody":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_92"},"resBody":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-loan-when-copy-is-shelved-1":{"summary":"Creates loan when copy is shelved","value":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_88","notice":{"email":"reader@example.com"}}},"returns-open-loan-when-idempotency-key-is-reused-2":{"summary":"Returns open loan when idempotency key is reused","value":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_88"}},"returns-error-when-copy-is-in-repair-3":{"summary":"Returns error when copy is in repair","value":{"copyId":"cpy_repair","patronId":"ptr_3b18d0f6","days":14,"idempotencyKey":"chk_89"}},"returns-error-when-days-is-negative-4":{"summary":"Returns error when days is negative","value":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":-1,"idempotencyKey":"chk_90"}},"returns-error-when-patronid-is-omitted-5":{"summary":"Returns error when patronId is omitted","value":{"copyId":"cpy_01AA","days":21,"idempotencyKey":"chk_91"}},"returns-error-when-authorization-is-expired-6":{"summary":"Returns error when authorization is expired","value":{"copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","days":21,"idempotencyKey":"chk_92"}}}}}},"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-open-loan-when-idempotency-key-is-reused-2":{"summary":"Returns open loan when idempotency key is reused","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","status":"OPEN","dueOn":"2026-09-12"}}}}}}},"201":{"description":"Created","content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-loan-when-copy-is-shelved-1":{"summary":"Creates loan when copy is shelved","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","status":"OPEN","dueOn":"2026-09-12"}}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-days-is-negative-4":{"summary":"Returns error when days is negative","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"days must be a positive integer"}},"returns-error-when-patronid-is-omitted-5":{"summary":"Returns error when patronId is omitted","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"patronId should not be empty"}}}}}},"401":{"description":"Unauthorized","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-authorization-is-expired-6":{"summary":"Returns error when authorization is expired","value":{"statusCode":401,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Unauthorized"}}}}}},"422":{"description":"Unprocessable Entity","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-copy-is-in-repair-3":{"summary":"Returns error when copy is in repair","value":{"statusCode":422,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Copy is not available for loan"}}}}}}}}},"/v1/loans/{loanId}":{"get":{"tags":["loans"],"summary":"Get Loan","security":[{"authorization":[]}],"x-tree-segments":["v1","loans"],"x-docs":{"title":"Get Loan","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"loanId","in":"path","type":"string","required":true}]},"x-scenarios":[{"name":"Returns loan when it exists","group":"POSITIVE CASES","status":200,"pathParams":{"loanId":"lon_9f2a"},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","status":"OPEN","dueOn":"2026-09-12"}}},{"name":"Returns error when loan does not exist","group":"SEMANTIC ERROR CASES","status":404,"pathParams":{"loanId":"lon_missing"},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"},"resBody":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Loan not found"}}],"responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-loan-when-it-exists-1":{"summary":"Returns loan when it exists","value":{"statusCode":200,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"lon_9f2a","copyId":"cpy_01AA","patronId":"ptr_3b18d0f6","status":"OPEN","dueOn":"2026-09-12"}}}}}}},"404":{"description":"Not Found","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-loan-does-not-exist-2":{"summary":"Returns error when loan does not exist","value":{"statusCode":404,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Loan not found"}}}}}}}}},"/v1/rooms/bookings":{"post":{"tags":["rooms"],"summary":"Create Booking","security":[{"authorization":[]}],"x-tree-segments":["v1","rooms","bookings"],"x-docs":{"title":"Create Booking","fields":[{"name":"authorization","in":"header","type":"string","required":true},{"name":"roomId","in":"body","type":"string","required":true},{"name":"slot","in":"body","type":"string","required":true},{"name":"seats","in":"body","type":"integer","required":false}]},"x-scenarios":[{"name":"Creates booking when room is free","group":"POSITIVE CASES","status":201,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_quiet","slot":"2026-08-24T10:00:00Z","seats":4},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"bkg_9f2a","roomId":"rm_quiet","status":"CONFIRMED"}}},{"name":"Returns error when slot overlaps an existing booking","group":"SEMANTIC ERROR CASES","status":409,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_quiet","slot":"2026-08-24T10:00:00Z"},"resBody":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Room is already booked for this slot"}},{"name":"Returns error when slot is not ISO-8601","group":"INVALID CASES","status":400,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_quiet","slot":"tomorrow-morning"},"resBody":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"slot must be an ISO-8601 datetime"}},{"name":"Creates booking when seats are omitted","group":"OMITTED CASES","status":201,"pathParams":{},"query":{},"headers":{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…","content-type":"application/json"},"reqBody":{"roomId":"rm_map","slot":"2026-08-24T15:00:00Z"},"resBody":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"bkg_map","roomId":"rm_map","seats":1,"status":"CONFIRMED"}}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-booking-when-room-is-free-1":{"summary":"Creates booking when room is free","value":{"roomId":"rm_quiet","slot":"2026-08-24T10:00:00Z","seats":4}},"returns-error-when-slot-overlaps-an-existing-booking-2":{"summary":"Returns error when slot overlaps an existing booking","value":{"roomId":"rm_quiet","slot":"2026-08-24T10:00:00Z"}},"returns-error-when-slot-is-not-iso-8601-3":{"summary":"Returns error when slot is not ISO-8601","value":{"roomId":"rm_quiet","slot":"tomorrow-morning"}},"creates-booking-when-seats-are-omitted-4":{"summary":"Creates booking when seats are omitted","value":{"roomId":"rm_map","slot":"2026-08-24T15:00:00Z"}}}}}},"responses":{"201":{"description":"Created","content":{"application/json":{"schema":{"type":"object"},"examples":{"creates-booking-when-room-is-free-1":{"summary":"Creates booking when room is free","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"bkg_9f2a","roomId":"rm_quiet","status":"CONFIRMED"}}},"creates-booking-when-seats-are-omitted-4":{"summary":"Creates booking when seats are omitted","value":{"statusCode":201,"success":true,"timestamp":"2026-08-22T14:08:03.120Z","data":{"id":"bkg_map","roomId":"rm_map","seats":1,"status":"CONFIRMED"}}}}}}},"400":{"description":"Bad Request","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-slot-is-not-iso-8601-3":{"summary":"Returns error when slot is not ISO-8601","value":{"statusCode":400,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"slot must be an ISO-8601 datetime"}}}}}},"409":{"description":"Conflict","content":{"application/json":{"schema":{"type":"object"},"examples":{"returns-error-when-slot-overlaps-an-existing-booking-2":{"summary":"Returns error when slot overlaps an existing booking","value":{"statusCode":409,"success":false,"timestamp":"2026-08-22T14:08:03.120Z","error":"Room is already booked for this slot"}}}}}}}}}}};
     </script>
     <script>
       const spec = window.__SPEC__ || {};
@@ -1771,17 +2000,72 @@
 
       const defaultHeaderValues = collectDefaultHeaderValues();
 
+      /**
+       * Env name for a base URL: loopback → local, host keyword → that keyword,
+       * otherwise the first non-generic subdomain, falling back to production.
+       */
+      const envNameFromUrl = (url) => {
+        let host = String(url || "").trim();
+        try {
+          host = new URL(host).hostname;
+        } catch {
+          host = host.replace(/^[a-z]+:\/\//i, "").split("/")[0].split(":")[0];
+        }
+        host = host.toLowerCase();
+        if (!host) return "local";
+        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(host) || host.endsWith(".local")) return "local";
+        const keywords = [
+          [/\bstag(e|ing)\b/, "staging"],
+          [/\b(dev|development)\b/, "development"],
+          [/\b(test|testing)\b/, "test"],
+          [/\bqa\b/, "qa"],
+          [/\bsandbox\b/, "sandbox"],
+          [/\b(preprod|pre-prod|uat)\b/, "uat"],
+          [/\b(prod|production)\b/, "production"],
+        ];
+        const labels = host.split(".");
+        for (const [pattern, name] of keywords) {
+          if (labels.some((label) => pattern.test(label))) return name;
+        }
+        const generic = new Set(["api", "www", "app", "gateway", "edge"]);
+        return labels.slice(0, -2).filter((label) => label && !generic.has(label))[0] || "production";
+      };
+
+      /** Envs come from spec.servers (built per env preset); viewer.envPresets only overrides/extends. */
       const configuredPresets = (() => {
-        const raw = viewer.envPresets;
-        if (raw && typeof raw === "object" && Object.keys(raw).length) return raw;
-        return { local: { baseUrl: defaultBaseUrl } };
+        const presets = {};
+        for (const server of Array.isArray(spec.servers) ? spec.servers : []) {
+          const url = String((server && server.url) || "").replace(/\/$/, "");
+          if (!url) continue;
+          const name = String((server && server.description) || "").trim() || envNameFromUrl(url);
+          if (!presets[name]) presets[name] = { baseUrl: url };
+        }
+        const overrides = viewer.envPresets;
+        if (overrides && typeof overrides === "object") {
+          for (const [name, preset] of Object.entries(overrides)) {
+            if (!name || !preset || typeof preset !== "object") continue;
+            const baseUrl = String(preset.baseUrl || (presets[name] && presets[name].baseUrl) || defaultBaseUrl).replace(/\/$/, "");
+            presets[name] = { ...preset, baseUrl: baseUrl || defaultBaseUrl };
+          }
+        }
+        if (!Object.keys(presets).length) presets[envNameFromUrl(defaultBaseUrl)] = { baseUrl: defaultBaseUrl };
+        return presets;
       })();
+
+      const DEFAULT_BASE_URL_KEY = "baseUrl";
+
+      /** The base URL variable can be renamed per env (e.g. ONBOARDING_SERVICE) for Postman. */
+      const baseUrlKeyOf = (env) => {
+        const key = env && typeof env.baseUrlKey === "string" ? env.baseUrlKey.trim() : "";
+        return key || DEFAULT_BASE_URL_KEY;
+      };
 
       const setEnvBaseUrl = (env, baseUrl) => {
         const variables = env.variables || (env.variables = []);
-        const row = variables.find((entry) => entry.key === "baseUrl");
+        const key = baseUrlKeyOf(env);
+        const row = variables.find((entry) => entry.key === key);
         if (row) row.value = baseUrl;
-        else variables.unshift({ key: "baseUrl", value: baseUrl });
+        else variables.unshift({ key, value: baseUrl });
       };
 
       const buildHeaderTemplate = () => {
@@ -1838,11 +2122,12 @@
       const envFromPreset = (preset) => {
         const template = buildHeaderTemplate();
         const baseUrl = String((preset && preset.baseUrl) || defaultBaseUrl).replace(/\/$/, "") || defaultBaseUrl;
-        const variables = [{ key: "baseUrl", value: baseUrl }, ...template.variables.map((row) => ({ ...row }))];
+        const baseUrlKey = baseUrlKeyOf(preset);
+        const variables = [{ key: baseUrlKey, value: baseUrl }, ...template.variables.map((row) => ({ ...row }))];
         const known = new Set(variables.map((row) => row.key));
         if (preset && preset.variables && typeof preset.variables === "object") {
           for (const [key, value] of Object.entries(preset.variables)) {
-            if (!key || key === "baseUrl") continue;
+            if (!key || key === baseUrlKey) continue;
             if (known.has(key)) {
               const row = variables.find((entry) => entry.key === key);
               if (row) row.value = String(value ?? "");
@@ -1856,7 +2141,7 @@
         for (const [group, rows] of Object.entries(template.headerGroups)) {
           headerGroups[group] = rows.map((row) => ({ ...row }));
         }
-        return { variables, headerGroups };
+        return { variables, headerGroups, baseUrlKey };
       };
 
       const buildDefaultStore = () => {
@@ -1887,12 +2172,16 @@
         const envs = {};
         for (const [name, env] of Object.entries(saved.envs)) {
           const base = cloneDefaultEnv();
+          const baseUrlKey = baseUrlKeyOf(env);
           const variables = Array.isArray(env.variables)
             ? env.variables.map((row) => ({ key: String(row.key || ""), value: String(row.value ?? "") }))
             : base.variables.map((row) => ({ ...row }));
           const known = new Set(variables.map((row) => row.key).filter(Boolean));
           for (const row of base.variables) {
-            if (row.key && !known.has(row.key)) variables.push({ ...row });
+            if (!row.key || known.has(row.key)) continue;
+            // A renamed base URL variable already covers the default `baseUrl` row.
+            if (row.key === DEFAULT_BASE_URL_KEY && baseUrlKey !== DEFAULT_BASE_URL_KEY) continue;
+            variables.push({ ...row });
           }
           const defaultsByKey = Object.fromEntries((base.variables || []).filter((row) => row.key).map((row) => [row.key, row.value ?? ""]));
           for (const row of variables) {
@@ -1905,7 +2194,7 @@
             if (!headerGroups[group]) headerGroups[group] = rows.map((row) => ({ ...row }));
           }
           if (!Object.keys(headerGroups).length) headerGroups.default = [{ key: "content-type", value: "application/json" }];
-          envs[name] = { variables, headerGroups };
+          envs[name] = { variables, headerGroups, baseUrlKey };
         }
         // Seed any config presets that are missing from the saved store (don't wipe existing).
         for (const [name, preset] of Object.entries(configuredPresets)) {
@@ -2077,7 +2366,12 @@
         if (document.getElementById("env-wrap")?.classList.contains("open")) renderEnvPop();
       };
 
-      const currentBaseUrl = () => String(interpolate(varMap().baseUrl || defaultBaseUrl, varMap()) || defaultBaseUrl).replace(/\/$/, "");
+      const activeBaseUrlKey = () => baseUrlKeyOf(activeEnvConfig());
+
+      const currentBaseUrl = () => {
+        const vars = varMap();
+        return String(interpolate(vars[activeBaseUrlKey()] || defaultBaseUrl, vars) || defaultBaseUrl).replace(/\/$/, "");
+      };
 
       const envLabel = () => store.activeEnv + " · " + store.activeGroup;
 
@@ -2085,14 +2379,14 @@
         const trigger = document.getElementById("env-trigger");
         if (!trigger) return;
         trigger.textContent = envLabel();
-        const base = varMap().baseUrl || "";
+        const base = varMap()[activeBaseUrlKey()] || "";
         trigger.title = base ? store.activeEnv + " · " + base + " · " + store.activeGroup : envLabel();
       };
 
       const presetBaseUrl = (name) => {
         const env = store.envs[name];
         if (!env) return "";
-        const row = (env.variables || []).find((entry) => entry.key === "baseUrl");
+        const row = (env.variables || []).find((entry) => entry.key === baseUrlKeyOf(env));
         return row ? String(row.value || "") : "";
       };
 
@@ -2131,7 +2425,7 @@
               <button type="button" class="ghost-btn" id="dup-env" title="Duplicate preset">⧉</button>
               <button type="button" class="ghost-btn" id="remove-env" title="Remove preset" ${canRemoveEnv ? "" : "disabled"}>×</button>
             </div>
-            <div class="env-base-line"><span>baseUrl</span> · ${escapeAttr(activeBase)}</div>
+            <div class="env-base-line"><span>${escapeAttr(baseUrlKeyOf(env))}</span> · ${escapeAttr(activeBase)}</div>
             ${
               quickPresets.length
                 ? `<div class="env-quick">${quickPresets
@@ -2147,10 +2441,10 @@
             <div class="env-label">Variables</div>
             ${(env.variables || [])
               .map(
-                (row, index) => `<div class="env-kv ${row.key === "baseUrl" ? "base-url" : ""}" data-var="${index}">
-                  <input class="env-cell" data-field="key" spellcheck="false" value="${escapeAttr(row.key)}" ${row.key === "baseUrl" ? "readonly" : ""} />
+                (row, index) => `<div class="env-kv ${row.key === baseUrlKeyOf(env) ? "base-url" : ""}" data-var="${index}">
+                  <input class="env-cell" data-field="key" spellcheck="false" value="${escapeAttr(row.key)}" title="${row.key === baseUrlKeyOf(env) ? "Base URL variable — rename it to match your Postman collection" : escapeAttr(row.key)}" />
                   <input class="env-cell" data-field="value" spellcheck="false" value="${escapeAttr(row.value)}" />
-                  <button type="button" class="ghost-btn" data-remove-var="${index}" ${row.key === "baseUrl" ? "disabled" : ""}>×</button>
+                  <button type="button" class="ghost-btn" data-remove-var="${index}" ${row.key === baseUrlKeyOf(env) ? "disabled" : ""}>×</button>
                 </div>`,
               )
               .join("")}
@@ -2281,11 +2575,19 @@
             input.oninput = () => {
               const index = Number(row.dataset.var);
               const field = input.dataset.field;
-              if (!activeEnvConfig().variables[index] || (field !== "key" && field !== "value")) return;
-              activeEnvConfig().variables[index][field] = input.value;
+              const env = activeEnvConfig();
+              if (!env.variables[index] || (field !== "key" && field !== "value")) return;
+              const wasBaseUrl = env.variables[index].key === baseUrlKeyOf(env);
+              env.variables[index][field] = input.value;
+              // Renaming the base URL row (e.g. to ONBOARDING_SERVICE) retargets the whole env.
+              if (field === "key" && wasBaseUrl) {
+                env.baseUrlKey = input.value.trim() || DEFAULT_BASE_URL_KEY;
+                const label = document.querySelector(".env-base-line span");
+                if (label) label.textContent = env.baseUrlKey;
+              }
               persistStore();
               syncEnvTrigger();
-              if (field === "value" && activeEnvConfig().variables[index].key === "baseUrl") renderMain();
+              if (wasBaseUrl) renderMain();
             };
             input.onchange = () => renderMain();
           });
@@ -2601,10 +2903,11 @@
           }));
         // Ensure header template vars referenced as {{x}} appear even if missing from variables list.
         const known = new Set(values.map((row) => row.key));
-        if (!known.has("baseUrl")) {
-          known.add("baseUrl");
+        const baseKey = baseUrlKeyOf(env);
+        if (!known.has(baseKey)) {
+          known.add(baseKey);
           values.unshift({
-            key: "baseUrl",
+            key: baseKey,
             value: String(presetBaseUrl(store.activeEnv) || defaultBaseUrl || ""),
             type: "default",
             enabled: true,
@@ -2706,11 +3009,13 @@
 
       /**
        * Postman Collection v2.1 — nested folders + named examples.
-       * When includeTryIt, requests use {{baseUrl}} and the active header group; env file is downloaded separately.
+       * When includeTryIt, requests use the env's base URL variable and the active header group;
+       * the env file is downloaded separately.
        */
       const buildPostmanCollection = (openapi, includeTryIt) => {
-        const specServer = (openapi.servers && openapi.servers[0] && openapi.servers[0].url) || "{{baseUrl}}";
-        const serverUrl = includeTryIt ? "{{baseUrl}}" : specServer;
+        const baseVar = "{{" + activeBaseUrlKey() + "}}";
+        const specServer = (openapi.servers && openapi.servers[0] && openapi.servers[0].url) || baseVar;
+        const serverUrl = includeTryIt ? baseVar : specServer;
         const root = [];
 
         for (const [urlPath, pathItem] of Object.entries(openapi.paths || {})) {
@@ -2809,32 +3114,212 @@
       const syncExportTryItUi = () => {
         const meta = document.getElementById("export-tryit-meta");
         if (meta) meta.textContent = store.activeEnv + " · " + store.activeGroup;
+        const baseVar = document.getElementById("export-base-var");
+        if (baseVar) baseVar.textContent = "{{" + activeBaseUrlKey() + "}}";
+      };
+
+      /** Scenario names double as example summaries, so they carry the case section. */
+      const exampleSectionLookup = (item) => {
+        const byName = new Map();
+        for (const scenario of item.scenarios || []) {
+          if (scenario && scenario.name) byName.set(scenario.name, scenario.group || "Other");
+        }
+        return (example) => byName.get(example.summary) || "Other";
+      };
+
+      const groupExamplesBySection = (item, examples) => {
+        const sectionOf = exampleSectionLookup(item);
+        const bySection = new Map();
+        for (const example of examples) {
+          const section = sectionOf(example);
+          if (!bySection.has(section)) bySection.set(section, []);
+          bySection.get(section).push(example);
+        }
+        const order = GROUP_ORDER.filter((name) => bySection.has(name)).concat(
+          [...bySection.keys()].filter((name) => !GROUP_ORDER.includes(name)),
+        );
+        return order.map((section) => ({ section, examples: bySection.get(section) }));
+      };
+
+      const sectionCheckboxes = (section) => [
+        ...document.querySelectorAll(`#export-body .export-group-items input[data-section="${CSS.escape(section)}"]`),
+      ];
+
+      /** Chips mirror what is checked below: filled = all of it, outlined-part = some. */
+      const syncExportSectionChips = () => {
+        document.querySelectorAll("[data-export-section]").forEach((chip) => {
+          const boxes = sectionCheckboxes(chip.dataset.exportSection);
+          const checked = boxes.filter((box) => box.checked).length;
+          chip.classList.toggle("on", boxes.length > 0 && checked === boxes.length);
+          chip.classList.toggle("part", checked > 0 && checked < boxes.length);
+          chip.setAttribute("aria-pressed", checked === boxes.length && boxes.length > 0 ? "true" : "false");
+        });
+      };
+
+      const syncExportGroupChecks = () => {
+        document.querySelectorAll("#export-body .export-group").forEach((group) => {
+          const head = group.querySelector(".export-group-check");
+          const boxes = [...group.querySelectorAll(".export-group-items input[type=checkbox]")];
+          if (!head || !boxes.length) return;
+          const checked = boxes.filter((box) => box.checked).length;
+          head.checked = checked === boxes.length;
+          head.indeterminate = checked > 0 && checked < boxes.length;
+        });
+        syncExportSectionChips();
+      };
+
+      /** Chips sit side by side, so the repeated "cases" tail only adds noise. */
+      const shortGroup = (section) => displayGroup(section).replace(/\s+cases\b/gi, "").trim();
+
+      const renderExportSectionButtons = (sections) => {
+        const host = document.getElementById("export-sections");
+        if (!host) return;
+        const separator = document.getElementById("export-sections-sep");
+        if (separator) separator.hidden = !sections.length;
+        host.innerHTML = sections
+          .map(
+            (section) =>
+              `<button type="button" class="section-chip ${groupTone(section)}" data-export-section="${escapeAttr(section)}" aria-pressed="true" title="${escapeAttr(displayGroup(section))} — click to toggle"><span class="dot"></span>${escapeHtml(shortGroup(section))}</button>`,
+          )
+          .join("");
+        host.querySelectorAll("[data-export-section]").forEach((chip) => {
+          chip.onclick = () => {
+            const boxes = sectionCheckboxes(chip.dataset.exportSection);
+            const next = !boxes.every((box) => box.checked);
+            boxes.forEach((box) => {
+              box.checked = next;
+            });
+            syncExportGroupChecks();
+          };
+        });
+        syncExportSectionChips();
       };
 
       const openExportModal = () => {
         const body = document.getElementById("export-body");
-        const blocks = ops
-          .map((item) => {
-            const examples = listOperationExamples(item.op);
+        const sections = new Set();
+        const exportable = ops
+          .map((item) => ({ item, examples: listOperationExamples(item.op) }))
+          .filter((entry) => entry.examples.length);
+        const examplesById = new Map(exportable.map((entry) => [entry.item.id, entry.examples]));
+
+        const renderOpBlock = (item) => {
+            const examples = examplesById.get(item.id) || [];
             if (!examples.length) return "";
-            return `<div class="export-op" data-op="${escapeAttr(item.id)}">
-              <div class="export-op-title">
+            const grouped = groupExamplesBySection(item, examples);
+            for (const { section } of grouped) sections.add(section);
+            return `<div class="export-op collapsed" data-op="${escapeAttr(item.id)}">
+              <button type="button" class="export-op-title" aria-expanded="false" title="Show sections">
+                <span class="chev"></span>
                 <span class="method ${item.method}">${item.method}</span>
-                <span class="path" title="${escapeAttr(item.path)}">${escapeAttr(item.path)}</span>
-              </div>
-              ${examples
+                <span class="path" title="${escapeAttr(item.path)}">${escapeAttr(item.title)}</span>
+                <span class="export-op-count">${examples.length}</span>
+              </button>
+              <div class="export-op-groups">${grouped
                 .map(
-                  (example) => `<div class="export-ex">
-                    <input type="checkbox" id="ex-${escapeAttr(item.id)}-${escapeAttr(example.key)}" data-op="${escapeAttr(item.id)}" data-key="${escapeAttr(example.key)}" checked />
-                    <label for="ex-${escapeAttr(item.id)}-${escapeAttr(example.key)}">${escapeAttr(example.summary)}</label>
+                  ({ section, examples: rows }) => `<div class="export-group collapsed">
+                    <label class="export-group-head ${groupTone(section)}">
+                      <button type="button" class="export-group-toggle" aria-expanded="false" title="Show examples"><span class="chev"></span></button>
+                      <input type="checkbox" class="export-group-check" checked />
+                      <span>${escapeHtml(displayGroup(section))}</span>
+                      <span class="export-group-count">${rows.length}</span>
+                    </label>
+                    <div class="export-group-items">${rows
+                      .map(
+                        (example) => `<div class="export-ex">
+                          <input type="checkbox" id="ex-${escapeAttr(item.id)}-${escapeAttr(example.key)}" data-op="${escapeAttr(item.id)}" data-key="${escapeAttr(example.key)}" data-section="${escapeAttr(section)}" checked />
+                          <label for="ex-${escapeAttr(item.id)}-${escapeAttr(example.key)}">${escapeAttr(example.summary)}</label>
+                        </div>`,
+                      )
+                      .join("")}</div>
                   </div>`,
                 )
-                .join("")}
+                .join("")}</div>
             </div>`;
-          })
-          .filter(Boolean)
-          .join("");
-        body.innerHTML = blocks || `<div class="export-empty">No recorded examples yet — export will include schemas only.</div>`;
+        };
+
+        /** Same folder tree as the sidebar, so the export mirrors what the docs show. */
+        const countExamples = (node) =>
+          node.ops.reduce((total, item) => total + (examplesById.get(item.id) || []).length, 0) +
+          Object.values(node.children).reduce((total, child) => total + countExamples(child), 0);
+
+        const renderExportNode = (node) => {
+          const opsHtml = [...node.ops]
+            .sort((left, right) => (METHOD_ORDER[left.method] ?? 99) - (METHOD_ORDER[right.method] ?? 99))
+            .map(renderOpBlock)
+            .join("");
+          const foldersHtml = Object.entries(node.children)
+            .map(([name, child]) => {
+              const total = countExamples(child);
+              if (!total) return "";
+              return `<div class="export-folder collapsed">
+                <button type="button" class="export-folder-head" aria-expanded="false">
+                  <span class="chev"></span>
+                  <span class="export-folder-name">${escapeHtml(name)}</span>
+                  <span class="export-op-count">${total}</span>
+                </button>
+                <div class="export-folder-children">${renderExportNode(child)}</div>
+              </div>`;
+            })
+            .join("");
+          return opsHtml + foldersHtml;
+        };
+
+        const tree = renderExportNode(buildPathTree(exportable.map((entry) => entry.item)));
+        body.innerHTML = tree || `<div class="export-empty">No recorded examples yet — export will include schemas only.</div>`;
+
+        body.querySelectorAll(".export-folder").forEach((folder) => {
+          const toggle = folder.querySelector(".export-folder-head");
+          if (!toggle) return;
+          toggle.onclick = () => {
+            const collapsed = folder.classList.toggle("collapsed");
+            toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+          };
+        });
+
+        const ordered = GROUP_ORDER.filter((name) => sections.has(name)).concat(
+          [...sections].filter((name) => !GROUP_ORDER.includes(name)),
+        );
+        renderExportSectionButtons(ordered);
+
+        body.querySelectorAll(".export-op").forEach((block) => {
+          const toggle = block.querySelector(".export-op-title");
+          if (!toggle) return;
+          toggle.onclick = () => {
+            const collapsed = block.classList.toggle("collapsed");
+            toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+            toggle.title = collapsed ? "Show sections" : "Hide sections";
+          };
+        });
+
+        body.querySelectorAll(".export-group").forEach((group) => {
+          const head = group.querySelector(".export-group-check");
+          const boxes = [...group.querySelectorAll(".export-group-items input[type=checkbox]")];
+          if (head) {
+            head.onchange = () => {
+              boxes.forEach((box) => {
+                box.checked = head.checked;
+              });
+              head.indeterminate = false;
+            };
+          }
+          boxes.forEach((box) => {
+            box.onchange = syncExportGroupChecks;
+          });
+          const toggle = group.querySelector(".export-group-toggle");
+          if (toggle) {
+            toggle.onclick = (event) => {
+              // Sits inside the <label>, so stop the click from flipping the group checkbox.
+              event.preventDefault();
+              event.stopPropagation();
+              const collapsed = group.classList.toggle("collapsed");
+              toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+              toggle.title = collapsed ? "Show examples" : "Hide examples";
+            };
+          }
+        });
+
+        syncExportGroupChecks();
         syncExportTryItUi();
         document.body.classList.add("exporting");
       };
@@ -2893,22 +3378,18 @@
         if (event.target.id === "export-backdrop") closeExportModal();
       });
       document.getElementById("export-modal").addEventListener("click", (event) => event.stopPropagation());
+      const exampleCheckboxes = () => document.querySelectorAll("#export-body .export-group-items input[type=checkbox]");
       document.getElementById("export-all").addEventListener("click", () => {
-        document.querySelectorAll("#export-body input[type=checkbox]").forEach((input) => {
+        exampleCheckboxes().forEach((input) => {
           input.checked = true;
         });
+        syncExportGroupChecks();
       });
       document.getElementById("export-none").addEventListener("click", () => {
-        document.querySelectorAll("#export-body input[type=checkbox]").forEach((input) => {
+        exampleCheckboxes().forEach((input) => {
           input.checked = false;
         });
-      });
-      document.getElementById("export-success").addEventListener("click", () => {
-        document.querySelectorAll("#export-body input[type=checkbox]").forEach((input) => {
-          const label = document.querySelector(`label[for="${CSS.escape(input.id)}"]`);
-          const text = label ? label.textContent || "" : "";
-          input.checked = /^2\d\d\b/.test(text.trim());
-        });
+        syncExportGroupChecks();
       });
       document.getElementById("export-confirm").addEventListener("click", () => {
         runExportDownload();
@@ -3137,7 +3618,7 @@
                   rows
                     .map(
                       ({ scenario, index }) =>
-                        `<button type="button" class="dd-item ${index === selected ? "on" : ""}" data-index="${index}"><span class="st ${statusOk(scenario.status) ? "ok" : "err"}">${escapeHtml(String(scenario.status))}</span><span>${escapeHtml(scenario.name)}</span></button>`,
+                        `<button type="button" class="dd-item ${index === selected ? "on" : ""}" data-index="${index}"><span class="st ${statusOk(scenario.status) ? "ok" : "err"}">${escapeHtml(String(scenario.status))}</span><span>${escapeHtml(scenarioClause(scenario))}</span></button>`,
                     )
                     .join("");
               })
@@ -3157,26 +3638,46 @@
       let activeVersion = apiVersions[0] || "";
       const expandedFolders = new Set(apiVersions.map((version) => "/" + version));
       const expandedExampleOps = new Set();
+      /** `${opId}::${group}` entries the user opened; groups start collapsed. */
+      const expandedExampleGroups = new Set();
+      const exampleGroupKey = (opId, group) => `${opId}::${group}`;
+      const isExampleGroupCollapsed = (opId, group) => !expandedExampleGroups.has(exampleGroupKey(opId, group));
 
       const scenarioNavLabel = (scenario) => {
-        const status = scenario.status != null ? String(scenario.status) : "";
         const name = scenario.name || "example";
-        return status ? status + "  " + name : name;
+        const status = scenario.status != null ? String(scenario.status) : "";
+        if (status && !name.startsWith(`${status} `) && !name.startsWith(`${status} —`)) {
+          return `${status} — ${name}`;
+        }
+        return name;
+      };
+      const scenarioClause = (scenario) => {
+        const name = scenario.name || "example";
+        const status = scenario.status != null ? String(scenario.status) : "";
+        const dashed = `${status} — `;
+        if (status && name.startsWith(dashed)) return name.slice(dashed.length);
+        const spaced = `${status}  `;
+        if (status && name.startsWith(spaced)) return name.slice(spaced.length).trim();
+        if (status && name.startsWith(`${status} `)) return name.slice(status.length).trim();
+        return name;
       };
 
       const renderNavExamples = (item) => {
         const { groups, order } = groupScenarios(item.scenarios);
         return `<div class="nav-examples">${order
           .map(
-            (group) => `<div class="nav-ex-group ${groupTone(group)}">
-              <div class="nav-ex-group-label ${groupTone(group)}"><span>${escapeHtml(displayGroup(group))}</span><span class="nav-ex-count">${groups[group].length}</span></div>
+            (group) => {
+              const collapsed = isExampleGroupCollapsed(item.id, group);
+              return `<div class="nav-ex-group ${groupTone(group)} ${collapsed ? "collapsed" : ""}">
+              <button type="button" class="nav-ex-group-label ${groupTone(group)}" data-group-op="${escapeAttr(item.id)}" data-group-name="${escapeAttr(group)}" aria-expanded="${collapsed ? "false" : "true"}"><span class="nav-ex-group-head"><span class="chev"></span><span>${escapeHtml(displayGroup(group))}</span></span><span class="nav-ex-count">${groups[group].length}</span></button>
               <div class="nav-ex-items">${groups[group]
                 .map(
                   ({ scenario, index }) =>
                     `<button type="button" class="nav-example ${item.id === currentId && index === scenarioIndex ? "on" : ""}" data-id="${escapeAttr(item.id)}" data-scenario="${index}" title="${escapeAttr(scenarioNavLabel(scenario))}">${escapeHtml(scenarioNavLabel(scenario))}</button>`,
                 )
                 .join("")}</div>
-            </div>`,
+            </div>`;
+            },
           )
           .join("")}</div>`;
       };
@@ -3314,6 +3815,18 @@
             if (expandedExampleOps.has(opId)) expandedExampleOps.delete(opId);
             else expandedExampleOps.add(opId);
             renderNav();
+          };
+        });
+        nav.querySelectorAll(".nav-ex-group-label").forEach((button) => {
+          button.onclick = (event) => {
+            event.stopPropagation();
+            const key = exampleGroupKey(button.dataset.groupOp, button.dataset.groupName);
+            const collapsed = expandedExampleGroups.has(key);
+            if (collapsed) expandedExampleGroups.delete(key);
+            else expandedExampleGroups.add(key);
+            const group = button.closest(".nav-ex-group");
+            if (group) group.classList.toggle("collapsed", collapsed);
+            button.setAttribute("aria-expanded", collapsed ? "false" : "true");
           };
         });
         nav.querySelectorAll(".nav-example").forEach((button) => {
@@ -3583,7 +4096,13 @@
 
         const schemas = schemasInline(fields, displayEmpty ? undefined : displayBody);
         const epName = document.getElementById("ep-name");
-        if (epName) epName.textContent = item.title;
+        if (epName) {
+          const exampleLabel = scenario.name ? scenarioClause(scenario) : "";
+          epName.innerHTML = exampleLabel
+            ? `<span class="ep-status ${recordedOk ? "" : "err"}">${escapeHtml(String(scenario.status))}</span>` +
+              `<span class="ep-label" title="${escapeAttr(exampleLabel)}">${escapeHtml(exampleLabel)}</span>`
+            : `<span class="ep-label" title="${escapeAttr(item.title)}">${escapeHtml(item.title)}</span>`;
+        }
         document.title = item.title + (title ? " · " + title : "");
 
         document.getElementById("main").innerHTML = `
@@ -3738,6 +4257,8 @@
           const version = treePathSegments(selected)[0];
           if (version) activeVersion = version;
           expandedExampleOps.add(id);
+          const scenario = (selected.scenarios || [])[scenarioIndex];
+          if (scenario) expandedExampleGroups.add(exampleGroupKey(id, scenario.group || "Other"));
         }
         renderPrefixBar();
         renderNav();
