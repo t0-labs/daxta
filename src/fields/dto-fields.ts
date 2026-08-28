@@ -4,6 +4,7 @@
  * only to read reflect-metadata / class-validator / class-transformer.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
+import { createRequire } from 'module';
 import * as path from 'path';
 
 import 'reflect-metadata';
@@ -18,27 +19,47 @@ import { pathMatchesTemplate } from '../path.util';
 
 type Ts = typeof import('typescript');
 
-function loadTypescript(): Ts {
-  const mod = tsImport as Ts & { default?: Ts };
-  const candidates: Ts[] = [];
-  if (mod) candidates.push(mod);
-  if (mod.default) candidates.push(mod.default);
-  for (const candidate of candidates) {
-    if (typeof candidate.createSourceFile === 'function') return candidate;
-  }
-  try {
-    // CJS interop: namespace import can expose enums without compiler APIs.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const req = require('typescript') as Ts & { default?: Ts };
-    const fromReq = typeof req.createSourceFile === 'function' ? req : req.default;
-    if (fromReq && typeof fromReq.createSourceFile === 'function') return fromReq;
-  } catch {
-    // ignore — fall through
-  }
-  throw new Error('Could not load TypeScript compiler API (createSourceFile missing)');
+let ts!: Ts;
+let tsResolved: Ts | null | undefined;
+
+function withCompilerApi(candidate: unknown): Ts | undefined {
+  const mod = candidate as (Ts & { default?: Ts }) | undefined;
+  if (mod && typeof mod.createSourceFile === 'function') return mod;
+  if (mod?.default && typeof mod.default.createSourceFile === 'function') return mod.default;
+  return undefined;
 }
 
-const ts = loadTypescript();
+function resolveTypescript(): Ts | null {
+  const direct = withCompilerApi(tsImport);
+  if (direct) return direct;
+  // A hoisted copy can be the native TS 7 build, which ships a reduced JS surface
+  // without createSourceFile. Fall back to whatever the host project installed.
+  for (const from of [process.cwd(), __dirname]) {
+    try {
+      const loaded = createRequire(path.join(from, 'index.js'))('typescript');
+      const usable = withCompilerApi(loaded);
+      if (usable) return usable;
+    } catch {
+      // keep looking
+    }
+  }
+  return null;
+}
+
+/** Controller parsing is best-effort: without a usable compiler API we skip it. */
+function ensureTypescript(): boolean {
+  if (tsResolved === undefined) {
+    tsResolved = resolveTypescript();
+    if (!tsResolved) {
+      console.warn(
+        'DAxTA: TypeScript compiler API unavailable (needs typescript >=4.9 <7) — skipping controller parsing; required/optional flags will be omitted.',
+      );
+    }
+  }
+  if (!tsResolved) return false;
+  ts = tsResolved;
+  return true;
+}
 
 type ValidationMeta = {
   propertyName: string;
@@ -267,6 +288,7 @@ function parseController(filePath: string): RouteBinding[] {
 
 function getRoutes(): RouteBinding[] {
   if (routeCache) return routeCache;
+  if (!ensureTypescript()) return (routeCache = []);
   const files = walkFiles(controllerRoot(), '.controller.ts');
   routeCache = files.flatMap((file) => {
     try {
