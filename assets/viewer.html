@@ -779,17 +779,33 @@
         margin: 0 4px 6px 18px;
       }
       .nav-op.examples-open > .nav-examples { display: flex; }
-      .nav-ex-group { display: flex; flex-direction: column; gap: 1px; }
+      .nav-ex-group { display: flex; flex-direction: column; gap: 0; }
       .nav-ex-group-label {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: 6px 8px 2px;
+        padding: 6px 0 2px 4px;
         font: 600 10px/1.2 var(--sans);
         letter-spacing: 0.02em;
         color: var(--stone);
       }
+      .nav-ex-group-label.ok { color: var(--ok); }
+      .nav-ex-group-label.warn { color: var(--warn); }
+      .nav-ex-group-label.omit { color: var(--accent); }
+      .nav-ex-group-label.err { color: var(--err); }
+      .nav-ex-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        margin-left: 4px;
+        padding-left: 8px;
+        border-left: 1px solid var(--hairline);
+      }
+      .nav-ex-group.ok > .nav-ex-items { border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
+      .nav-ex-group.warn > .nav-ex-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
+      .nav-ex-group.omit > .nav-ex-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
+      .nav-ex-group.err > .nav-ex-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
       .nav-ex-count {
         font: 600 10px/1.4 var(--mono);
         color: inherit;
@@ -1090,10 +1106,15 @@
         color: var(--stone);
       }
       .export-group-items {
-        margin-left: 8px;
+        /* Lines the rail up with the parent checkbox: 2px pad + 14px toggle + 8px gap. */
+        margin-left: 24px;
         padding-left: 8px;
         border-left: 1px solid var(--hairline);
       }
+      .export-group.ok > .export-group-items { border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
+      .export-group.warn > .export-group-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
+      .export-group.omit > .export-group-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
+      .export-group.err > .export-group-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
       .export-group.collapsed > .export-group-items { display: none; }
       .export-group-toggle {
         display: inline-flex;
@@ -3189,7 +3210,7 @@
               </button>
               <div class="export-op-groups">${grouped
                 .map(
-                  ({ section, examples: rows }) => `<div class="export-group collapsed">
+                  ({ section, examples: rows }) => `<div class="export-group collapsed ${groupTone(section)}">
                     <label class="export-group-head ${groupTone(section)}">
                       <button type="button" class="export-group-toggle" aria-expanded="false" title="Show examples"><span class="chev"></span></button>
                       <input type="checkbox" class="export-group-check" checked />
@@ -3639,14 +3660,14 @@
         const { groups, order } = groupScenarios(item.scenarios);
         return `<div class="nav-examples">${order
           .map(
-            (group) => `<div class="nav-ex-group">
-              <div class="nav-ex-group-label"><span>${escapeHtml(displayGroup(group))}</span><span class="nav-ex-count">${groups[group].length}</span></div>
-              ${groups[group]
+            (group) => `<div class="nav-ex-group ${groupTone(group)}">
+              <div class="nav-ex-group-label ${groupTone(group)}"><span>${escapeHtml(displayGroup(group))}</span><span class="nav-ex-count">${groups[group].length}</span></div>
+              <div class="nav-ex-items">${groups[group]
                 .map(
                   ({ scenario, index }) =>
                     `<button type="button" class="nav-example ${item.id === currentId && index === scenarioIndex ? "on" : ""}" data-id="${escapeAttr(item.id)}" data-scenario="${index}" title="${escapeAttr(scenarioNavLabel(scenario))}">${escapeHtml(scenarioNavLabel(scenario))}</button>`,
                 )
-                .join("")}
+                .join("")}</div>
             </div>`,
           )
           .join("")}</div>`;
