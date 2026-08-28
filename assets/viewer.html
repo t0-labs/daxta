@@ -779,61 +779,17 @@
         margin: 0 4px 6px 18px;
       }
       .nav-op.examples-open > .nav-examples { display: flex; }
-      .nav-ex-group { display: flex; flex-direction: column; gap: 0; }
-      .nav-ex-items {
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        margin-left: 4px;
-        padding-left: 0;
-        border-left: 1px solid var(--hairline);
-      }
-      .nav-ex-group.ok > .nav-ex-items { border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
-      .nav-ex-group.warn > .nav-ex-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
-      .nav-ex-group.omit > .nav-ex-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
-      .nav-ex-group.err > .nav-ex-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
-      .nav-ex-group.collapsed > .nav-ex-items { display: none; }
+      .nav-ex-group { display: flex; flex-direction: column; gap: 1px; }
       .nav-ex-group-label {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        width: 100%;
-        border: 0;
-        border-radius: 2px;
-        background: transparent;
-        cursor: pointer;
-        text-align: left;
-        padding: 6px 4px 2px 4px;
+        padding: 6px 8px 2px;
         font: 600 10px/1.2 var(--sans);
-        letter-spacing: 0.04em;
-        color: var(--charcoal);
+        letter-spacing: 0.02em;
+        color: var(--stone);
       }
-      .nav-ex-group-label:hover { background: var(--inset); }
-      .nav-ex-group-head {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-width: 0;
-      }
-      .nav-ex-group-label .chev {
-        width: 6px;
-        height: 6px;
-        flex: none;
-        border-right: 1.5px solid currentColor;
-        border-bottom: 1.5px solid currentColor;
-        transform: rotate(45deg);
-        opacity: 0.7;
-        transition: transform 0.15s ease;
-      }
-      .nav-ex-group.collapsed > .nav-ex-group-label .chev {
-        transform: rotate(-45deg);
-        margin-top: -2px;
-      }
-      .nav-ex-group-label.ok { color: var(--ok); }
-      .nav-ex-group-label.warn { color: var(--warn); }
-      .nav-ex-group-label.omit { color: var(--accent); }
-      .nav-ex-group-label.err { color: var(--err); }
       .nav-ex-count {
         font: 600 10px/1.4 var(--mono);
         color: inherit;
@@ -885,12 +841,18 @@
         inset: 0;
         background: rgba(232, 232, 232, 0.72);
         backdrop-filter: blur(2px);
-        z-index: 40;
+        z-index: 400;
         align-items: center;
         justify-content: center;
         padding: 24px;
       }
       body.exporting .export-backdrop { display: flex; }
+      body.exporting { overflow: hidden; }
+      /** The backdrop covers the viewport, but focus and scroll still reach the page behind it. */
+      body.exporting > *:not(.export-backdrop) {
+        pointer-events: none;
+        user-select: none;
+      }
       .export-modal {
         width: min(560px, 100%);
         max-height: min(720px, calc(100vh - 48px));
@@ -3107,8 +3069,18 @@
         };
       };
 
+      /** Keeps tab order and screen readers inside the dialog while it is open. */
+      const setBackgroundInert = (inert) => {
+        for (const node of document.body.children) {
+          if (node.id === "export-backdrop") continue;
+          if (inert) node.setAttribute("inert", "");
+          else node.removeAttribute("inert");
+        }
+      };
+
       const closeExportModal = () => {
         document.body.classList.remove("exporting");
+        setBackgroundInert(false);
       };
 
       const syncExportTryItUi = () => {
@@ -3322,6 +3294,7 @@
         syncExportGroupChecks();
         syncExportTryItUi();
         document.body.classList.add("exporting");
+        setBackgroundInert(true);
       };
 
       const collectSelectedExamples = () => {
@@ -3666,18 +3639,15 @@
         const { groups, order } = groupScenarios(item.scenarios);
         return `<div class="nav-examples">${order
           .map(
-            (group) => {
-              const collapsed = isExampleGroupCollapsed(item.id, group);
-              return `<div class="nav-ex-group ${groupTone(group)} ${collapsed ? "collapsed" : ""}">
-              <button type="button" class="nav-ex-group-label ${groupTone(group)}" data-group-op="${escapeAttr(item.id)}" data-group-name="${escapeAttr(group)}" aria-expanded="${collapsed ? "false" : "true"}"><span class="nav-ex-group-head"><span class="chev"></span><span>${escapeHtml(displayGroup(group))}</span></span><span class="nav-ex-count">${groups[group].length}</span></button>
-              <div class="nav-ex-items">${groups[group]
+            (group) => `<div class="nav-ex-group">
+              <div class="nav-ex-group-label"><span>${escapeHtml(displayGroup(group))}</span><span class="nav-ex-count">${groups[group].length}</span></div>
+              ${groups[group]
                 .map(
                   ({ scenario, index }) =>
                     `<button type="button" class="nav-example ${item.id === currentId && index === scenarioIndex ? "on" : ""}" data-id="${escapeAttr(item.id)}" data-scenario="${index}" title="${escapeAttr(scenarioNavLabel(scenario))}">${escapeHtml(scenarioNavLabel(scenario))}</button>`,
                 )
-                .join("")}</div>
-            </div>`;
-            },
+                .join("")}
+            </div>`,
           )
           .join("")}</div>`;
       };
