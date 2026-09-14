@@ -62,7 +62,7 @@ export type DaxtaConfig = {
    * - status-case → `201 — cyprus payload shape`
    * - status-title-case → `201 — Create Mock Tbs — cyprus payload shape`
    * - full → includes path + POSITIVE CASES + clause
-   * Test it() stays `creates mock tbs when cyprus payload shape`; API docs take the `when` clause.
+   * Ideal it(): docs take the when-clause. Parametric it(): pre-when field context is kept.
    */
   exampleLabelStyle?: ExampleLabelStyle;
   port?: number;

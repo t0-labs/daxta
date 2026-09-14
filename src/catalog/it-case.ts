@@ -153,18 +153,53 @@ export function rewriteItFromOriginal(
 const OUTCOME_PREFIX =
   /^(returns|creates|updates|upserts|inserts|merges|replaces|deletes|lists|rejects|conflicts)\s+/i;
 
+/** Leading action verbs that are filler once the subject (field / country) is kept. */
+const LEADING_ACTION =
+  /^(set|store|keep|send|put|patch|clear|omit|include|provide|use|apply|replace|update)\s+/i;
+
+/**
+ * Ideal `creates resource when …` leftovers are a short noun phrase (the resource).
+ * Field / mode context before `when` is distinguishing and must be kept.
+ */
+function isResourceOnlyBefore(before: string): boolean {
+  if (!before) return true;
+  if (/[.=_]/.test(before)) return false;
+  if (/\b(null|empty|value|mode|as|undefined|missing)\b/i.test(before)) return false;
+  return before.split(/\s+/).length <= 3;
+}
+
 /**
  * Docs / Postman example line: the unique condition only.
- * Test keeps `creates mock tbs when cyprus payload shape` → docs `cyprus payload shape`.
+ * Ideal: `creates mock tbs when cyprus payload shape` → `cyprus payload shape`.
+ * Parametric: `should set TR companyName when value mode is sent` →
+ * `TR companyName when value mode is sent` (keep pre-when context so labels stay unique).
  */
 export function docsScenarioClause(raw?: string): string {
   if (!raw) return 'example';
   let s = raw.trim().replace(/\s+/g, ' ');
   const field = s.match(/^([A-Za-z0-9_.]+)\s+-\s+(should not be\s+.+)$/i);
   if (field) return `${field[1]} ${field[2]}`.trim();
-  const when = s.match(/\bwhen\s+(.+)$/i);
-  if (when?.[1]) return when[1].trim();
-  s = s.replace(OUTCOME_PREFIX, '').replace(/^resource\s+/i, '').trim();
+
+  const whenMatch = s.match(/^(.*?)\bwhen\s+(.+)$/i);
+  if (whenMatch) {
+    let before = whenMatch[1].trim().replace(/^should\s+/i, '');
+    const after = whenMatch[2].trim();
+    if (!after) return before || 'example';
+
+    const hadOutcome = OUTCOME_PREFIX.test(before);
+    before = before
+      .replace(OUTCOME_PREFIX, '')
+      .replace(/^resource\s+/i, '')
+      .replace(/^error\s+/i, '')
+      .trim();
+
+    if (!before || (hadOutcome && isResourceOnlyBefore(before))) return after;
+
+    before = before.replace(LEADING_ACTION, '').trim();
+    return before ? `${before} when ${after}` : after;
+  }
+
+  s = s.replace(/^should\s+/i, '').replace(OUTCOME_PREFIX, '').replace(/^resource\s+/i, '').trim();
   return s || 'example';
 }
 
