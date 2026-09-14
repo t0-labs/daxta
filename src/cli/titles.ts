@@ -154,7 +154,7 @@ export async function runTitleCheck(options: {
   console.log(`  ${c.dim('describe')}  Create Mock Tbs — POST /v1/admin/mock-tbs`);
   console.log(`           ${c.dim('→ operation title in sidebar')}`);
   console.log(`  ${c.dim('it()')}       creates mock tbs when cyprus payload shape`);
-  console.log(`           ${c.dim('→ scenario clause (text after')} ${c.ice('when')}${c.dim(')')}`);
+  console.log(`           ${c.dim('→ scenario clause (when-clause; keeps pre-when field context when needed)')}`);
   console.log(`  ${c.dim('label')}     201 — Create Mock Tbs — cyprus payload shape`);
   console.log(`           ${c.dim('→')} ${c.ice('exampleLabelStyle')} ${c.dim('in')} ${c.ice('daxta tree')} ${c.dim('· change with')} ${c.ice('2')} ${c.dim('for short labels')}`);
   const start = await readlineAsk(

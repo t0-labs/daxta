@@ -124,9 +124,12 @@ async function pickExampleStyle(current: ExampleLabelStyle): Promise<ExampleLabe
   console.log('');
   console.log(`  ${c.bold('Example / scenario labels')}`);
   console.log(`  ${c.dim('Sidebar + OpenAPI export name for each test hit.')}`);
-  console.log(`  ${c.dim('From')} ${c.ice('it()')} ${c.dim('— text after')} ${c.ice('when')} ${c.dim('becomes the scenario clause.')}`);
+  console.log(`  ${c.dim('From')} ${c.ice('it()')} ${c.dim('— unique scenario clause (when-clause, keeping pre-when field context when needed).')}`);
   console.log('');
   console.log(`  ${c.dim('sample')} ${c.ice('creates mock tbs when cyprus payload shape')}`);
+  console.log(`           ${c.dim('→')} ${c.ice('cyprus payload shape')}`);
+  console.log(`  ${c.dim('sample')} ${c.ice('should set TR companyName when value mode is sent')}`);
+  console.log(`           ${c.dim('→')} ${c.ice('TR companyName when value mode is sent')}`);
   console.log('');
   console.log(`    ${c.ice('1')}  status-title-case ${c.dim('(default)')}`);
   console.log(`       ${c.dim('201 — Create Mock Tbs — cyprus payload shape')}`);
