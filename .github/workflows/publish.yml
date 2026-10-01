@@ -1,24 +1,85 @@
-name: Publish npm package
+name: Release and publish npm package
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
+
+      - name: Check for an existing release from this commit
+        id: existing
+        shell: bash
+        run: |
+          git fetch origin main --tags
+          latest_tag="$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n 1)"
+          if [[ -n "$latest_tag" ]]; then
+            tag_commit="$(git rev-list -n 1 "$latest_tag")"
+            tag_parent="$(git rev-parse "${tag_commit}^" 2>/dev/null || true)"
+            if [[ "$tag_parent" == "$GITHUB_SHA" ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "version=${latest_tag#v}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Check out latest main
+        if: steps.existing.outputs.skip != 'true'
+        run: git reset --hard origin/main
+
+      - name: Check out the release created by an earlier run
+        if: steps.existing.outputs.skip == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.existing.outputs.version }}
+        run: git checkout "v${RELEASE_VERSION}"
+
       - run: npm ci
+
       - run: npm test
-      - run: npm publish
+
+      - name: Bump patch version and push commit and tag
+        if: steps.existing.outputs.skip != 'true'
+        id: version
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version patch --no-git-tag-version
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          git add package.json package-lock.json
+          git commit -m "chore(release): ${tag}"
+          git tag "$tag"
+          git push --atomic origin HEAD:main "refs/tags/${tag}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version || steps.existing.outputs.version }}
+        run: |
+          if npm view "@t0.labs/daxta@${RELEASE_VERSION}" version >/dev/null 2>&1; then
+            echo "@t0.labs/daxta@${RELEASE_VERSION} is already published; skipping duplicate publish."
+            exit 0
+          fi
+          npm publish
