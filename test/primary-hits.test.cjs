@@ -125,3 +125,36 @@ test('treats :id and {id} params as the same route', () => {
   ]);
   assert.deepStrictEqual(Object.keys(spec.paths), ['/v1/merchants/{merchantId}']);
 });
+
+test('exports one example per Jest case when a case calls its endpoint twice', () => {
+  const subject = '/v1/admin/subscription-transfers/product';
+  const title = `${subject} [POST] (admin)`;
+  const firstCase = `${title} POSITIVE CASES preserve the third subscription when two subscriptions are transferred`;
+  const secondCase = `${title} POSITIVE CASES complete consecutive transfers to different products`;
+  const thirdCase = `${title} POSITIVE CASES complete a single transfer`;
+  const transfer = (name, source, target) => ({
+    method: 'post',
+    path: subject,
+    status: 200,
+    reqBody: { subscriptionId: source, targetProductId: target },
+    resBody: { data: { subscriptionId: target } },
+    test: name,
+  });
+
+  const spec = buildSpecIn([
+    transfer(firstCase, 'source-1', 'target-1'),
+    transfer(firstCase, 'source-2', 'target-1'),
+    transfer(secondCase, 'source-3', 'target-2'),
+    transfer(secondCase, 'target-2', 'target-3'),
+    transfer(thirdCase, 'source-4', 'target-4'),
+  ]);
+  const operation = spec.paths[subject].post;
+  const scenarios = operation['x-scenarios'];
+  const requestExamples = Object.values(operation.requestBody.content['application/json'].examples);
+  const responseExamples = Object.values(operation.responses['200'].content['application/json'].examples);
+
+  assert.strictEqual(scenarios.length, 3);
+  assert.strictEqual(requestExamples.length, 3);
+  assert.strictEqual(responseExamples.length, 3);
+  assert.deepStrictEqual(scenarios.map((scenario) => scenario.reqBody.subscriptionId).sort(), ['source-2', 'source-4', 'target-2']);
+});
