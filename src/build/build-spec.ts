@@ -194,8 +194,8 @@ function isSuccessStatus(status: number): boolean {
 }
 
 /**
- * Seed calls in the same it() share Jest's currentTestName.
- * SEMANTIC: create-then-assert-409 must not surface the setup 201.
+ * Each Jest case contributes one example. Keep its final matching request after
+ * filtering setup successes/errors, since a case may call the subject route twice.
  */
 function selectHitsForDocs(hits: RecordedHit[]): RecordedHit[] {
   const byTest = new Map<string, RecordedHit[]>();
@@ -213,17 +213,15 @@ function selectHitsForDocs(hits: RecordedHit[]): RecordedHit[] {
   const selected: RecordedHit[] = [...unlabeled];
   for (const group of byTest.values()) {
     const section = parseCaseSection(group[0]?.test);
+    let candidates = group;
     if (section === 'semantic' || section === 'invalid' || section === 'omitted' || section === 'auth') {
       const errors = group.filter((hit) => !isSuccessStatus(hit.status));
-      selected.push(...(errors.length ? errors : group));
-      continue;
-    }
-    if (section === 'positive') {
+      if (errors.length) candidates = errors;
+    } else if (section === 'positive') {
       const ok = group.filter((hit) => isSuccessStatus(hit.status));
-      selected.push(...(ok.length ? ok : group));
-      continue;
+      if (ok.length) candidates = ok;
     }
-    selected.push(...group);
+    selected.push(candidates[candidates.length - 1]);
   }
   return selected;
 }
