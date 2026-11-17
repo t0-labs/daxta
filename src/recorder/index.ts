@@ -20,12 +20,24 @@ export type RecordedHit = {
 
 type GlobalHits = typeof globalThis & {
   __DAXTA_HITS__?: RecordedHit[];
+  __DAXTA_SUITE_SEQ__?: number;
   __DAXTA_FLUSH_HOOK__?: boolean;
   __DAXTA_FETCH_PATCHED__?: boolean;
 };
 
+type ProcessSeq = NodeJS.Process & {
+  __DAXTA_SUITE_SEQ__?: number;
+};
+
 const g = globalThis as GlobalHits;
 const hits: RecordedHit[] = (g.__DAXTA_HITS__ ??= []);
+// Jest isolates globalThis per test file (VM context) while reusing the worker process.
+// Tag each VM context with a process-wide sequence number so later suites never overwrite earlier ones.
+const suiteSeq: number = (g.__DAXTA_SUITE_SEQ__ ??= (() => {
+  const proc = process as ProcessSeq;
+  proc.__DAXTA_SUITE_SEQ__ = (proc.__DAXTA_SUITE_SEQ__ ?? 0) + 1;
+  return proc.__DAXTA_SUITE_SEQ__;
+})());
 const nodeRequire = createRequire(__filename);
 const SKIP_HEADERS = new Set(['host', 'accept-encoding', 'connection', 'content-length', 'user-agent', 'accept']);
 
@@ -226,7 +238,7 @@ export function install() {
 }
 
 /** Hit files carry the run id so a later build can never pick up an earlier run's traffic. */
-export const HIT_FILE_PATTERN = /^hits-(?:r([A-Za-z0-9]+)-)?w[^-]+-p\d+\.json$/;
+export const HIT_FILE_PATTERN = /^hits-(?:r([A-Za-z0-9]+)-)?w[^-]+-p\d+(?:-s\d+)?\.json$/;
 
 export function readRunId(): string | null {
   try {
@@ -258,10 +270,11 @@ function hitFilePath() {
   const workerId = process.env.JEST_WORKER_ID ?? '0';
   const runId = readRunId();
   const prefix = runId ? `hits-r${runId}-` : 'hits-';
-  return path.join(outDir(), `${prefix}w${workerId}-p${process.pid}.json`);
+  return path.join(outDir(), `${prefix}w${workerId}-p${process.pid}-s${suiteSeq}.json`);
 }
 
 export function flush() {
+  if (!hits.length) return;
   const dir = outDir();
   mkdirSync(dir, { recursive: true });
   writeFileSync(hitFilePath(), `${JSON.stringify(hits, null, 2)}\n`);
