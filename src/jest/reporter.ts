@@ -54,10 +54,11 @@ class DaxtaJestReporter {
           silent?: boolean;
           force?: boolean;
           html?: boolean;
+          clearWorkers?: boolean;
         }) => { skipped?: boolean; hits?: number; operations?: number } | null;
       };
 
-      const result = rebuildFromDisk({ silent: true, force: true, html: true });
+      const result = rebuildFromDisk({ silent: true, force: true, html: true, clearWorkers: true });
       if (result && !result.skipped) {
         printDocsReady(result.hits ?? 0, result.operations ?? 0);
         return;

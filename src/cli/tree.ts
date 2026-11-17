@@ -5,7 +5,9 @@ import {
   getConfig,
   normalizeTreeLayout,
   type ExampleLabelStyle,
+  type SubResourceMode,
   type TreeLayout,
+  type WriteMode,
 } from '../config';
 import { listControllerPathTemplates } from '../fields/dto-fields';
 import { getSpecJsonPath } from '../serve/paths';
@@ -17,7 +19,7 @@ import {
   readTreePathOverrides,
   upsertConfigValue,
 } from './config-edit';
-import { banner, c, readlineAsk } from './ui';
+import { banner, c, confirmPrompt, readlineAsk, selectMenu } from './ui';
 
 function normalizePathInput(raw: string): string {
   const trimmed = raw.trim();
@@ -86,69 +88,128 @@ async function pickPath(flagPath?: string): Promise<string | null> {
 
 async function pickLayout(current: TreeLayout): Promise<TreeLayout> {
   const sample = '/v1/admin/baskets/{id}/lock';
-  console.log('');
-  console.log(`  ${c.bold('Folder order')} ${c.dim('(company default)')}`);
-  console.log(`  ${c.dim('sample')} ${c.ice(sample)}`);
-  console.log('');
-  console.log(`    ${c.ice('1')}  role → resource  ${c.dim('recommended')}`);
-  console.log(`       ${previewTree(layoutSegments(sample, 'role-resource', true))}`);
-  console.log(`       ${c.dim('v1 › admin › baskets   (ops under baskets, not under {id})')}`);
-  console.log('');
-  console.log(`    ${c.ice('2')}  resource → role`);
-  console.log(`       ${previewTree(layoutSegments(sample, 'resource-role', true))}`);
-  console.log(`       ${c.dim('v1 › baskets › admin')}`);
-  console.log('');
-  console.log(`    ${c.ice('3')}  keep ${c.dim(`(${current})`)}`);
-  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
-  if (!answer || answer === '3' || /^k(eep)?$/i.test(answer)) return current;
-  if (answer === '1' || /^role/i.test(answer)) return 'role-resource';
-  if (answer === '2' || /^resource/i.test(answer)) return 'resource-role';
-  throw new Error(`Unknown layout: ${answer}`);
+  return selectMenu<TreeLayout>({
+    title: 'Folder order',
+    subtitle: `sample: ${sample}`,
+    initialIndex: current === 'resource-role' ? 1 : 0,
+    options: [
+      {
+        value: 'role-resource',
+        label: 'role → resource',
+        badge: 'recommended',
+        preview: previewTree(layoutSegments(sample, 'role-resource', true)),
+        hint: 'URL order — ops grouped under resource',
+      },
+      {
+        value: 'resource-role',
+        label: 'resource → role',
+        preview: previewTree(layoutSegments(sample, 'resource-role', true)),
+        hint: 'Resource first, then role',
+      },
+    ],
+  });
 }
 
 async function pickSkipParams(current: boolean): Promise<boolean> {
-  console.log('');
-  console.log(`  ${c.bold('Stop folders at path params')}`);
-  console.log(`  ${c.dim('Avoid')} ${c.ice('{id}')} ${c.dim('→ complete / lock / pay as nested folders')}`);
-  console.log(`    ${c.ice('1')}  yes — fold under resource ${c.dim('(recommended)')}`);
-  console.log(`    ${c.ice('2')}  no — nest full path`);
-  console.log(`    ${c.ice('3')}  keep ${c.dim(`(${current ? 'yes' : 'no'})`)}`);
-  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
-  if (!answer || answer === '3' || /^k(eep)?$/i.test(answer)) return current;
-  if (answer === '1' || /^y/i.test(answer)) return true;
-  if (answer === '2' || /^n/i.test(answer)) return false;
-  throw new Error(`Unknown choice: ${answer}`);
+  return selectMenu<boolean>({
+    title: 'Stop folders at path params',
+    subtitle: 'Avoid {id} → complete / lock as nested folders',
+    initialIndex: current ? 0 : 1,
+    options: [
+      {
+        value: true,
+        label: 'Fold under resource',
+        badge: 'recommended',
+        hint: 'POST /baskets/{id}/lock stays under baskets',
+      },
+      {
+        value: false,
+        label: 'Nest full path',
+        hint: 'Create folders for every URL segment',
+      },
+    ],
+  });
+}
+
+async function pickSubResourceMode(current: SubResourceMode, layout: TreeLayout): Promise<SubResourceMode> {
+  const roleFirst = layout === 'role-resource';
+  return selectMenu<SubResourceMode>({
+    title: 'Sub-resources after main resource',
+    subtitle: 'e.g. /v1/public/shopping-cart/items/{id}/quantity',
+    initialIndex: current === 'merge' ? 0 : current === 'root' ? 1 : 2,
+    options: [
+      {
+        value: 'merge',
+        label: 'Merge into one folder (shopping-cart-items)',
+        badge: 'recommended',
+        preview: roleFirst ? 'v1 › public › shopping-cart-items' : 'v1 › shopping-cart-items › public',
+        hint: 'Joins sub-resources with "-" instead of opening extra subfolders',
+      },
+      {
+        value: 'root',
+        label: 'Group under main resource (shopping-cart)',
+        preview: roleFirst ? 'v1 › public › shopping-cart' : 'v1 › shopping-cart › public',
+        hint: 'Keeps all sub-routes directly under the main resource folder',
+      },
+      {
+        value: 'nested',
+        label: 'Keep nested subfolders (shopping-cart › items)',
+        preview: roleFirst ? 'v1 › public › shopping-cart › items' : 'v1 › shopping-cart › public › items',
+        hint: 'Creates a separate subfolder for every segment',
+      },
+    ],
+  });
+}
+
+async function pickWriteMode(current: WriteMode): Promise<WriteMode> {
+  return selectMenu<WriteMode>({
+    title: 'When to write API docs',
+    subtitle: 'During Jest test execution',
+    initialIndex: current === 'incremental' ? 1 : 0,
+    options: [
+      {
+        value: 'on-complete',
+        label: 'When all tests finish',
+        badge: 'recommended',
+        hint: 'Fastest — builds OpenAPI + HTML once in onRunComplete',
+      },
+      {
+        value: 'incremental',
+        label: 'As tests run (after each suite)',
+        hint: 'Live updates — rebuilds docs after each test file finishes',
+      },
+    ],
+  });
 }
 
 async function pickExampleStyle(current: ExampleLabelStyle): Promise<ExampleLabelStyle> {
-  console.log('');
-  console.log(`  ${c.bold('Example / scenario labels')}`);
-  console.log(`  ${c.dim('Sidebar + OpenAPI export name for each test hit.')}`);
-  console.log(`  ${c.dim('From')} ${c.ice('it()')} ${c.dim('— unique scenario clause (when-clause, keeping pre-when field context when needed).')}`);
-  console.log('');
-  console.log(`  ${c.dim('sample')} ${c.ice('creates mock tbs when cyprus payload shape')}`);
-  console.log(`           ${c.dim('→')} ${c.ice('cyprus payload shape')}`);
-  console.log(`  ${c.dim('sample')} ${c.ice('should set TR companyName when value mode is sent')}`);
-  console.log(`           ${c.dim('→')} ${c.ice('TR companyName when value mode is sent')}`);
-  console.log('');
-  console.log(`    ${c.ice('1')}  status-title-case ${c.dim('(default)')}`);
-  console.log(`       ${c.dim('201 — Create Mock Tbs — cyprus payload shape')}`);
-  console.log(`       ${c.dim('status + operation title + scenario')}`);
-  console.log('');
-  console.log(`    ${c.ice('2')}  status-case ${c.dim('(short)')}`);
-  console.log(`       ${c.dim('201 — cyprus payload shape')}`);
-  console.log(`       ${c.dim('status + scenario only')}`);
-  console.log('');
-  console.log(`    ${c.ice('3')}  full ${c.dim('(verbose — path + section)')}`);
-  console.log(`       ${c.dim('201 — Create Mock Tbs - POST /v1/admin/mock-tbs POSITIVE CASES cyprus payload shape')}`);
-  console.log('');
-  console.log(`    ${c.ice('4')}  keep ${c.dim(`(${current})`)}`);
-  const answer = await readlineAsk(`  ${c.gold('?')} Choose\n  ${c.ice('›')} `);
-  if (!answer || answer === '4' || /^k(eep)?$/i.test(answer)) return current;
-  if (answer === '1' || /title/i.test(answer)) return 'status-title-case';
-  if (answer === '2' || /status-case/i.test(answer)) return 'status-case';
-  if (answer === '3' || /^full/i.test(answer)) return 'full';
-  throw new Error(`Unknown style: ${answer}`);
+  const initialIndex = current === 'status-case' ? 0 : current === 'status-title-case' ? 1 : 2;
+  return selectMenu<ExampleLabelStyle>({
+    title: 'Example / scenario labels',
+    subtitle: 'How each test case appears in API docs & Postman',
+    initialIndex,
+    options: [
+      {
+        value: 'status-case',
+        label: 'status-case (short)',
+        badge: 'recommended',
+        preview: c.ice('201 — cyprus payload shape'),
+        hint: 'Clean status + scenario clause (best for Postman)',
+      },
+      {
+        value: 'status-title-case',
+        label: 'status-title-case',
+        preview: c.ice('201 — Create Mock Tbs — cyprus payload shape'),
+        hint: 'Status + operation title + scenario clause',
+      },
+      {
+        value: 'full',
+        label: 'full (verbose)',
+        preview: c.ice('201 — Create Mock Tbs - POST /v1/admin/mock-tbs POSITIVE CASES cyprus payload shape'),
+        hint: 'Includes HTTP method, path, and test section',
+      },
+    ],
+  });
 }
 
 type LayoutChoice = { id: string; label: string; segments: string[] };
@@ -185,6 +246,117 @@ async function pickSegments(
   const typed = await readlineAsk(`  ${c.gold('?')} Segments ${c.dim('(space separated)')}\n  ${c.ice('›')} `);
   if (!typed) return null;
   return typed.split(/›|>|,|\s+/).map((part) => part.trim()).filter(Boolean);
+}
+
+type NestedResourceGroup = {
+  pattern: string;
+  suggested: string;
+  roles: string[];
+  samplePath: string;
+};
+
+function detectNestedResources(paths: string[], skipParams: boolean): NestedResourceGroup[] {
+  const groups = new Map<string, { roles: Set<string>; samplePath: string }>();
+  for (const p of paths) {
+    const rawParts = p.split('/').filter(Boolean);
+    const paramIdx = skipParams ? rawParts.findIndex((seg) => seg.startsWith('{') || seg.startsWith(':')) : -1;
+    const folded = paramIdx >= 0 ? rawParts.slice(0, paramIdx) : rawParts;
+    // Expect /v1/<role>/<resource1>/<resource2>...
+    const startIdx = /^v\d+$/i.test(folded[0] || '') ? 2 : 1;
+    const role = startIdx === 2 ? folded[1] : 'api';
+    const resourceParts = folded.slice(startIdx).filter((seg) => !seg.startsWith('{') && !seg.startsWith(':'));
+    if (resourceParts.length < 2) continue;
+
+    const pattern = resourceParts.slice(0, 2).join('/');
+    const existing = groups.get(pattern) ?? { roles: new Set<string>(), samplePath: p };
+    if (role) existing.roles.add(role);
+    groups.set(pattern, existing);
+  }
+
+  return [...groups.entries()]
+    .map(([pattern, info]) => ({
+      pattern,
+      suggested: pattern.replace(/\//g, '-'),
+      roles: [...info.roles].sort(),
+      samplePath: info.samplePath,
+    }))
+    .sort((a, b) => a.pattern.localeCompare(b.pattern));
+}
+
+async function pickResourceAliases(
+  current: Record<string, string>,
+  skipParams: boolean,
+): Promise<Record<string, string> | null> {
+  const detected = detectNestedResources(listKnownPaths(), skipParams);
+  if (!detected.length) return null;
+
+  const previewList = detected
+    .slice(0, 4)
+    .map((g) => g.pattern)
+    .join(', ') + (detected.length > 4 ? ` (+${detected.length - 4})` : '');
+
+  const review = await confirmPrompt({
+    title: `${detected.length} nested resource(s) detected — merge any into single folders?`,
+    hint: previewList,
+    defaultYes: detected.length <= 5,
+  });
+  if (!review) return null;
+
+  const next: Record<string, string> = { ...current };
+  // Let the user pick only the specific groups they want to merge instead of stepping through all 60+.
+  while (true) {
+    const picked = await selectMenu<string>({
+      title: 'Select a nested resource to merge (or Done)',
+      subtitle: `${Object.keys(next).length} merged so far`,
+      options: [
+        { value: '__done__', label: 'Done — save & continue', badge: 'finish' },
+        ...detected.map((group) => ({
+          value: group.pattern,
+          label: group.pattern,
+          badge: next[group.pattern] ? `→ ${next[group.pattern]}` : undefined,
+          hint: `${group.roles.join(', ')} · e.g. ${group.samplePath}`,
+        })),
+      ],
+    });
+    if (picked === '__done__') break;
+
+    const group = detected.find((g) => g.pattern === picked);
+    if (!group) break;
+    const existing = next[group.pattern];
+    const choice = await selectMenu<string>({
+      title: `Folder for ${group.pattern}`,
+      subtitle: `${group.roles.join(', ')} · e.g. ${group.samplePath}`,
+      initialIndex: existing ? 1 : 0,
+      options: [
+        {
+          value: '__keep__',
+          label: `Keep nested (${group.pattern.replace('/', ' › ')})`,
+          hint: 'Separate subfolders',
+        },
+        {
+          value: group.suggested,
+          label: `Merge → ${group.suggested}`,
+          badge: existing === group.suggested ? 'active' : 'flatten',
+          hint: `Single folder: ${group.suggested}`,
+        },
+        {
+          value: '__custom__',
+          label: 'Custom folder name',
+          hint: 'Type your own folder name',
+        },
+      ],
+    });
+
+    if (choice === '__keep__') {
+      delete next[group.pattern];
+    } else if (choice === '__custom__') {
+      const typed = (await readlineAsk(`  ${c.gold('?')} Folder name ${c.dim(`(for ${group.pattern})`)}\n  ${c.ice('›')} `)).trim();
+      if (typed) next[group.pattern] = typed;
+    } else {
+      next[group.pattern] = choice;
+    }
+  }
+  return next;
 }
 
 export type TreeWizardOptions = {
@@ -224,24 +396,31 @@ export async function runTreeWizard(options: TreeWizardOptions = {}): Promise<vo
 
   if (!options.layout) layout = await pickLayout(layout);
   upsertConfigValue(configPath, 'treeLayout', formatTsString(layout));
-  console.log(`  ${c.mint('✔')} treeLayout → ${c.ice(layout)}`);
 
   const skipParams = await pickSkipParams(config.treeSkipParams !== false);
   upsertConfigValue(configPath, 'treeSkipParams', skipParams ? 'true' : 'false');
-  console.log(`  ${c.mint('✔')} treeSkipParams → ${c.ice(String(skipParams))}`);
+
+  const subResourceMode = await pickSubResourceMode(config.treeSubResourceMode ?? 'nested', layout);
+  upsertConfigValue(configPath, 'treeSubResourceMode', formatTsString(subResourceMode));
 
   const exampleStyle = await pickExampleStyle(config.exampleLabelStyle ?? 'status-title-case');
   upsertConfigValue(configPath, 'exampleLabelStyle', formatTsString(exampleStyle));
-  console.log(`  ${c.mint('✔')} exampleLabelStyle → ${c.ice(exampleStyle)}`);
 
-  const customize = options.path
-    ? 'y'
-    : await readlineAsk(
-        `  ${c.gold('?')} Per-path override now?\n` +
-          `    ${c.dim('Y')} yes · ${c.dim('n')} later\n  ${c.ice('›')} `,
-      );
+  const writeMode = await pickWriteMode(config.writeMode ?? 'on-complete');
+  upsertConfigValue(configPath, 'writeMode', formatTsString(writeMode));
 
-  if (customize && !/^n(o)?$/i.test(customize)) {
+  if (!options.path && subResourceMode === 'nested') {
+    const aliases = await pickResourceAliases(config.treeResourceAliases ?? {}, skipParams);
+    if (aliases) {
+      const entries = Object.entries(aliases)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `    ${formatTsString(k)}: ${formatTsString(v)},`);
+      const literal = entries.length ? `{\n${entries.join('\n')}\n  }` : '{}';
+      upsertConfigValue(configPath, 'treeResourceAliases', literal);
+    }
+  }
+
+  if (options.path) {
     const pathTemplate = await pickPath(options.path);
     if (pathTemplate) {
       const segments = await pickSegments(pathTemplate, layout, skipParams);

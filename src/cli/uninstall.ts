@@ -5,7 +5,7 @@ import { spawnSync } from 'child_process';
 import { findDaxtaConfigPath } from './config-edit';
 import { findMainCandidates, removeApiDocs } from './inject-main';
 import { removeJestHooks, resolveJestConfigPath, unwrapDaxtaTestScript } from './jest-hooks';
-import { banner, box, c, readlineAsk, sleep, step } from './ui';
+import { banner, box, c, confirmPrompt, sleep, step } from './ui';
 
 type PackageJson = {
   name?: string;
@@ -129,11 +129,11 @@ export async function uninstallDaxta(options: UninstallOptions = {}): Promise<vo
   banner('DAxTA uninstall', project);
 
   if (!options.yes && process.stdin.isTTY) {
-    const answer = await readlineAsk(
-      `  ${c.gold('?')}  Remove DAxTA from ${c.bold(project)}?\n` +
-        `     ${c.dim('Y yes  ·  n cancel')}\n  ${c.ice('›')} `,
-    );
-    if (answer && !/^y(es)?$/i.test(answer)) {
+    const confirmed = await confirmPrompt({
+      title: `Remove DAxTA from ${project}?`,
+      defaultYes: true,
+    });
+    if (!confirmed) {
       console.log(`  ${c.dim('cancelled')}`);
       return;
     }

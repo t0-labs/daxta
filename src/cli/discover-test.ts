@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
-import { askLine, c, readlineAsk } from './ui';
+import { askLine, c, readlineAsk, selectMenu } from './ui';
 
 export type TestScriptChoice = {
   name: string;
@@ -74,32 +74,32 @@ export async function resolveTestScript(options: {
   const def = shown[0];
   if (options.yes || !process.stdin.isTTY) return def.name;
 
-  console.log(`  ${c.gold('?')}  ${c.bold('Test script')}  ${c.dim('— reporter + globalSetup')}`);
-  shown.forEach((choice, i) => {
-    const n = String(i + 1);
-    const rec = i === 0 ? c.dim('  recommended') : '';
-    const cmd = isDaxtaWrappedScript(choice.command)
-      ? '(already wired → daxta test)'
-      : choice.command.length > 52
-        ? `${choice.command.slice(0, 52)}…`
-        : choice.command;
-    console.log(`    ${c.ice(n)}  ${c.bold(choice.name)}${rec}`);
-    console.log(`       ${c.dim(cmd)}`);
+  const picked = await selectMenu<string>({
+    title: 'Test script',
+    subtitle: 'reporter + globalSetup',
+    options: [
+      ...shown.map((choice, i) => ({
+        value: choice.name,
+        label: choice.name,
+        badge: i === 0 ? 'recommended' : undefined,
+        hint: isDaxtaWrappedScript(choice.command)
+          ? '(already wired → daxta test)'
+          : choice.command.length > 64
+            ? `${choice.command.slice(0, 64)}…`
+            : choice.command,
+      })),
+      { value: '__custom__', label: 'Custom script name', hint: 'Type a script name from package.json' },
+      { value: '__skip__', label: 'Skip', hint: 'Configure testScript later' },
+    ],
   });
-  console.log(`    ${c.dim('n')}  skip`);
 
-  const answer = await readlineAsk(
-    `  ${c.dim(`Enter = 1 (${def.name})`)}  ${c.dim('·')}  ${c.dim('or type a script name')}\n  ${c.ice('›')} `,
-  );
-
-  if (!answer) return def.name;
-  if (/^n(o)?$/i.test(answer)) return null;
-  if (/^\d+$/.test(answer)) {
-    const picked = shown[Number(answer) - 1];
-    if (!picked) throw new Error(`No script #${answer}`);
-    return picked.name;
+  if (picked === '__skip__') return null;
+  if (picked === '__custom__') {
+    const typed = await readlineAsk(askLine('Test script name', 'or n to skip'));
+    if (!typed || /^n(o)?$/i.test(typed)) return null;
+    return typed;
   }
-  return answer;
+  return picked;
 }
 
 function upsertConfigFields(

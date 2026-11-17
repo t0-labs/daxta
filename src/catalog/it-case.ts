@@ -180,10 +180,10 @@ export function docsScenarioClause(raw?: string): string {
   const field = s.match(/^([A-Za-z0-9_.]+)\s+-\s+(should not be\s+.+)$/i);
   if (field) return `${field[1]} ${field[2]}`.trim();
 
-  const whenMatch = s.match(/^(.*?)\bwhen\s+(.+)$/i);
-  if (whenMatch) {
-    let before = whenMatch[1].trim().replace(/^should\s+/i, '');
-    const after = whenMatch[2].trim();
+  const condMatch = s.match(/^(.*?)\b(when|if)\s+(.+)$/i);
+  if (condMatch) {
+    let before = condMatch[1].trim().replace(/^should\s+/i, '');
+    const after = condMatch[3].trim();
     if (!after) return before || 'example';
 
     const hadOutcome = OUTCOME_PREFIX.test(before);
@@ -196,7 +196,18 @@ export function docsScenarioClause(raw?: string): string {
     if (!before || (hadOutcome && isResourceOnlyBefore(before))) return after;
 
     before = before.replace(LEADING_ACTION, '').trim();
-    return before ? `${before} when ${after}` : after;
+    const joiner = condMatch[2].toLowerCase();
+    return before ? `${before} ${joiner} ${after}` : after;
+  }
+
+  const withMatch = s.match(/^(.*?)\bwith\s+(.+)$/i);
+  if (withMatch) {
+    let before = withMatch[1].trim().replace(/^should\s+/i, '');
+    const after = withMatch[2].trim();
+    if (after && OUTCOME_PREFIX.test(before)) {
+      before = before.replace(OUTCOME_PREFIX, '').replace(/^resource\s+/i, '').replace(/^error\s+/i, '').trim();
+      if (!before || isResourceOnlyBefore(before)) return after;
+    }
   }
 
   s = s.replace(/^should\s+/i, '').replace(OUTCOME_PREFIX, '').replace(/^resource\s+/i, '').trim();

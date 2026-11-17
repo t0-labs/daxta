@@ -1,4 +1,4 @@
-import { createInterface } from 'readline';
+import { createInterface, emitKeypressEvents } from 'readline';
 
 const isTTY = Boolean(process.stdout.isTTY);
 const useColor = isTTY && !process.env.NO_COLOR && process.env.FORCE_COLOR !== '0';
@@ -143,6 +143,7 @@ export async function step(
   }
 
   try {
+    const startedAt = Date.now();
     const result = await work();
     if (timer) clearInterval(timer);
 
@@ -154,7 +155,9 @@ export async function step(
       details = result.details ?? [];
     }
 
-    const line = summary ? `${label}  ${tone.mist(summary)}` : label;
+    const elapsed = Date.now() - startedAt;
+    const timing = elapsed >= 20 ? c.dim(` ${elapsed}ms`) : '';
+    const line = summary ? `${label}  ${tone.mist(summary)}${timing}` : `${label}${timing}`;
     const ok = `${prefix}${tone.mint('✔')}  ${line}`;
     if (useSpinner) process.stdout.write(`\r  ${ok}${' '.repeat(16)}\n`);
     else console.log(`  ${ok}`);
@@ -172,6 +175,146 @@ export async function step(
     else console.log(`  ${fail}`);
     throw error;
   }
+}
+
+export type SelectOption<T> = {
+  value: T;
+  label: string;
+  badge?: string;
+  hint?: string;
+  preview?: string;
+};
+
+export async function selectMenu<T>(params: {
+  title: string;
+  subtitle?: string;
+  options: Array<SelectOption<T>>;
+  initialIndex?: number;
+}): Promise<T> {
+  const { title, subtitle, options } = params;
+  const startIdx = Math.max(0, Math.min(options.length - 1, params.initialIndex ?? 0));
+
+  if (!process.stdin.isTTY || !process.stdout.isTTY || typeof process.stdin.setRawMode !== 'function') {
+    console.log('');
+    console.log(`  ${tone.gold('◆')}  ${c.bold(title)}${subtitle ? tone.mist(`  —  ${subtitle}`) : ''}`);
+    options.forEach((opt, i) => {
+      console.log(`    ${c.ice(String(i + 1))}  ${opt.label}${opt.badge ? ` ${c.dim(opt.badge)}` : ''}`);
+      if (opt.preview) console.log(`       ${opt.preview}`);
+      if (opt.hint) console.log(`       ${c.dim(opt.hint)}`);
+    });
+    const ans = await readlineAsk(`  ${c.ice('›')} `);
+    const idx = Number(ans) - 1;
+    if (Number.isInteger(idx) && idx >= 0 && idx < options.length) return options[idx].value;
+    return options[startIdx].value;
+  }
+
+  let selected = startIdx;
+  let renderedLines = 0;
+
+  const render = (final = false) => {
+    if (renderedLines > 0) {
+      process.stdout.write(`\x1b[${renderedLines}A\x1b[J`);
+    }
+    const lines: string[] = [];
+    if (final) {
+      const chosen = options[selected];
+      lines.push(`  ${tone.mint('✔')}  ${c.bold(title)}  ${tone.ice(chosen.label)}`);
+    } else {
+      lines.push(`  ${tone.gold('◆')}  ${c.bold(title)}${subtitle ? tone.mist(`  ${subtitle}`) : ''}`);
+      lines.push(`  ${c.dim('│')}`);
+      options.forEach((opt, idx) => {
+        const active = idx === selected;
+        const bullet = active ? tone.ice('●') : c.dim('○');
+        const label = active ? c.bold(tone.paper(opt.label)) : tone.mist(opt.label);
+        const badge = opt.badge ? (active ? `  ${tone.mint(opt.badge)}` : `  ${c.dim(opt.badge)}`) : '';
+        lines.push(`  ${bullet}  ${label}${badge}`);
+        if (opt.preview && active) {
+          lines.push(`  ${c.dim('│')}    ${opt.preview}`);
+        }
+        if (opt.hint && active) {
+          lines.push(`  ${c.dim('│')}    ${c.dim(opt.hint)}`);
+        }
+      });
+      lines.push(`  ${c.dim('│')}`);
+      lines.push(`  ${c.dim('└')}  ${c.dim('↑↓ move · 1-' + options.length + ' jump · Enter select')}`);
+    }
+    const output = `${lines.join('\n')}\n`;
+    process.stdout.write(output);
+    renderedLines = lines.length;
+  };
+
+  return new Promise<T>((resolve, reject) => {
+    const stdin = process.stdin;
+    const wasRaw = stdin.isRaw;
+    emitKeypressEvents(stdin);
+    stdin.setRawMode(true);
+    stdin.resume();
+    process.stdout.write('\x1b[?25l');
+
+    console.log('');
+    render(false);
+
+    const cleanup = () => {
+      stdin.removeListener('keypress', onKeypress);
+      try {
+        stdin.setRawMode(Boolean(wasRaw));
+      } catch {
+        // ignore
+      }
+      stdin.pause();
+      process.stdout.write('\x1b[?25h');
+    };
+
+    const onKeypress = (_str: string, key: { name?: string; ctrl?: boolean; sequence?: string }) => {
+      if (key?.ctrl && key.name === 'c') {
+        cleanup();
+        process.stdout.write('\n');
+        reject(new Error('Cancelled'));
+        return;
+      }
+      if (key?.name === 'up' || key?.name === 'k') {
+        selected = (selected - 1 + options.length) % options.length;
+        render(false);
+        return;
+      }
+      if (key?.name === 'down' || key?.name === 'j') {
+        selected = (selected + 1) % options.length;
+        render(false);
+        return;
+      }
+      if (key?.name === 'return' || key?.name === 'enter') {
+        cleanup();
+        render(true);
+        resolve(options[selected].value);
+        return;
+      }
+      const num = Number(key?.sequence);
+      if (Number.isInteger(num) && num >= 1 && num <= options.length) {
+        selected = num - 1;
+        cleanup();
+        render(true);
+        resolve(options[selected].value);
+      }
+    };
+
+    stdin.on('keypress', onKeypress);
+  });
+}
+
+export async function confirmPrompt(params: {
+  title: string;
+  hint?: string;
+  defaultYes?: boolean;
+}): Promise<boolean> {
+  return selectMenu<boolean>({
+    title: params.title,
+    subtitle: params.hint,
+    initialIndex: params.defaultYes === false ? 1 : 0,
+    options: [
+      { value: true, label: 'Yes', badge: params.defaultYes !== false ? 'default' : undefined },
+      { value: false, label: 'No', badge: params.defaultYes === false ? 'default' : undefined },
+    ],
+  });
 }
 
 export function box(title: string, lines: string[]): void {

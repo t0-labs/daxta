@@ -1,4 +1,4 @@
-import { getConfig, normalizeTreeLayout, type TreeLayout } from '../config';
+import { getConfig, normalizeTreeLayout, type SubResourceMode, type TreeLayout } from '../config';
 import { parseOperationLabel, HTTP_VERBS } from './test-title';
 import { docsScenarioClause } from './it-case';
 
@@ -73,9 +73,38 @@ function applyFold(parts: string[], skipParams: boolean): string[] {
   return parts.slice(0, paramIdx);
 }
 
+function applyResourceAliases(parts: string[], aliases?: Record<string, string>): string[] {
+  if (!aliases) return parts;
+  const entries = Object.entries(aliases).filter(([k, v]) => k && v);
+  if (!entries.length) return parts;
+
+  let current = [...parts];
+  for (const [pattern, target] of entries) {
+    const seq = pattern.split('/').filter(Boolean);
+    if (!seq.length) continue;
+    for (let i = 0; i <= current.length - seq.length; i += 1) {
+      const matches = seq.every((seg, offset) => current[i + offset].toLowerCase() === seg.toLowerCase());
+      if (matches) {
+        current = [...current.slice(0, i), target, ...current.slice(i + seq.length)];
+        break;
+      }
+    }
+  }
+  return current;
+}
+
+function applySubResourceMode(parts: string[], mode?: SubResourceMode): string[] {
+  if (!mode || mode === 'nested') return parts;
+  const startIdx = /^v\d+$/i.test(parts[0] || '') ? 2 : 1;
+  if (parts.length <= startIdx + 1) return parts;
+  if (mode === 'root') return parts.slice(0, startIdx + 1);
+  // mode === 'merge': join resource + sub-resource segments into one folder name
+  return [...parts.slice(0, startIdx), parts.slice(startIdx).join('-')];
+}
+
 /**
  * Sidebar / export-tag folder segments for a path.
- * Honors treeLayout, treeSkipParams, and per-path overrides.
+ * Honors treeLayout, treeSkipParams, treeResourceAliases, treeSubResourceMode, and per-path overrides.
  */
 export function treePathSegments(pathTemplate: string): string[] {
   const config = getConfig();
@@ -86,8 +115,10 @@ export function treePathSegments(pathTemplate: string): string[] {
   if (exact?.length) return exact;
 
   const layout = normalizeTreeLayout(config.treeLayout);
-  const parts = applyLayout(pathTemplate.split('/').filter(Boolean), layout);
-  return applyFold(parts, config.treeSkipParams !== false);
+  const folded = applyFold(pathTemplate.split('/').filter(Boolean), config.treeSkipParams !== false);
+  const aliased = applyResourceAliases(folded, config.treeResourceAliases);
+  const shaped = applySubResourceMode(aliased, config.treeSubResourceMode);
+  return applyLayout(shaped, layout);
 }
 
 export function viewerTreeConfig() {
@@ -102,6 +133,7 @@ export function viewerTreeConfig() {
     treePathOverrides: config.treePathOverrides,
     exampleLabelStyle: config.exampleLabelStyle ?? 'status-title-case',
     envPresets: config.envPresets,
+    headerVariables: config.headerVariables ?? {},
   };
 }
 

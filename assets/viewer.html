@@ -829,6 +829,15 @@
       }
       .nav-example:hover { background: color-mix(in srgb, var(--obsidian) 4%, transparent); color: var(--charcoal); }
       .nav-example.on { color: var(--obsidian); background: color-mix(in srgb, var(--obsidian) 8%, transparent); font-weight: 500; }
+      .nav-ver {
+        flex: none;
+        padding: 1px 4px;
+        border-radius: 2px;
+        border: 1px solid color-mix(in srgb, var(--obsidian) 14%, transparent);
+        color: var(--slate);
+        font: 600 9px/1.3 var(--mono);
+        letter-spacing: 0.02em;
+      }
       .nav-ex-total {
         flex: none;
         min-width: 16px;
@@ -2974,12 +2983,17 @@
       };
 
       const collectionRequestHeaders = (operation, includeTryIt) => {
+        const headerVars = (spec["x-viewer"] && spec["x-viewer"].headerVariables) || {};
+        const headerVarsLower = Object.fromEntries(
+          Object.entries(headerVars).map(([k, v]) => [String(k).toLowerCase(), String(v)]),
+        );
         const byLower = new Map();
         const add = (key, value) => {
           if (!key) return;
           const lower = String(key).toLowerCase();
           if (lower === "host" || lower === "content-length") return;
-          byLower.set(lower, { key, value: value != null ? String(value) : "", type: "text" });
+          const mapped = lower !== "content-type" ? headerVarsLower[lower] : undefined;
+          byLower.set(lower, { key, value: mapped ?? (value != null ? String(value) : ""), type: "text" });
         };
         for (const param of operation.parameters || []) {
           if (param && param.in === "header" && param.name) add(param.name, param.example != null ? param.example : "");
@@ -3627,10 +3641,19 @@
       let exampleQuery = "";
       let exampleOpen = false;
       let jsonMode = { req: "pretty", res: "pretty" };
-      const treePathSegments = (item) => item.treeSegments || item.path.split("/").filter(Boolean);
-      const apiVersions = [...new Set(ops.map((item) => treePathSegments(item)[0]).filter(Boolean))];
-      let activeVersion = apiVersions[0] || "";
-      const expandedFolders = new Set(apiVersions.map((version) => "/" + version));
+      const opVersion = (item) => {
+        const m = String(item.path || "").match(/^\/(v\d+)\b/i);
+        return m ? m[1].toLowerCase() : "";
+      };
+      const treePathSegments = (item) => {
+        const segs = item.treeSegments || item.path.split("/").filter(Boolean);
+        return /^v\d+$/i.test(segs[0] || "") && segs.length > 1 ? segs.slice(1) : segs;
+      };
+      const apiVersions = [...new Set(ops.map(opVersion).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      );
+      let activeVersion = "";
+      const expandedFolders = new Set();
       const expandedExampleOps = new Set();
       /** `${opId}::${group}` entries the user opened; groups start collapsed. */
       const expandedExampleGroups = new Set();
@@ -3727,12 +3750,14 @@
             const hasExamples = Array.isArray(item.scenarios) && item.scenarios.length > 0;
             const examplesOpen = expandedExampleOps.has(item.id);
             const exampleCount = hasExamples ? item.scenarios.length : 0;
+            const ver = opVersion(item);
             return `<div class="nav-op ${item.id === currentId ? "active" : ""} ${examplesOpen ? "examples-open" : ""}" data-op-id="${escapeAttr(item.id)}">
               <div class="nav-op-row">
                 <button type="button" class="nav-item" data-id="${escapeAttr(item.id)}" title="${escapeAttr(item.path)}">
                   <span class="method ${item.method}">${item.method}</span>
                   <span class="nav-title">${escapeAttr(item.title)}</span>
                 </button>
+                ${ver ? `<span class="nav-ver" title="API ${escapeAttr(ver)}">${escapeHtml(ver)}</span>` : ""}
                 ${hasExamples ? `<span class="nav-ex-total" title="${exampleCount} examples">${exampleCount}</span>` : ""}
                 <button type="button" class="nav-expand" data-expand-id="${escapeAttr(item.id)}" title="Examples" aria-label="Toggle examples" aria-expanded="${examplesOpen ? "true" : "false"}" ${hasExamples ? "" : "disabled"}>
                   <span class="chev"></span>
@@ -3765,7 +3790,7 @@
 
       const visibleOps = () => {
         if (!activeVersion) return ops;
-        return ops.filter((item) => treePathSegments(item)[0] === activeVersion);
+        return ops.filter((item) => opVersion(item) === activeVersion);
       };
 
       const renderNav = () => {
@@ -4245,8 +4270,8 @@
         const selected = ops.find((entry) => entry.id === id);
         if (selected) {
           syncHeaderGroupForOp(selected.op);
-          const version = treePathSegments(selected)[0];
-          if (version) activeVersion = version;
+          const version = opVersion(selected);
+          if (activeVersion && version) activeVersion = version;
           expandedExampleOps.add(id);
           const scenario = (selected.scenarios || [])[scenarioIndex];
           if (scenario) expandedExampleGroups.add(exampleGroupKey(id, scenario.group || "Other"));
@@ -4338,7 +4363,7 @@
         }
       });
 
-      const prefixLabel = (name) => (String(name).startsWith("/") ? name : "/" + name);
+      const prefixLabel = (name) => (name ? (String(name).startsWith("/") ? name : "/" + name) : "All");
       const renderPrefixBar = () => {
         const bar = document.getElementById("prefix-bar");
         if (!bar) return;
@@ -4348,7 +4373,8 @@
           return;
         }
         bar.hidden = false;
-        bar.innerHTML = apiVersions
+        const choices = ["", ...apiVersions];
+        bar.innerHTML = choices
           .map(
             (name) =>
               `<button type="button" class="prefix-chip ${name === activeVersion ? "on" : ""}" data-prefix="${escapeAttr(name)}" aria-pressed="${name === activeVersion ? "true" : "false"}">${escapeHtml(prefixLabel(name))}</button>`,
@@ -4356,7 +4382,7 @@
           .join("");
         bar.querySelectorAll(".prefix-chip").forEach((button) => {
           button.onclick = () => {
-            activeVersion = button.dataset.prefix;
+            activeVersion = button.dataset.prefix || "";
             const first = visibleOps()[0];
             if (first) select(first.id);
             else {

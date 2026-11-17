@@ -52,9 +52,15 @@ function withLock(options: { force?: boolean }, run: () => BuildResult): BuildRe
   }
 }
 
-export function rebuildFromDisk(options: { silent?: boolean; force?: boolean; html?: boolean } = {}): BuildResult | null {
+export function rebuildFromDisk(
+  options: { silent?: boolean; force?: boolean; html?: boolean; clearWorkers?: boolean } = {},
+): BuildResult | null {
   return withLock({ force: options.force }, () => {
-    const result = buildDaxtaSpec({ silent: options.silent ?? true, html: options.html });
+    const result = buildDaxtaSpec({
+      silent: options.silent ?? true,
+      html: options.html,
+      clearWorkers: options.clearWorkers ?? false,
+    });
     if (!options.silent && result.changed) {
       console.log(`DAxTA (partial) ${result.hits} hits, ${result.operations} ops — ${result.updated} updated, ${result.unchanged} unchanged`);
     }
@@ -63,9 +69,11 @@ export function rebuildFromDisk(options: { silent?: boolean; force?: boolean; ht
   });
 }
 
-export function flushAndRebuild(options: { silent?: boolean; force?: boolean } = {}): BuildResult | null {
+export function flushAndRebuild(
+  options: { silent?: boolean; force?: boolean; html?: boolean } = {},
+): BuildResult | null {
   flush();
-  return rebuildFromDisk(options);
+  return rebuildFromDisk({ ...options, clearWorkers: false });
 }
 
 export function touchPartialMarker(result: BuildResult) {

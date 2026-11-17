@@ -18,6 +18,11 @@ const TITLE_DASH_RE = new RegExp(
   `^(?<title>.+?)\\s+[—–-]\\s+(?<method>${METHODS})\\s+(?<path>\\/\\S+)${QUALIFIER}\\s*$`,
   'i',
 );
+/** `POST /v1/admin/mock-tbs — Create Mock Tbs` */
+const METHOD_PATH_TITLE_RE = new RegExp(
+  `^(?<method>${METHODS})\\s+(?<path>\\/\\S+)\\s+[—–-]\\s+(?<title>.+?)${QUALIFIER}\\s*$`,
+  'i',
+);
 const PATH_ONLY_DASH_RE = new RegExp(
   `^(?<method>${METHODS})\\s+(?<path>\\/\\S+)${QUALIFIER}\\s*$`,
   'i',
@@ -155,6 +160,7 @@ export function parseOperationLabel(raw?: string): ParsedOperationLabel | undefi
 
   return (
     fromGroups(cut.match(TITLE_DASH_RE)) ||
+    fromGroups(cut.match(METHOD_PATH_TITLE_RE)) ||
     fromGroups(cut.match(PATH_ONLY_DASH_RE)) ||
     fromGroups(cut.match(PATH_ONLY_BRACKET_RE)) ||
     fromGroups(cut.match(TITLE_BRACKET_RE))

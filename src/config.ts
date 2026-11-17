@@ -9,6 +9,10 @@ export type LegacyTreeLayout = 'url-order' | 'resource-first';
 
 export type ExampleLabelStyle = 'status-case' | 'status-title-case' | 'full';
 
+export type WriteMode = 'on-complete' | 'incremental';
+
+export type SubResourceMode = 'nested' | 'merge' | 'root';
+
 export type SpecInfo = {
   title?: string;
   version?: string;
@@ -56,7 +60,19 @@ export type DaxtaConfig = {
    * One level only. Default true.
    */
   treeCollapseSingle?: boolean;
+  /**
+   * How segments after the main resource are grouped into folders:
+   * - nested → v1 › shopping-cart › public › items (default)
+   * - merge → v1 › shopping-cart-items › public
+   * - root → v1 › shopping-cart › public (all sub-routes under main resource)
+   */
+  treeSubResourceMode?: SubResourceMode;
   treePathOverrides?: Record<string, string[]>;
+  /**
+   * Merge multi-segment resource paths into a single folder name, e.g.
+   * `{ 'shopping-cart/items': 'shopping-cart-items' }`.
+   */
+  treeResourceAliases?: Record<string, string>;
   /**
    * OpenAPI example + scenario labels:
    * - status-case → `201 — cyprus payload shape`
@@ -65,6 +81,12 @@ export type DaxtaConfig = {
    * Ideal it(): docs take the when-clause. Parametric it(): pre-when field context is kept.
    */
   exampleLabelStyle?: ExampleLabelStyle;
+  /**
+   * When to build OpenAPI + HTML during Jest runs:
+   * - on-complete → once after all tests finish (fastest, default)
+   * - incremental → after each test suite finishes (live updates)
+   */
+  writeMode?: WriteMode;
   port?: number;
   fieldsFile?: string;
   /**
@@ -85,6 +107,16 @@ export type DaxtaConfig = {
   operationTag?: (pathTemplate: string, method: string) => string | undefined;
   operationTitle?: (method: string, pathTemplate: string) => string | undefined;
   securitySchemeId?: (headerName: string) => string | undefined;
+  /**
+   * Map recorded header names to Postman/Try-it template values, e.g.:
+   * `{ 'x-user-id': '{{X_USER_ID}}', authorization: 'Bearer {{AUTH_TOKEN}}' }`
+   */
+  headerVariables?: Record<string, string>;
+  /**
+   * Dynamic header-to-template-value resolver, e.g.:
+   * `(name) => \`{{\${name.toUpperCase().replace(/-/g, '_')}}}\``
+   */
+  headerVariable?: (headerName: string) => string | undefined;
   specInfo?: () => SpecInfo | undefined;
   operationOrder?: (opKey: string) => number | undefined;
   includeHit?: (method: string, pathTemplate: string, test?: string) => boolean;
@@ -100,9 +132,12 @@ export type ResolvedDaxtaConfig = Required<
     | 'outDir'
     | 'treeLayout'
     | 'treePathOverrides'
+    | 'treeResourceAliases'
     | 'treeSkipParams'
     | 'treeCollapseSingle'
+    | 'treeSubResourceMode'
     | 'exampleLabelStyle'
+    | 'writeMode'
     | 'port'
     | 'fieldsFile'
     | 'docsPath'
@@ -119,8 +154,12 @@ const DEFAULTS: ResolvedDaxtaConfig = {
   treeLayout: 'role-resource',
   treeSkipParams: true,
   treeCollapseSingle: true,
+  treeSubResourceMode: 'nested',
   treePathOverrides: {},
+  treeResourceAliases: {},
+  headerVariables: {},
   exampleLabelStyle: 'status-title-case',
+  writeMode: 'on-complete',
   port: 5199,
   fieldsFile: '.daxta/out/fields.json',
   docsPath: '/docs',
@@ -184,6 +223,8 @@ export function resolveConfig(cwd = process.cwd(), overrides?: DaxtaConfig): Res
   if (merged.treeSkipParams == null) merged.treeSkipParams = DEFAULTS.treeSkipParams;
   if (merged.treeCollapseSingle == null) merged.treeCollapseSingle = DEFAULTS.treeCollapseSingle;
   if (merged.exampleLabelStyle == null) merged.exampleLabelStyle = DEFAULTS.exampleLabelStyle;
+  if (merged.writeMode == null) merged.writeMode = DEFAULTS.writeMode;
+  if (merged.treeSubResourceMode == null) merged.treeSubResourceMode = DEFAULTS.treeSubResourceMode;
   merged.envPresets = normalizeEnvPresets(merged.envPresets, merged.baseUrl);
   merged.docsPath = normalizeDocsPath(process.env.DAXTA_DOCS_PATH || merged.docsPath);
   merged.controllersRoot = path.isAbsolute(merged.controllersRoot)

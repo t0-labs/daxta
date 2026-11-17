@@ -8,7 +8,7 @@ import {
   type ItFinding,
   type TitleFinding,
 } from '../titles/scan';
-import { banner, c, readlineAsk } from './ui';
+import { banner, c, confirmPrompt, readlineAsk, selectMenu } from './ui';
 
 type PickResult = string | 'skip' | 'skip-all' | 'all' | null;
 
@@ -18,31 +18,31 @@ async function pickFromSuggestions(
   validate: (value: string) => boolean,
 ): Promise<PickResult> {
   const suggestions = finding.suggestions;
-  console.log('');
-  console.log(`  ${c.ice(finding.file)}${c.dim(`:${finding.line}:${finding.column}`)}`);
-  console.log(`    ${c.dim(finding.raw)}`);
-  if (extra) console.log(`    ${c.dim(extra)}`);
-  if (!suggestions.length) {
-    console.log(`    ${c.gold('no auto suggestion')} ${c.dim('— type a title, or s to skip one, n to skip all')}`);
-  }
-  suggestions.forEach((name, index) => {
-    const mark = index === 0 ? c.dim('  recommended') : '';
-    console.log(`    ${c.ice(String(index + 1))}  ${name}${mark}`);
-  });
-  console.log(
-    suggestions.length
-      ? `    ${c.dim('Enter = 1')}  ${c.dim('·')}  ${c.ice('a')} remaining auto  ${c.dim('·')}  ${c.ice('s')} skip one  ${c.dim('·')}  ${c.ice('n')} skip all  ${c.dim('·')}  ${c.ice('c')} custom`
-      : `    ${c.ice('c')} custom  ${c.dim('·')}  ${c.ice('s')} skip one  ${c.dim('·')}  ${c.ice('n')} skip all`,
-  );
+  const options = [
+    ...suggestions.map((name, index) => ({
+      value: name,
+      label: name,
+      badge: index === 0 ? 'recommended' : undefined,
+      hint: index === 0 ? `${finding.file}:${finding.line}` : undefined,
+    })),
+    ...(suggestions.length
+      ? [{ value: '__all__', label: 'Apply all remaining auto-fixes', hint: 'Accept recommended names for the rest' }]
+      : []),
+    { value: '__custom__', label: 'Custom title', hint: 'Type your own text' },
+    { value: '__skip__', label: 'Skip this one' },
+    { value: '__skip_all__', label: 'Skip all remaining' },
+  ];
 
-  const answer = (await readlineAsk(`  ${c.ice('›')} `)).trim();
-  const lower = answer.toLowerCase();
-  if (!answer) return suggestions[0] ? suggestions[0] : 'skip';
-  if (lower === 's') return 'skip';
-  if (lower === 'n' || lower === 'no' || lower === 'skip-all' || lower === 'skipall') return 'skip-all';
-  if (lower === 'a' || lower === 'all') return 'all';
-  if (lower === 'y' || lower === 'yes') return suggestions[0] ? suggestions[0] : 'skip';
-  if (lower === 'c') {
+  const choice = await selectMenu<string>({
+    title: `${finding.file}:${finding.line}`,
+    subtitle: `${finding.raw}${extra ? ` · ${extra}` : ''}`,
+    options,
+  });
+
+  if (choice === '__all__') return 'all';
+  if (choice === '__skip__') return 'skip';
+  if (choice === '__skip_all__') return 'skip-all';
+  if (choice === '__custom__') {
     const custom = await readlineAsk(`  ${c.dim('text')} ${c.ice('›')} `);
     if (!validate(custom)) {
       console.log(`  ${c.gold('!')} does not match the format — skipped`);
@@ -50,10 +50,7 @@ async function pickFromSuggestions(
     }
     return custom;
   }
-  const index = Number(answer);
-  if (Number.isInteger(index) && index >= 1 && index <= suggestions.length) return suggestions[index - 1];
-  if (validate(answer)) return answer;
-  return 'skip';
+  return choice;
 }
 
 function writeTitle(cwd: string, finding: TitleFinding): boolean {
@@ -157,16 +154,50 @@ export async function runTitleCheck(options: {
   console.log(`           ${c.dim('→ scenario clause (when-clause; keeps pre-when field context when needed)')}`);
   console.log(`  ${c.dim('label')}     201 — Create Mock Tbs — cyprus payload shape`);
   console.log(`           ${c.dim('→')} ${c.ice('exampleLabelStyle')} ${c.dim('in')} ${c.ice('daxta tree')} ${c.dim('· change with')} ${c.ice('2')} ${c.dim('for short labels')}`);
-  const start = await readlineAsk(
-    `  ${c.gold('?')} Review test names now?\n` +
-      `    ${c.dim('Y')} yes · ${c.dim('n')} skip all\n  ${c.ice('›')} `,
-  );
-  if (!start || /^n(o)?$/i.test(start)) {
+  const autoCount =
+    report.titles.filter((t) => t.auto && t.suggestions[0]).length +
+    report.cases.filter((k) => k.auto && k.suggestions[0]).length;
+
+  const shouldOptimize = await confirmPrompt({
+    title: `Found ${total} test naming issue(s) — optimize now?`,
+    hint: `${report.titles.length} describe · ${report.cases.length} it() (${autoCount} auto-fixable)`,
+    defaultYes: true,
+  });
+
+  if (!shouldOptimize) {
     console.log(`  ${c.dim('skipped')} ${c.ice('daxta titles')} ${c.dim('anytime')}`);
     console.log('');
     return 0;
   }
-  console.log(`  ${c.gold(String(total))} to review — ${c.ice('y')} one recommended, ${c.ice('a')} all remaining, ${c.ice('s')} skip one, ${c.ice('n')} skip all.`);
+
+  if (autoCount > 0) {
+    const result = applyAllRecommended(cwd, report.titles, report.cases, 0, 0);
+    console.log('');
+    console.log(`  ${c.mint('✔')} ${result.written} updated  ${c.dim(`${result.skipped} skipped`)}`);
+    if (result.pending.length) {
+      const reviewPending = await confirmPrompt({
+        title: `${result.pending.length} title(s) need a custom name — review now?`,
+        defaultYes: false,
+      });
+      if (reviewPending) {
+        for (const pending of result.pending) {
+          const customChoice = await pickFromSuggestions(
+            pending,
+            `docs would show ${pending.path} — custom title required`,
+            isHumanOperationTitle,
+          );
+          if (customChoice === 'skip-all') break;
+          if (customChoice && customChoice !== 'skip' && customChoice !== 'all') {
+            if (applyTitle(cwd, pending, customChoice)) {
+              console.log(`  ${c.mint('✔')} ${customChoice}`);
+            }
+          }
+        }
+      }
+    }
+    console.log('');
+    return 0;
+  }
 
   let written = 0;
   let skipped = 0;

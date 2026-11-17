@@ -23,6 +23,14 @@ DAxTA captures that real traffic while your tests run and turns it into interact
 
 **No duplicate API definitions. No manually maintained examples. No documentation-specific decorators.**
 
+### Quick Start
+
+```bash
+pnpm dlx @t0.labs/daxta install
+```
+
+> Prefer `pnpm dlx @t0.labs/daxta <command>` (or `npx @t0.labs/daxta <command>`) — no manual `npm i` setup required.
+
 ```ts
 import { apiDocs } from '@t0.labs/daxta';
 
@@ -150,7 +158,7 @@ DAxTA records **real HTTP traffic** from NestJS API integration tests.
 
 That is the point. Documentation is generated from the same requests your tests already send against the running application — not from controller decorators, and not from unit tests that never hit HTTP.
 
-**Covered** — Nest e2e / integration tests that go through **supertest** or **superagent**:
+**Covered** — Nest e2e / integration tests that go through **supertest**, **superagent**, or Node's built-in **`fetch`**:
 
 ```ts
 request(app.getHttpServer())
@@ -162,16 +170,17 @@ request(app.getHttpServer())
 
 If Jest is wired (`setupFilesAfterEnv` + reporter), those hits become `/api-docs` when the suite finishes.
 
-**Not covered** — anything that never passes through that HTTP client:
+**Not covered** — anything that never passes through those HTTP clients:
 
 
 | Test style                                         | Recorded? |
 | -------------------------------------------------- | --------- |
 | Nest e2e with `request(app.getHttpServer())`       | Yes       |
+| Tests using global `fetch` (Node 18+)              | Yes       |
 | Service / unit tests (`TestingModule`, no HTTP)    | No        |
-| `axios`, `fetch`, `got`                            | No        |
+| `axios`, `got`                                     | No        |
 | Playwright / Cypress                               | No        |
-| GraphQL or WebSocket (unless over superagent HTTP) | No        |
+| GraphQL or WebSocket (unless over superagent/fetch)| No        |
 
 
 If the test does not hit the API over HTTP the way your clients do, DAxTA has nothing to document. That is intentional: the source of truth is **observed API behavior**, not mocked internals.
@@ -303,31 +312,39 @@ This allows DAxTA to understand required and optional fields without another doc
 
 
 
-## OpenAPI export
+## OpenAPI & Postman export
 
 DAxTA is not limited to `/api-docs`.
 
-You can select the **APIs and examples** you want, combine them with the appropriate **environment and header groups**, and export using the **OpenAPI** spec plus a **Postman Collection**.
+You can export a **Postman Collection v2.1** (with nested folders and named examples), a **Postman Environment**, or a stripped **OpenAPI** spec directly from the CLI or from the `/api-docs` UI:
+
+```bash
+# Export Postman collection + environment from recorded spec
+pnpm dlx @t0.labs/daxta export
+
+# Or specify format and output directory
+pnpm dlx @t0.labs/daxta export postman --out ./postman
+pnpm dlx @t0.labs/daxta export openapi --out ./openapi.json
+
+# Generate OpenAPI + HTML + Postman in one step
+pnpm dlx @t0.labs/daxta generate --postman
+```
+
+In the `/api-docs` UI, you can also select specific **APIs and examples**, combine them with **environment and header groups**, and export on demand.
 
 ```text
 Tests
   ↓
 DAxTA
   ↓
-Select APIs + Examples
+OpenAPI + Named Examples
   ↓
-Environment + Header Groups
-  ↓
-OpenAPI / Postman
-  ↓
-Other tools
+Postman Collection v2.1 + Environment / Other tools
 ```
-
-This also allows you to create customized API sets without exposing the entire `/api-docs` interface from your service.
 
 Your tests remain the source of truth.
 
-**OpenAPI becomes the portable output.**
+**OpenAPI and Postman collections become the portable output.**
 
 ---
 
@@ -369,21 +386,32 @@ The path defaults to `/docs`. Override with `DAXTA_DOCS_PATH` or `docsPath` in `
 
 ## Commands
 
+Every command can be run directly via `pnpm dlx @t0.labs/daxta <command>` (or `daxta <command>` if installed):
+
 ```bash
-daxta install      # one-shot project setup, including sidebar layout
-daxta uninstall    # remove DAxTA wiring from the project
-daxta migrate      # upgrade integration after a package bump
-daxta generate     # rebuild OpenAPI + UI from recorded traffic
-daxta serve        # optional standalone viewer
-daxta tree         # reconfigure the /api-docs sidebar
-daxta titles       # align test titles with API docs examples
-daxta fields …     # export the field map for an operation
-daxta call …       # execute an API operation from the CLI
+# Setup
+pnpm dlx @t0.labs/daxta install      # attach DAxTA to Jest and NestJS
+pnpm dlx @t0.labs/daxta migrate      # upgrade project wiring after a package bump
+pnpm dlx @t0.labs/daxta uninstall    # remove DAxTA wiring from the project
+
+# Generate & Export
+pnpm dlx @t0.labs/daxta generate     # build OpenAPI + HTML (--postman to also export Postman)
+pnpm dlx @t0.labs/daxta export       # export Postman collection + env, or OpenAPI JSON
+pnpm dlx @t0.labs/daxta serve        # optional standalone viewer
+
+# Tests & Naming
+pnpm dlx @t0.labs/daxta test         # run project test script (--check-titles to lint names)
+pnpm dlx @t0.labs/daxta titles       # align describe/it() names with API docs & examples
+pnpm dlx @t0.labs/daxta tree         # configure sidebar folder layout & example label style
+
+# Try-it
+pnpm dlx @t0.labs/daxta fields …     # export the field map for an operation
+pnpm dlx @t0.labs/daxta call …       # execute an API operation from the CLI
 ```
 
-`daxta build` is an alias of `daxta generate`.
+Run `pnpm dlx @t0.labs/daxta <command> --help` for flags and examples.
 
-For most NestJS applications, `apiDocs(app)` is preferred over `daxta serve`.
+`build` is an alias of `generate`. For most NestJS applications, `apiDocs(app)` is preferred over `serve`.
 
 ---
 

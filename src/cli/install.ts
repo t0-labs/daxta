@@ -11,7 +11,7 @@ import {
 import { injectJestHooks, resolveJestConfigPath, unwrapDaxtaTestScript } from './jest-hooks';
 import { runTreeWizard } from './tree';
 import { runTitleCheck } from './titles';
-import { box, c, nextSteps, phase, sleep, splash, step } from './ui';
+import { askLine, box, c, nextSteps, phase, readlineAsk, sleep, splash, step } from './ui';
 
 type PackageJson = {
   name?: string;
@@ -28,6 +28,7 @@ export type InstallOptions = {
   yes?: boolean;
   mainPath?: string;
   skipMain?: boolean;
+  serviceName?: string;
   /** Skip dramatic pacing delays */
   fast?: boolean;
 };
@@ -96,18 +97,25 @@ function stripRegisterNodeOptions(pkg: PackageJson): string[] {
   return changed;
 }
 
-function writeConfig(cwd: string, dryRun: boolean): { created: boolean; rel: string } {
+function serviceNameFromPkg(raw?: string): string {
+  const clean = raw?.replace(/^@[^/]+\//, '').trim();
+  if (!clean) return 'API';
+  return clean.replace(/[-_]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function writeConfig(cwd: string, dryRun: boolean, serviceName: string): { created: boolean; rel: string } {
   const configPath = path.join(cwd, 'daxta.config.ts');
   const rel = 'daxta.config.ts';
   if (existsSync(configPath)) return { created: false, rel };
+  const safeName = serviceName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const body = `import { defineConfig } from '@t0.labs/daxta';
 
 export default defineConfig({
   specInfo: () => ({
-    title: 'API',
-    version: '1.0.0',
+    title: '${safeName}',
+    // version defaults to package.json version automatically
   }),
-  workspace: 'API',
+  workspace: '${safeName}',
   baseUrl: 'http://localhost:3000',
   controllersRoot: 'src',
   outDir: '.daxta/out',
@@ -228,11 +236,20 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
 
   phase(2, of, 'Workspace files', 'config, gitignore, NODE_ENV');
 
+  const detectedName = serviceNameFromPkg(pkg.name);
+  let serviceName = options.serviceName?.trim() || detectedName;
+  if (!existsSync(path.join(cwd, 'daxta.config.ts')) && !options.serviceName && !options.yes && process.stdin.isTTY) {
+    const typed = await readlineAsk(
+      askLine('API / service title', `Enter = ${detectedName}`),
+    );
+    if (typed) serviceName = typed;
+  }
+
   await step(
     'Write daxta.config.ts',
     () => {
-      const { created, rel } = writeConfig(cwd, dryRun);
-      return created ? `created ${rel}` : `exists · ${rel}`;
+      const { created, rel } = writeConfig(cwd, dryRun, serviceName);
+      return created ? `created ${rel} (${serviceName})` : `exists · ${rel}`;
     },
     { paceMs, n: 2, of },
   );

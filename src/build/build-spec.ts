@@ -82,7 +82,8 @@ function readPackageMeta(): { title: string; version: string; description: strin
       version?: string;
       description?: string;
     };
-    const title = pkg.name?.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()) ?? 'API';
+    const cleanName = pkg.name?.replace(/^@[^/]+\//, '');
+    const title = cleanName?.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()) ?? 'API';
     return {
       title,
       version: pkg.version ?? '0.0.0',
@@ -97,11 +98,13 @@ function specInfo() {
   const pkg = readPackageMeta();
   const custom = getConfig().specInfo?.();
   const workspace = getConfig().workspace;
+  const envTitle = process.env.DAXTA_SPEC_TITLE?.trim();
+  const envVersion = process.env.DAXTA_SPEC_VERSION?.trim();
   return {
-    title: custom?.title ?? pkg.title,
-    version: custom?.version ?? pkg.version,
+    title: envTitle || custom?.title || pkg.title,
+    version: envVersion || custom?.version || pkg.version,
     description: custom?.description ?? pkg.description,
-    workspace,
+    workspace: envTitle || workspace,
   };
 }
 
@@ -156,8 +159,24 @@ function mergeSchema(left?: JsonSchema, right?: JsonSchema): JsonSchema {
   return { ...left, description: left.description ?? right.description };
 }
 
+const TURKISH_ASCII_MAP: Record<string, string> = {
+  ç: 'c',
+  Ç: 'c',
+  ğ: 'g',
+  Ğ: 'g',
+  ı: 'i',
+  İ: 'i',
+  ö: 'o',
+  Ö: 'o',
+  ş: 's',
+  Ş: 's',
+  ü: 'u',
+  Ü: 'u',
+};
+
 function slug(value: string, index: number): string {
-  const base = value
+  const normalized = value.replace(/[çÇğĞıİöÖşŞüÜ]/g, (ch) => TURKISH_ASCII_MAP[ch] ?? ch);
+  const base = normalized
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
@@ -470,13 +489,16 @@ function securityForHits(opHits: RecordedHit[]): Array<Record<string, unknown[]>
   const headers = new Set<string>();
   for (const hit of opHits) {
     for (const name of Object.keys(hit.headers ?? {})) {
-      if (name.startsWith('x-')) headers.add(name);
+      if (name === 'authorization' || name.startsWith('x-')) headers.add(name);
     }
   }
   if (!headers.size) return undefined;
   // One requirement object = AND (all headers used together on this operation).
   const requirement: Record<string, unknown[]> = {};
-  for (const header of headers) requirement[schemeIdFromHeader(header)] = [];
+  for (const header of headers) {
+    const id = header === 'authorization' ? 'bearerAuth' : schemeIdFromHeader(header);
+    requirement[id] = [];
+  }
   return [requirement];
 }
 
@@ -662,7 +684,7 @@ function buildSpec(hits: RecordedHit[]): OpenApiSpec {
 
   const paths: Record<string, any> = {};
   const tags = new Set<string>();
-  const securitySchemes: Record<string, { type: string; in: string; name: string }> = {};
+  const securitySchemes: Record<string, Record<string, string>> = {};
 
   for (const [key, opHits] of sortOperations([...grouped.entries()])) {
     const method = key.split(' ')[0];
@@ -673,6 +695,10 @@ function buildSpec(hits: RecordedHit[]): OpenApiSpec {
     const security = securityForHits(opHits);
     for (const item of security ?? []) {
       for (const schemeId of Object.keys(item)) {
+        if (schemeId === 'bearerAuth') {
+          securitySchemes[schemeId] = { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' };
+          continue;
+        }
         const headerName = [...new Set(opHits.flatMap((hit) => Object.keys(hit.headers ?? {})))].find((header) => schemeIdFromHeader(header) === schemeId);
         if (headerName) securitySchemes[schemeId] = { type: 'apiKey', in: 'header', name: headerName };
       }
@@ -696,10 +722,14 @@ function buildSpec(hits: RecordedHit[]): OpenApiSpec {
     const parameters = buildParameters(pathTemplate, opHits);
     if (parameters.length) operation.parameters = parameters;
 
+    const seenLabels = new Map<string, number>();
     for (let index = 0; index < opHits.length; index += 1) {
       const hit = opHits[index];
-      const label = exampleLabel(hit);
-      const exampleKey = exampleKeyForHit(hit, index);
+      const baseLabel = exampleLabel(hit);
+      const count = (seenLabels.get(baseLabel) ?? 0) + 1;
+      seenLabels.set(baseLabel, count);
+      const label = count > 1 ? `${baseLabel} (${count})` : baseLabel;
+      const exampleKey = exampleKeyForHit({ ...hit }, index);
 
       if (hit.reqBody !== undefined) {
         operation.requestBody ??= { required: method === 'post' || method === 'put', content: { 'application/json': { schema: inferSchema(hit.reqBody), examples: {} } } };
@@ -947,10 +977,31 @@ function applyViewerMeta(spec: OpenApiSpec): OpenApiSpec {
   };
 }
 
-export function buildDaxtaSpec(options: { silent?: boolean; requireHits?: boolean; html?: boolean } = {}): BuildResult {
+export function buildDaxtaSpec(
+  options: { silent?: boolean; requireHits?: boolean; html?: boolean; clearWorkers?: boolean; uiOnly?: boolean } = {},
+): BuildResult {
+  const existingSpec = readJson<OpenApiSpec>(getSpecJsonPath());
+  if (options.uiOnly) {
+    if (!existingSpec) {
+      throw new Error('No openapi.json found. Run tests or `daxta generate` first.');
+    }
+    const refreshed = applyViewerMeta(existingSpec);
+    writeJson(getSpecJsonPath(), refreshed);
+    writeFileSync(getHtmlPath(), toStandaloneHtml(refreshed));
+    if (!options.silent) console.log(`Wrote ${getHtmlPath()} from existing spec`);
+    return {
+      skipped: false,
+      reason: 'viewer only',
+      hits: 0,
+      operations: countOperations(refreshed),
+      updated: 0,
+      unchanged: countOperations(refreshed),
+      changed: true,
+    };
+  }
+
   const hits = loadHits();
   const existingHits = readJson<RecordedHit[]>(getHitsJsonPath());
-  const existingSpec = readJson<OpenApiSpec>(getSpecJsonPath());
   const writeHtml = options.html !== false;
   const seededStore = ensureViewerStoreSeeded();
   if (seededStore && !options.silent) {
@@ -990,7 +1041,7 @@ export function buildDaxtaSpec(options: { silent?: boolean; requireHits?: boolea
   } else {
     writeJson(getHitsJsonPath(), hits);
   }
-  clearWorkerHits();
+  if (options.clearWorkers !== false) clearWorkerHits();
 
   const operations = countOperations(spec);
   const result: BuildResult = {

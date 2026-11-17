@@ -21,6 +21,7 @@ export type RecordedHit = {
 type GlobalHits = typeof globalThis & {
   __DAXTA_HITS__?: RecordedHit[];
   __DAXTA_FLUSH_HOOK__?: boolean;
+  __DAXTA_FETCH_PATCHED__?: boolean;
 };
 
 const g = globalThis as GlobalHits;
@@ -47,36 +48,118 @@ function pickHeaders(request: { header?: Record<string, unknown> }): Record<stri
   for (const [rawName, rawValue] of Object.entries(source)) {
     const name = rawName.toLowerCase();
     if (SKIP_HEADERS.has(name)) continue;
-    if (name !== 'content-type' && !name.startsWith('x-')) continue;
+    if (name !== 'content-type' && name !== 'authorization' && !name.startsWith('x-')) continue;
     if (rawValue == null || rawValue === '') continue;
     headers[name] = String(rawValue);
   }
   return Object.keys(headers).length ? headers : undefined;
 }
 
-function recordFromSuperagent(
-  request: { method?: string; url?: string; _data?: unknown; header?: Record<string, unknown> },
-  res: { status?: number; body?: unknown },
-) {
-  const rawUrl = request.url || '';
-  const url = new URL(rawUrl, 'http://localhost');
+function pickFetchHeaders(initHeaders: unknown): Record<string, string> | undefined {
+  if (!initHeaders) return undefined;
+  const headerObj: Record<string, unknown> = {};
+  if (typeof (initHeaders as { forEach?: unknown }).forEach === 'function') {
+    (initHeaders as { forEach: (cb: (val: string, key: string) => void) => void }).forEach((val, key) => {
+      headerObj[key] = val;
+    });
+  } else if (Array.isArray(initHeaders)) {
+    for (const pair of initHeaders) {
+      if (Array.isArray(pair) && pair.length >= 2) headerObj[String(pair[0])] = pair[1];
+    }
+  } else if (typeof initHeaders === 'object') {
+    Object.assign(headerObj, initHeaders);
+  }
+  return pickHeaders({ header: headerObj });
+}
+
+function tryParseJson(raw: string): unknown {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function recordHttpHit(params: {
+  method: string;
+  rawUrl: string;
+  status: number;
+  reqBody?: unknown;
+  resBody?: unknown;
+  headers?: Record<string, string>;
+}) {
+  const url = new URL(params.rawUrl, 'http://localhost');
   const test = currentTestName();
-  const pathTemplate = templatize(url.pathname, test, (request.method || 'GET').toLowerCase());
+  const method = (params.method || 'GET').toLowerCase();
+  const pathTemplate = templatize(url.pathname, test, method);
   if (!pathTemplate) return;
 
   const query = Object.fromEntries(url.searchParams.entries());
   const pathParams = extractPathParams(pathTemplate, url.pathname);
   hits.push({
-    method: (request.method || 'GET').toLowerCase(),
+    method,
     path: pathTemplate,
+    status: params.status ?? 0,
+    reqBody: params.reqBody,
+    resBody: params.resBody,
+    query: Object.keys(query).length ? query : undefined,
+    pathParams: Object.keys(pathParams).length ? pathParams : undefined,
+    headers: params.headers,
+    test,
+  });
+}
+
+function recordFromSuperagent(
+  request: { method?: string; url?: string; _data?: unknown; header?: Record<string, unknown> },
+  res: { status?: number; body?: unknown },
+) {
+  recordHttpHit({
+    method: request.method || 'GET',
+    rawUrl: request.url || '',
     status: res.status ?? 0,
     reqBody: request._data,
     resBody: res.body,
-    query: Object.keys(query).length ? query : undefined,
-    pathParams: Object.keys(pathParams).length ? pathParams : undefined,
     headers: pickHeaders(request),
-    test,
   });
+}
+
+function patchFetch() {
+  if (g.__DAXTA_FETCH_PATCHED__ || typeof globalThis.fetch !== 'function') return;
+  g.__DAXTA_FETCH_PATCHED__ = true;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async function daxtaFetch(
+    input: Parameters<typeof originalFetch>[0],
+    init?: RequestInit,
+  ): Promise<Response> {
+    const response = await originalFetch.call(this, input, init);
+    try {
+      const rawUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      const method = init?.method || (typeof input === 'object' && input !== null && 'method' in input ? (input as Request).method : 'GET');
+      const reqBody = typeof init?.body === 'string' ? tryParseJson(init.body) : undefined;
+      const headers = pickFetchHeaders(
+        init?.headers ?? (typeof input === 'object' && input !== null && 'headers' in input ? (input as Request).headers : undefined),
+      );
+      let resBody: unknown;
+      try {
+        const text = await response.clone().text();
+        resBody = text ? tryParseJson(text) : undefined;
+      } catch {
+        // ignore unread/uncloneable body
+      }
+      recordHttpHit({
+        method,
+        rawUrl,
+        status: response.status,
+        reqBody,
+        resBody,
+        headers,
+      });
+    } catch {
+      // recording must never fail a test
+    }
+    return response;
+  };
 }
 
 function patchSuperagent(superagent: { Request?: { prototype?: { end?: unknown; __daxtaPatched?: boolean } } }) {
@@ -125,6 +208,8 @@ export function install() {
       // ignore
     }
   }
+
+  patchFetch();
 
   if (!g.__DAXTA_FLUSH_HOOK__) {
     g.__DAXTA_FLUSH_HOOK__ = true;

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
-import { askLine, c, readlineAsk } from './ui';
+import { askLine, c, readlineAsk, selectMenu } from './ui';
 
 const IMPORT_LINE = `import { apiDocs } from '@t0.labs/daxta';`;
 const MARKER = 'apiDocs(';
@@ -55,29 +55,30 @@ export async function resolveMainPath(cwd: string, candidates: string[]): Promis
     return full;
   }
 
-  const rel = path.relative(cwd, def);
   const shown = candidates.slice(0, 8);
-  console.log(`  ${c.gold('?')}  ${c.bold('Nest entry')}  ${c.dim('— apiDocs(app)')}`);
-  shown.forEach((file, i) => {
-    const r = path.relative(cwd, file);
-    const rec = i === 0 ? c.dim('  recommended') : '';
-    console.log(`    ${c.ice(String(i + 1))}  ${c.bold(r)}${rec}`);
+  const picked = await selectMenu<string>({
+    title: 'Nest entry',
+    subtitle: 'apiDocs(app)',
+    options: [
+      ...shown.map((file, i) => ({
+        value: file,
+        label: path.relative(cwd, file),
+        badge: i === 0 ? 'recommended' : undefined,
+      })),
+      { value: '__custom__', label: 'Custom path', hint: 'Type another main.ts path' },
+      { value: '__skip__', label: 'Skip', hint: 'Do not modify main.ts' },
+    ],
   });
-  if (candidates.length > shown.length) console.log(`    ${c.dim(`… +${candidates.length - shown.length} more`)}`);
-  console.log(`    ${c.dim('n')}  skip`);
-  const answer = await readlineAsk(
-    `  ${c.dim(`Enter = 1 (${rel})`)}  ${c.dim('·')}  ${c.dim('or type a path')}\n  ${c.ice('›')} `,
-  );
-  if (!answer) return def;
-  if (/^n(o)?$/i.test(answer)) return null;
-  if (/^\d+$/.test(answer)) {
-    const picked = shown[Number(answer) - 1];
-    if (!picked) throw new Error(`No file #${answer}`);
-    return picked;
+
+  if (picked === '__skip__') return null;
+  if (picked === '__custom__') {
+    const typed = await readlineAsk(askLine('Nest entry path', 'or n to skip'));
+    if (!typed || /^n(o)?$/i.test(typed)) return null;
+    const full = path.isAbsolute(typed) ? typed : path.join(cwd, typed);
+    if (!existsSync(full)) throw new Error(`File not found: ${full}`);
+    return full;
   }
-  const full = path.isAbsolute(answer) ? answer : path.join(cwd, answer);
-  if (!existsSync(full)) throw new Error(`File not found: ${full}`);
-  return full;
+  return picked;
 }
 
 function ensureImport(source: string): string {
