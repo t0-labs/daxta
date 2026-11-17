@@ -3656,19 +3656,10 @@
       let exampleQuery = "";
       let exampleOpen = false;
       let jsonMode = { req: "pretty", res: "pretty" };
-      const opVersion = (item) => {
-        const m = String(item.path || "").match(/^\/(v\d+)\b/i);
-        return m ? m[1].toLowerCase() : "";
-      };
-      const treePathSegments = (item) => {
-        const segs = item.treeSegments || item.path.split("/").filter(Boolean);
-        return /^v\d+$/i.test(segs[0] || "") && segs.length > 1 ? segs.slice(1) : segs;
-      };
-      const apiVersions = [...new Set(ops.map(opVersion).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true }),
-      );
+      const treePathSegments = (item) => item.treeSegments || item.path.split("/").filter(Boolean);
+      const apiVersions = [...new Set(ops.map((item) => treePathSegments(item)[0]).filter(Boolean))];
       let activeVersion = "";
-      const expandedFolders = new Set();
+      const expandedFolders = new Set(apiVersions.slice(0, 1).map((version) => "/" + version));
       const expandedExampleOps = new Set();
       /** `${opId}::${group}` entries the user opened; groups start collapsed. */
       const expandedExampleGroups = new Set();
@@ -3765,14 +3756,12 @@
             const hasExamples = Array.isArray(item.scenarios) && item.scenarios.length > 0;
             const examplesOpen = expandedExampleOps.has(item.id);
             const exampleCount = hasExamples ? item.scenarios.length : 0;
-            const ver = opVersion(item);
             return `<div class="nav-op ${item.id === currentId ? "active" : ""} ${examplesOpen ? "examples-open" : ""}" data-op-id="${escapeAttr(item.id)}">
               <div class="nav-op-row">
                 <button type="button" class="nav-item" data-id="${escapeAttr(item.id)}" title="${escapeAttr(item.path)}">
                   <span class="method ${item.method}">${item.method}</span>
                   <span class="nav-title">${escapeAttr(item.title)}</span>
                 </button>
-                ${ver ? `<span class="nav-ver" title="API ${escapeAttr(ver)}">${escapeHtml(ver)}</span>` : ""}
                 ${hasExamples ? `<span class="nav-ex-total" title="${exampleCount} examples">${exampleCount}</span>` : ""}
                 <button type="button" class="nav-expand" data-expand-id="${escapeAttr(item.id)}" title="Examples" aria-label="Toggle examples" aria-expanded="${examplesOpen ? "true" : "false"}" ${hasExamples ? "" : "disabled"}>
                   <span class="chev"></span>
@@ -3803,10 +3792,7 @@
         return opsHtml + foldersHtml;
       };
 
-      const visibleOps = () => {
-        if (!activeVersion) return ops;
-        return ops.filter((item) => opVersion(item) === activeVersion);
-      };
+      const visibleOps = () => ops;
 
       const renderNav = () => {
         const nav = document.getElementById("nav");
@@ -4285,8 +4271,6 @@
         const selected = ops.find((entry) => entry.id === id);
         if (selected) {
           syncHeaderGroupForOp(selected.op);
-          const version = opVersion(selected);
-          if (activeVersion && version) activeVersion = version;
           expandedExampleOps.add(id);
           const scenario = (selected.scenarios || [])[scenarioIndex];
           if (scenario) expandedExampleGroups.add(exampleGroupKey(id, scenario.group || "Other"));
@@ -4378,35 +4362,11 @@
         }
       });
 
-      const prefixLabel = (name) => (name ? (String(name).startsWith("/") ? name : "/" + name) : "All");
       const renderPrefixBar = () => {
         const bar = document.getElementById("prefix-bar");
         if (!bar) return;
-        if (apiVersions.length < 2) {
-          bar.hidden = true;
-          bar.innerHTML = "";
-          return;
-        }
-        bar.hidden = false;
-        const choices = ["", ...apiVersions];
-        bar.innerHTML = choices
-          .map(
-            (name) =>
-              `<button type="button" class="prefix-chip ${name === activeVersion ? "on" : ""}" data-prefix="${escapeAttr(name)}" aria-pressed="${name === activeVersion ? "true" : "false"}">${escapeHtml(prefixLabel(name))}</button>`,
-          )
-          .join("");
-        bar.querySelectorAll(".prefix-chip").forEach((button) => {
-          button.onclick = () => {
-            activeVersion = button.dataset.prefix || "";
-            const first = visibleOps()[0];
-            if (first) select(first.id);
-            else {
-              renderPrefixBar();
-              renderNav();
-              renderMain();
-            }
-          };
-        });
+        bar.hidden = true;
+        bar.innerHTML = "";
       };
 
       const initial = decodeURIComponent(location.hash.replace(/^#/, "")) || ops[0]?.id;
