@@ -417,34 +417,98 @@ Run `pnpm dlx @t0.labs/daxta <command> --help` for flags and examples.
 
 
 
-## Sidebar order
+## Configuration Guide (`daxta.config.ts`)
 
-```bash
-daxta tree
+All behavior is configured in `daxta.config.ts` (and interactive wizards like `daxta tree` / `daxta titles` write directly to it). After changing any option, run `daxta generate` (or `daxta generate --postman`) to rebuild without re-running tests.
+
+### 1. Folder grouping (`treeLayout`, `treeSubResourceMode`, `treeSkipParams`, `treeCollapseSingle`)
+
+DAxTA turns each URL into nested folders in both the `/docs` sidebar and Postman Collection.
+
+#### A) `treeLayout` — Order of role vs resource after version (`v1`)
+
+For `/v1/admin/baskets`:
+
+- `'role-resource'` *(default)* → `v1 › admin › baskets`
+- `'resource-role'` → `v1 › baskets › admin`
+
+#### B) `treeSubResourceMode` — How deeper sub-paths are grouped
+
+Suppose you have `@Controller('public/shopping-cart/items')` with two routes:
+- `POST /v1/public/shopping-cart/items`
+- `PATCH /v1/public/shopping-cart/items/{itemId}/quantity`
+
+With `treeLayout: 'resource-role'` and `treeSkipParams: true`:
+
+- **`'nested'`** *(default)* — Every static segment before `{param}` becomes a subfolder:
+  `v1 › shopping-cart › public › items › POST / PATCH`
+- **`'controller'`** — Stops folders at each NestJS `@Controller(...)` prefix (ignores extra method-level sub-paths):
+  - If `@Controller('public/shopping-cart/items')` → `v1 › shopping-cart › public › items › POST / PATCH`
+  - If `@Controller('public/shopping-cart')` → `v1 › shopping-cart › public › POST / PATCH`
+- **`'merge'`** — Joins resource + sub-resources into one hyphenated folder name:
+  `v1 › shopping-cart-items › public › POST / PATCH`
+- **`'root'`** — Puts everything under the top-level resource folder only:
+  `v1 › shopping-cart › public › POST / PATCH`
+
+#### C) Other folder options
+
+- **`treeSkipParams`** *(default `true`)* — Stops creating folders at `{param}` segments (e.g. `/{id}/complete` stays in the parent folder instead of creating `{id}` and `complete` folders).
+- **`treeCollapseSingle`** *(default `true`)* — Removes a leaf folder if it contains only 1 endpoint and has no subfolders. Automatically skipped when `treeSubResourceMode: 'controller'` or for `v1 › resource › role` folders in `resource-role` layout. Set `false` to never collapse any folder.
+- **`treeResourceAliases`** — Rename/merge specific multi-segment paths into one folder name:
+  `{ 'shopping-cart/items': 'shopping-cart-items' }`
+- **`treePathOverrides`** — Pin an exact folder path for one endpoint:
+  `{ '/v1/admin/baskets': ['v1', 'baskets', 'admin'] }`
+
+Use `daxta tree` to configure these interactively.
+
+### 2. Operation & example naming (`exampleLabelStyle`, `operationTitle`)
+
+Suppose your Jest test looks like this:
+
+```ts
+describe('Create Init - POST /v1/me/checkout/init', () => {
+  it('POSITIVE CASES returns 201 when cart has valid item', async () => { … });
+});
 ```
 
-controls how API paths are organized inside `/api-docs`.
+DAxTA extracts two names from it:
 
-```text
-/v1/admin/baskets
+1. **Endpoint title** *(shown in the sidebar and Postman request name)*:
+   - Priority 1: `operationTitle(method, path)` in `daxta.config.ts`
+   - Priority 2: Title before `- METHOD /path` in `describe(...)` → **`Create Init`**
+   - Priority 3 *(fallback if `describe` has no title)*: Generated from the URL template — e.g. `GET /v1/merchants/{merchantId}/products/{pId}` becomes **`Find All Merchant Products By P Id`** (camelCase param `{pId}` splits into `P Id`; `{productId}` becomes `Product Id`).
 
-1) URL order
-   v1 › admin › baskets
+2. **Example / scenario label** *(shown under the endpoint in `/docs` and Postman saved responses)*:
+   - `'status-title-case'` *(default)* → `201 — Create Init — returns 201 when cart has valid item`
+   - `'status-case'` → `201 — returns 201 when cart has valid item`
+   - `'full'` → `201 — Create Init - POST /v1/me/checkout/init POSITIVE CASES returns 201 when cart has valid item`
 
-2) Resource-first
-   v1 › baskets › admin
+### 3. Headers & environment variables (`headerVarStyle`, `headerVariables`, `envPresets`)
 
-3) Custom
-   …
+By default (`headerVarStyle: 'camel'`), recorded headers like `x-admin-id` become `{{adminId}}` in Postman requests and Try-it presets.
+
+```ts
+export default defineConfig({
+  // 'camel' → {{adminId}} (default) | 'upper-snake' → {{X_ADMIN_ID}}
+  headerVarStyle: 'upper-snake',
+
+  // Override specific headers (takes priority over headerVarStyle)
+  headerVariables: {
+    authorization: 'Bearer {{AUTH_TOKEN}}',
+  },
+
+  // Try-it & Postman environment presets
+  envPresets: {
+    local: { baseUrl: 'http://localhost:3000', baseUrlKey: 'ONBOARDING_SERVICE' },
+    staging: { baseUrl: 'https://staging.example.com', baseUrlKey: 'ONBOARDING_SERVICE' },
+  },
+});
 ```
 
-The selected structure is stored in `daxta.config.ts` as `treeLayout` and `treePathOverrides`.
+### 4. `.gitignore` & serving `/docs`
 
-Then rebuild:
-
-```bash
-daxta generate
-```
+- `.daxta/out/`, `.daxta/viewer-store.json`, and `**/.jest.daxta.runtime.json` are local build artifacts and added to `.gitignore` by `daxta install`.
+- `apiDocs(app)` in `main.ts` reads `.daxta/out/` at runtime when `NODE_ENV` allows (`/docs` is mounted automatically when `.daxta/out/` has been generated via `npm test` or `daxta generate`; if `.daxta/out/` is missing, `apiDocs(app)` falls back cleanly without crashing).
 
 ---
 
