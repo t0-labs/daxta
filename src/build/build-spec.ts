@@ -4,7 +4,7 @@ import * as path from 'path';
 import { caseGroup, CASE_GROUP_ORDER, declaredMethods, exampleLabel, parseCaseSection, parseOperationLabel, type FieldDoc, type OperationDoc, operationSummary, operationTag, STATUS_TEXT, treePathSegments, viewerTreeConfig } from '../catalog';
 
 
-import { getConfig, serversFromEnvPresets } from '../config';
+import { getConfig, normalizeTreeLayout, serversFromEnvPresets } from '../config';
 import { dtoRequired } from '../fields/dto-fields';
 import { extractPathParams, materializePath, pathParamNames, templatize } from '../path.util';
 import { clearWorkerHits, HIT_FILE_PATTERN, readRunId, type RecordedHit } from '../recorder';
@@ -642,7 +642,8 @@ function sortOperations<T>(entries: [string, T][]): [string, T][] {
  * while `external-checkouts` (GET + POST + PUT …) keeps its folder. One level only.
  */
 function collapseLonelyLeafFolders(paths: Record<string, any>): void {
-  if (getConfig().treeCollapseSingle === false) return;
+  const config = getConfig();
+  if (config.treeCollapseSingle === false || config.treeSubResourceMode === 'controller') return;
 
   const entries: Array<{ operation: any; segments: string[]; foldable: boolean }> = [];
   for (const [pathTemplate, pathItem] of Object.entries(paths)) {
@@ -664,8 +665,10 @@ function collapseLonelyLeafFolders(paths: Record<string, any>): void {
   }
   const folders = [...opsPerFolder.keys()];
 
+  const isResourceRole = normalizeTreeLayout(config.treeLayout) === 'resource-role';
   for (const entry of entries) {
-    if (!entry.foldable || entry.segments.length < 2) continue;
+    const minSegments = isResourceRole && /^v\d+$/i.test(entry.segments[0] || '') ? 4 : 2;
+    if (!entry.foldable || entry.segments.length < minSegments) continue;
     const folder = entry.segments.join('/');
     if (opsPerFolder.get(folder) !== 1) continue;
     if (folders.some((other) => other.startsWith(`${folder}/`))) continue;

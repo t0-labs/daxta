@@ -103,3 +103,35 @@ test('treeCollapseSingle: false keeps every segment as a folder', () => {
     'onboarding-info',
   ]);
 });
+
+test('resource-role layout preserves role folder even with single operations under admin and me', () => {
+  const spec = buildSpecIn(
+    [
+      hit('get', '/v1/admin/agreements', 'Find All - GET /v1/admin/agreements'),
+      hit('get', '/v1/me/agreements', 'Find Mine - GET /v1/me/agreements'),
+    ],
+    "export default { treeLayout: 'resource-role' };\n",
+  );
+  assert.deepStrictEqual(segmentsOf(spec, '/v1/admin/agreements', 'get'), [
+    'v1',
+    'agreements',
+    'admin',
+  ]);
+  assert.deepStrictEqual(segmentsOf(spec, '/v1/me/agreements', 'get'), [
+    'v1',
+    'agreements',
+    'me',
+  ]);
+});
+
+test('treeSubResourceMode: controller keeps controller leaf folder even when treeCollapseSingle is true', () => {
+  const spec = buildSpecIn(
+    [hit('get', '/v1/admin/agreements', 'Find All - GET /v1/admin/agreements')],
+    "export default { treeLayout: 'resource-role', treeSubResourceMode: 'controller' };\n",
+  );
+  assert.deepStrictEqual(segmentsOf(spec, '/v1/admin/agreements', 'get'), [
+    'v1',
+    'agreements',
+    'admin',
+  ]);
+});
