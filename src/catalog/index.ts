@@ -1,5 +1,5 @@
 import { getConfig, normalizeTreeLayout, type SubResourceMode, type TreeLayout } from '../config';
-import { parseOperationLabel, HTTP_VERBS } from './test-title';
+import { parseOperationLabel, suggestOperationTitles, HTTP_VERBS } from './test-title';
 import { docsScenarioClause } from './it-case';
 
 export { parseOperationLabel, suggestOperationTitles, suggestOperationTitleResult, formatTestTitle } from './test-title';
@@ -40,7 +40,7 @@ const METHOD_ALIASES: Record<string, string[]> = {
 };
 
 const CASE_SECTION_RE =
-  /^((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\s+/i;
+  /^((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES|AUTHENTICATION CASES|AUTHORIZATION CASES|SECURITY CASES|VALIDATION CASES)\s+/i;
 
 export function declaredMethods(test?: string): string[] | null {
   if (!test) return null;
@@ -159,7 +159,7 @@ export function operationTag(pathTemplate: string, method: string): string {
 export function defaultTitle(method: string, pathTemplate: string): string {
   const custom = getConfig().operationTitle?.(method, pathTemplate);
   if (custom) return custom;
-  return pathTemplate;
+  return suggestOperationTitles(method, pathTemplate)[0] ?? pathTemplate;
 }
 
 export const CASE_GROUP_ORDER: string[] = [
@@ -232,8 +232,9 @@ function stripSectionPrefix(value: string): string {
 export function caseName(test?: string): string {
   if (!test) return 'example';
   let rest = test
-    .replace(new RegExp(`^.+?\\s+[—–-]\\s+(?:${HTTP_VERBS})\\s+\\S+\\s*`, 'i'), '')
-    .replace(new RegExp(`^.*?\\[(?:${HTTP_VERBS})\\]\\s*(?:\\(integration\\))?\\s*`, 'i'), '');
+    .replace(new RegExp(`^.+?\\s+[—–-]\\s+(?:${HTTP_VERBS})\\s+\\S+(?:\\s+\\([^)]*\\))*\\s*`, 'i'), '')
+    .replace(new RegExp(`^(?:${HTTP_VERBS})\\s+\\/\\S+(?:\\s+\\([^)]*\\))*\\s*`, 'i'), '')
+    .replace(new RegExp(`^.*?\\[(?:${HTTP_VERBS})\\](?:\\s+\\([^)]*\\))*\\s*`, 'i'), '');
   rest = stripSectionPrefix(rest.trim());
 
   // "Admin Find One Basket By Id API - GET /path POSITIVE CASES returns…"

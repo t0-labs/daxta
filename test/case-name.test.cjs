@@ -22,3 +22,14 @@ test('keeps a trailing parenthetical that is part of the case text', () => {
   const name = `${TITLE} POSITIVE CASES new merchant is created (corporate)`;
   assert.strictEqual(caseName(name), 'new merchant is created (corporate)');
 });
+
+test('strips bare METHOD /path prefix and AUTHENTICATION/SECURITY sections from example name', () => {
+  assert.strictEqual(
+    caseName('GET /v1/me/terminals INVALID CASES returns error when headers are missing'),
+    'returns error when headers are missing',
+  );
+  assert.strictEqual(
+    caseName('/v1/public/auth/phone/verify-otp [POST] AUTHENTICATION CASES should return dashboard tokens'),
+    'should return dashboard tokens',
+  );
+});
