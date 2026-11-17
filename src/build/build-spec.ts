@@ -961,10 +961,33 @@ function viewerTemplateNewerThanHtml(): boolean {
   return newerThan(getViewerAssetPath()) || newerThan(getFaviconAssetPath()) || newerThan(getFaviconLightAssetPath());
 }
 
+function resolveViewerMeta(spec: OpenApiSpec): OpenApiSpec {
+  const viewer = { ...viewerTreeConfig() };
+  const fn = getConfig().headerVariable;
+  if (fn) {
+    const resolved: Record<string, string> = { ...(viewer.headerVariables ?? {}) };
+    for (const pathItem of Object.values(spec.paths ?? {})) {
+      for (const op of Object.values((pathItem as Record<string, any>) ?? {})) {
+        for (const scenario of (op?.['x-scenarios'] as Array<{ headers?: Record<string, string> }>) ?? []) {
+          for (const h of Object.keys(scenario.headers ?? {})) {
+            const lower = h.toLowerCase();
+            if (resolved[lower]) continue;
+            const mapped = fn(lower) ?? fn(h);
+            if (mapped) resolved[lower] = mapped;
+          }
+        }
+      }
+    }
+    viewer.headerVariables = resolved;
+  }
+  return { ...spec, 'x-viewer': viewer };
+}
+
 function applyViewerMeta(spec: OpenApiSpec): OpenApiSpec {
   const info = specInfo();
+  const withViewer = resolveViewerMeta(spec);
   return {
-    ...spec,
+    ...withViewer,
     info: {
       ...spec.info,
       title: info.title,
@@ -972,7 +995,6 @@ function applyViewerMeta(spec: OpenApiSpec): OpenApiSpec {
       description: info.description,
       'x-workspace': info.workspace,
     },
-    'x-viewer': viewerTreeConfig(),
     servers: specServers(),
   };
 }

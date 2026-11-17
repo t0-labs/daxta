@@ -108,6 +108,12 @@ export type DaxtaConfig = {
   operationTitle?: (method: string, pathTemplate: string) => string | undefined;
   securitySchemeId?: (headerName: string) => string | undefined;
   /**
+   * Naming style for auto-generated header template variables in Postman & Try-it:
+   * - camel → x-admin-id becomes {{adminId}} (default)
+   * - upper-snake → x-admin-id becomes {{X_ADMIN_ID}}
+   */
+  headerVarStyle?: 'camel' | 'upper-snake';
+  /**
    * Map recorded header names to Postman/Try-it template values, e.g.:
    * `{ 'x-user-id': '{{X_USER_ID}}', authorization: 'Bearer {{AUTH_TOKEN}}' }`
    */
@@ -157,6 +163,7 @@ const DEFAULTS: ResolvedDaxtaConfig = {
   treeSubResourceMode: 'nested',
   treePathOverrides: {},
   treeResourceAliases: {},
+  headerVarStyle: 'camel',
   headerVariables: {},
   exampleLabelStyle: 'status-title-case',
   writeMode: 'on-complete',

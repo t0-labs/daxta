@@ -133,6 +133,7 @@ export function viewerTreeConfig() {
     treePathOverrides: config.treePathOverrides,
     exampleLabelStyle: config.exampleLabelStyle ?? 'status-title-case',
     envPresets: config.envPresets,
+    headerVarStyle: config.headerVarStyle ?? 'camel',
     headerVariables: config.headerVariables ?? {},
   };
 }

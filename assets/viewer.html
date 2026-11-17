@@ -1957,6 +1957,17 @@
           .replace(/</g, "&lt;");
 
       const varNameFromHeader = (header) => {
+        const lower = String(header).toLowerCase();
+        const headerVars = (spec["x-viewer"] && spec["x-viewer"].headerVariables) || {};
+        for (const [k, v] of Object.entries(headerVars)) {
+          if (String(k).toLowerCase() === lower) {
+            const m = String(v).match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/);
+            if (m) return m[1];
+          }
+        }
+        if (spec["x-viewer"] && spec["x-viewer"].headerVarStyle === "upper-snake") {
+          return String(header).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "");
+        }
         const parts = String(header).replace(/^x-/, "").split("-").filter(Boolean);
         if (!parts.length) return String(header).replace(/[^a-zA-Z0-9]/g, "");
         return parts[0] + parts.slice(1).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
@@ -2987,12 +2998,16 @@
         const headerVarsLower = Object.fromEntries(
           Object.entries(headerVars).map(([k, v]) => [String(k).toLowerCase(), String(v)]),
         );
+        const upperSnake = spec["x-viewer"] && spec["x-viewer"].headerVarStyle === "upper-snake";
         const byLower = new Map();
         const add = (key, value) => {
           if (!key) return;
           const lower = String(key).toLowerCase();
           if (lower === "host" || lower === "content-length") return;
-          const mapped = lower !== "content-type" ? headerVarsLower[lower] : undefined;
+          let mapped = lower !== "content-type" ? headerVarsLower[lower] : undefined;
+          if (!mapped && upperSnake && lower.startsWith("x-")) {
+            mapped = "{{" + lower.toUpperCase().replace(/-/g, "_") + "}}";
+          }
           byLower.set(lower, { key, value: mapped ?? (value != null ? String(value) : ""), type: "text" });
         };
         for (const param of operation.parameters || []) {

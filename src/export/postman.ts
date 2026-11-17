@@ -155,6 +155,10 @@ function resolveConfiguredHeaderValue(key: string): string | undefined {
   for (const [k, v] of Object.entries(map)) {
     if (k.toLowerCase() === lower) return v;
   }
+  if (config.headerVarStyle === 'upper-snake') {
+    if (lower === 'authorization') return 'Bearer {{AUTH_TOKEN}}';
+    if (lower.startsWith('x-')) return `{{${lower.toUpperCase().replace(/-/g, '_')}}}`;
+  }
   return undefined;
 }
 
