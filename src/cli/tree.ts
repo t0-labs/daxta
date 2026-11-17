@@ -133,15 +133,22 @@ async function pickSkipParams(current: boolean): Promise<boolean> {
 
 async function pickSubResourceMode(current: SubResourceMode, layout: TreeLayout): Promise<SubResourceMode> {
   const roleFirst = layout === 'role-resource';
+  const initialIndex = current === 'controller' ? 0 : current === 'merge' ? 1 : current === 'root' ? 2 : 3;
   return selectMenu<SubResourceMode>({
     title: 'Sub-resources after main resource',
-    subtitle: 'e.g. /v1/public/shopping-cart/items/{id}/quantity',
-    initialIndex: current === 'merge' ? 0 : current === 'root' ? 1 : 2,
+    subtitle: 'e.g. /v1/public/solution-partner-identity/auth/phone/verify-otp',
+    initialIndex,
     options: [
+      {
+        value: 'controller',
+        label: 'Group by @Controller path',
+        badge: 'recommended',
+        preview: roleFirst ? 'v1 › public › solution-partner-identity' : 'v1 › solution-partner-identity › public',
+        hint: 'Stops folders at each Nest @Controller(...) prefix; method routes sit inside',
+      },
       {
         value: 'merge',
         label: 'Merge into one folder (shopping-cart-items)',
-        badge: 'recommended',
         preview: roleFirst ? 'v1 › public › shopping-cart-items' : 'v1 › shopping-cart-items › public',
         hint: 'Joins sub-resources with "-" instead of opening extra subfolders',
       },
@@ -149,12 +156,14 @@ async function pickSubResourceMode(current: SubResourceMode, layout: TreeLayout)
         value: 'root',
         label: 'Group under main resource (shopping-cart)',
         preview: roleFirst ? 'v1 › public › shopping-cart' : 'v1 › shopping-cart › public',
-        hint: 'Keeps all sub-routes directly under the main resource folder',
+        hint: 'Keeps all sub-routes directly under the first resource segment',
       },
       {
         value: 'nested',
-        label: 'Keep nested subfolders (shopping-cart › items)',
-        preview: roleFirst ? 'v1 › public › shopping-cart › items' : 'v1 › shopping-cart › public › items',
+        label: 'Keep nested subfolders (auth › phone)',
+        preview: roleFirst
+          ? 'v1 › public › solution-partner-identity › auth › phone'
+          : 'v1 › solution-partner-identity › public › auth › phone',
         hint: 'Creates a separate subfolder for every segment',
       },
     ],

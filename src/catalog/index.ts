@@ -93,8 +93,21 @@ function applyResourceAliases(parts: string[], aliases?: Record<string, string>)
   return current;
 }
 
+function controllerBasePath(pathTemplate: string): string {
+  try {
+    // Lazy require avoids circular init
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const dto = require('../fields/dto-fields') as {
+      matchControllerPrefix?: (pathname: string) => string | null;
+    };
+    return dto.matchControllerPrefix?.(pathTemplate) || pathTemplate;
+  } catch {
+    return pathTemplate;
+  }
+}
+
 function applySubResourceMode(parts: string[], mode?: SubResourceMode): string[] {
-  if (!mode || mode === 'nested') return parts;
+  if (!mode || mode === 'nested' || mode === 'controller') return parts;
   const startIdx = /^v\d+$/i.test(parts[0] || '') ? 2 : 1;
   if (parts.length <= startIdx + 1) return parts;
   if (mode === 'root') return parts.slice(0, startIdx + 1);
@@ -115,7 +128,8 @@ export function treePathSegments(pathTemplate: string): string[] {
   if (exact?.length) return exact;
 
   const layout = normalizeTreeLayout(config.treeLayout);
-  const folded = applyFold(pathTemplate.split('/').filter(Boolean), config.treeSkipParams !== false);
+  const sourcePath = config.treeSubResourceMode === 'controller' ? controllerBasePath(pathTemplate) : pathTemplate;
+  const folded = applyFold(sourcePath.split('/').filter(Boolean), config.treeSkipParams !== false);
   const aliased = applyResourceAliases(folded, config.treeResourceAliases);
   const shaped = applySubResourceMode(aliased, config.treeSubResourceMode);
   return applyLayout(shaped, layout);

@@ -71,4 +71,32 @@ describe('treeResourceAliases and treeSubResourceMode', () => {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
   });
+
+  it('stops folders at Nest @Controller(...) prefix when treeSubResourceMode is controller', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'daxta-ctrl-'));
+    const prev = process.cwd();
+    process.chdir(tmp);
+    try {
+      fs.mkdirSync(path.join(tmp, 'src'), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmp, 'src', 'auth.controller.ts'),
+        `import { Controller, Post } from '@nestjs/common';\n@Controller('public/solution-partner-identity')\nexport class AuthController {\n  @Post('auth/phone/verify-otp')\n  verifyOtp() {}\n}\n`,
+      );
+      fs.writeFileSync(
+        path.join(tmp, 'daxta.config.ts'),
+        `export default {\n  controllersRoot: 'src',\n  treeLayout: 'resource-role',\n  treeSkipParams: true,\n  treeSubResourceMode: 'controller',\n};\n`,
+      );
+      const { resetConfig, getConfig } = require('../dist/config.js');
+      const { treePathSegments } = require('../dist/catalog/index.js');
+      resetConfig();
+      getConfig(true);
+      assert.deepEqual(
+        treePathSegments('/v1/public/solution-partner-identity/auth/phone/verify-otp'),
+        ['v1', 'solution-partner-identity', 'public'],
+      );
+    } finally {
+      process.chdir(prev);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 });

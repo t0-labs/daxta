@@ -74,6 +74,7 @@ type DtoCtor = new (...args: unknown[]) => object;
 type RouteBinding = {
   method: string;
   pathTemplate: string;
+  controllerPrefix: string;
   body?: DtoCtor;
   query?: DtoCtor;
   param?: DtoCtor;
@@ -275,6 +276,7 @@ function parseController(filePath: string): RouteBinding[] {
         routes.push({
           method: httpMethod === 'all' ? 'post' : httpMethod,
           pathTemplate: normalizeSegments(versionPrefix, controllerPath, routePath),
+          controllerPrefix: normalizeSegments(versionPrefix, controllerPath),
           body: resolve(bodyName),
           query: resolve(queryName),
           param: resolve(paramName),
@@ -365,6 +367,42 @@ export function matchControllerTemplate(pathname: string, method?: string): stri
   }
 
   return best?.template ?? null;
+}
+
+/** Return the Nest @Controller(...) prefix for a route (used by `treeSubResourceMode: 'controller'`). */
+export function matchControllerPrefix(pathname: string, method?: string): string | null {
+  const routes = getRoutes();
+  if (!routes.length) return null;
+
+  const actual = (pathname.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+  const stripped = actual.replace(/^\/v\d+(?=\/|$)/i, '') || '/';
+  const methodKey = method?.toLowerCase();
+
+  let best: { prefix: string; score: number } | null = null;
+
+  for (const route of routes) {
+    if (methodKey && route.method !== 'all' && route.method !== methodKey) continue;
+
+    const base = route.pathTemplate;
+    const versioned = ensureVersionPrefix(base, actual);
+    const candidates = [...new Set([base, versioned])];
+
+    for (const template of candidates) {
+      const ok =
+        pathMatchesTemplate(template, actual) ||
+        pathMatchesTemplate(base, stripped) ||
+        pathMatchesTemplate(template, stripped);
+      if (!ok) continue;
+
+      const resolved = pathMatchesTemplate(template, actual) ? template : ensureVersionPrefix(base, actual);
+      const score = scoreTemplate(resolved);
+      if (!best || score > best.score) {
+        best = { prefix: ensureVersionPrefix(route.controllerPrefix, actual), score };
+      }
+    }
+  }
+
+  return best?.prefix && best.prefix !== '/' ? best.prefix : null;
 }
 
 function findRoute(method: string, pathTemplate: string): RouteBinding | undefined {

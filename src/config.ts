@@ -11,7 +11,7 @@ export type ExampleLabelStyle = 'status-case' | 'status-title-case' | 'full';
 
 export type WriteMode = 'on-complete' | 'incremental';
 
-export type SubResourceMode = 'nested' | 'merge' | 'root';
+export type SubResourceMode = 'controller' | 'nested' | 'merge' | 'root';
 
 export type SpecInfo = {
   title?: string;
@@ -62,6 +62,7 @@ export type DaxtaConfig = {
   treeCollapseSingle?: boolean;
   /**
    * How segments after the main resource are grouped into folders:
+   * - controller → stops folders at each NestJS @Controller(...) path
    * - nested → v1 › shopping-cart › public › items (default)
    * - merge → v1 › shopping-cart-items › public
    * - root → v1 › shopping-cart › public (all sub-routes under main resource)
