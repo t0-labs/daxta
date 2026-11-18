@@ -487,23 +487,122 @@
         color: var(--stone);
       }
       .env-group-bar {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 6px;
         margin-bottom: 10px;
       }
-      .env-select {
+      .group-dd {
+        position: relative;
         flex: 1;
         min-width: 0;
-        height: 32px;
-        border: 0;
+      }
+      .group-dd-trigger {
+        width: 100%;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        border: 1px solid var(--hairline);
         border-radius: var(--radius);
         background: var(--inset);
-        box-shadow: var(--ghost);
-        padding: 0 10px;
+        padding: 0 28px 0 10px;
         font: 12px/1 var(--mono);
         color: var(--obsidian);
         cursor: pointer;
+        text-align: left;
+        position: relative;
+      }
+      .group-dd-trigger:hover,
+      .group-dd.open .group-dd-trigger {
+        border-color: var(--stone);
+      }
+      .group-dd-trigger::after {
+        content: "";
+        position: absolute;
+        right: 11px;
+        top: 50%;
+        width: 6px;
+        height: 6px;
+        border-right: 1px solid var(--stone);
+        border-bottom: 1px solid var(--stone);
+        transform: translateY(-70%) rotate(45deg);
+        transition: transform 0.12s ease;
+      }
+      .group-dd.open .group-dd-trigger::after {
+        transform: translateY(-25%) rotate(225deg);
+      }
+      .group-dd-name {
+        font-weight: 500;
+        color: var(--obsidian);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .group-dd-meta {
+        font-size: 11px;
+        color: var(--stone);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 1;
+      }
+      .group-dd-menu {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 4px);
+        max-height: 240px;
+        overflow-y: auto;
+        background: var(--white);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        padding: 4px;
+        z-index: 60;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      }
+      .group-dd.open .group-dd-menu {
+        display: block;
+      }
+      .group-dd-opt {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border: 0;
+        border-radius: var(--radius);
+        background: transparent;
+        padding: 7px 9px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .group-dd-opt:hover {
+        background: var(--inset);
+      }
+      .group-dd-opt.on {
+        background: var(--inset);
+      }
+      .group-dd-opt-name {
+        font: 12px/1.3 var(--mono);
+        color: var(--charcoal);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .group-dd-opt.on .group-dd-opt-name {
+        color: var(--obsidian);
+        font-weight: 600;
+      }
+      .group-dd-opt-hdrs {
+        font: 11px/1.3 var(--mono);
+        color: var(--stone);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .env-cell {
         width: 100%;
@@ -2655,17 +2754,30 @@
             <div class="env-label">Header group</div>
             <div class="env-hint">Headers attached to Try-it requests. <code>{{VAR}}</code> reads from Variables above.</div>
             <div class="env-group-bar">
-              <select class="env-select" id="group-select" aria-label="Header group">
-                ${groups
-                  .map((group) => {
-                    const hdrs = ((env.headerGroups && env.headerGroups[group]) || [])
-                      .map((r) => r.key)
-                      .filter((k) => k && k.toLowerCase() !== "content-type");
-                    const label = hdrs.length ? `${group} (${hdrs.join(", ")})` : group;
-                    return `<option value="${escapeAttr(group)}" ${group === store.activeGroup ? "selected" : ""}>${escapeAttr(label)}</option>`;
-                  })
-                  .join("")}
-              </select>
+              ${(() => {
+                const activeHdrs = ((env.headerGroups && env.headerGroups[store.activeGroup]) || [])
+                  .map((r) => r.key)
+                  .filter((k) => k && k.toLowerCase() !== "content-type");
+                return `<div class="group-dd" id="group-dd">
+                  <button type="button" class="group-dd-trigger" id="group-dd-trigger" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="group-dd-name">${escapeAttr(store.activeGroup)}</span>
+                    ${activeHdrs.length ? `<span class="group-dd-meta">${escapeAttr(activeHdrs.join(" · "))}</span>` : ""}
+                  </button>
+                  <div class="group-dd-menu" role="listbox">
+                    ${groups
+                      .map((group) => {
+                        const hdrs = ((env.headerGroups && env.headerGroups[group]) || [])
+                          .map((r) => r.key)
+                          .filter((k) => k && k.toLowerCase() !== "content-type");
+                        return `<button type="button" class="group-dd-opt ${group === store.activeGroup ? "on" : ""}" data-group="${escapeAttr(group)}" role="option" aria-selected="${group === store.activeGroup ? "true" : "false"}">
+                          <span class="group-dd-opt-name">${escapeAttr(group)}</span>
+                          ${hdrs.length ? `<span class="group-dd-opt-hdrs">${escapeAttr(hdrs.join(" · "))}</span>` : `<span class="group-dd-opt-hdrs">default</span>`}
+                        </button>`;
+                      })
+                      .join("")}
+                  </div>
+                </div>`;
+              })()}
               <button type="button" class="ghost-btn" id="add-group" title="Add header group">+</button>
               <button type="button" class="ghost-btn" id="remove-group" title="Remove header group" ${canRemoveGroup ? "" : "disabled"}>×</button>
             </div>
@@ -2748,15 +2860,23 @@
           renderEnvPop();
           renderMain();
         };
-        const groupSelect = document.getElementById("group-select");
-        if (groupSelect) {
-          groupSelect.onchange = (event) => {
+        const groupDd = document.getElementById("group-dd");
+        const groupTrigger = document.getElementById("group-dd-trigger");
+        if (groupDd && groupTrigger) {
+          groupTrigger.onclick = (event) => {
             event.stopPropagation();
-            store.activeGroup = groupSelect.value;
-            persistStore();
-            renderEnvPop();
-            renderMain();
+            const open = groupDd.classList.toggle("open");
+            groupTrigger.setAttribute("aria-expanded", open ? "true" : "false");
           };
+          groupDd.querySelectorAll("[data-group]").forEach((option) => {
+            option.onclick = (event) => {
+              event.stopPropagation();
+              store.activeGroup = option.dataset.group;
+              persistStore();
+              renderEnvPop();
+              renderMain();
+            };
+          });
         }
         document.getElementById("add-group").onclick = (event) => {
           event.stopPropagation();
