@@ -448,8 +448,8 @@
         position: absolute;
         top: calc(100% + 6px);
         right: 0;
-        width: min(420px, calc(100vw - 48px));
-        max-height: min(520px, calc(100vh - 120px));
+        width: min(520px, calc(100vw - 48px));
+        max-height: min(560px, calc(100vh - 120px));
         overflow: auto;
         background: var(--white);
         border-radius: var(--radius);
@@ -466,7 +466,44 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--stone);
+        margin-bottom: 6px;
+      }
+      .env-hint {
+        font-size: 11px;
+        color: var(--stone);
         margin-bottom: 8px;
+        line-height: 1.4;
+      }
+      .env-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr 28px;
+        gap: 6px;
+        margin-bottom: 4px;
+        padding: 0 2px;
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--stone);
+      }
+      .env-group-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .env-select {
+        flex: 1;
+        min-width: 0;
+        height: 32px;
+        border: 0;
+        border-radius: var(--radius);
+        background: var(--inset);
+        box-shadow: var(--ghost);
+        padding: 0 10px;
+        font: 12px/1 var(--mono);
+        color: var(--obsidian);
+        cursor: pointer;
       }
       .env-cell {
         width: 100%;
@@ -2276,21 +2313,69 @@
         return JSON.parse(JSON.stringify(defaults.envs[name]));
       };
 
+      const legacyCamelVarFromHeader = (header) => {
+        const parts = String(header).replace(/^x-/, "").split("-").filter(Boolean);
+        if (!parts.length) return String(header).replace(/[^a-zA-Z0-9]/g, "");
+        return parts[0] + parts.slice(1).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
+      };
+
+      const buildVarMigrationMap = () => {
+        const map = {};
+        const schemes = (spec.components && spec.components.securitySchemes) || {};
+        for (const scheme of Object.values(schemes)) {
+          if (!scheme || scheme.in !== "header" || !scheme.name) continue;
+          const legacy = legacyCamelVarFromHeader(scheme.name);
+          const target = varNameFromHeader(scheme.name);
+          if (legacy && target && legacy !== target) map[legacy] = target;
+        }
+        return map;
+      };
+
+      const migrateTemplateRefs = (value, varMigration) => {
+        let out = String(value ?? "");
+        for (const [oldKey, newKey] of Object.entries(varMigration)) {
+          out = out.replace(new RegExp("\\{\\{\\s*" + oldKey + "\\s*\\}\\}", "g"), "{{" + newKey + "}}");
+        }
+        return out;
+      };
+
       const mergeStore = (saved) => {
         const defaults = buildDefaultStore();
         if (!saved || !saved.envs || typeof saved.envs !== "object") return defaults;
+        const varMigration = buildVarMigrationMap();
         const envs = {};
         for (const [name, env] of Object.entries(saved.envs)) {
           const base = cloneDefaultEnv();
-          const baseUrlKey = baseUrlKeyOf(env);
-          const variables = Array.isArray(env.variables)
+          const presetCfg = configuredPresets[name];
+          const expectedBaseKey = presetCfg ? baseUrlKeyOf(presetCfg) : "";
+          let baseUrlKey = baseUrlKeyOf(env);
+          if (expectedBaseKey && expectedBaseKey !== DEFAULT_BASE_URL_KEY && baseUrlKey === DEFAULT_BASE_URL_KEY) {
+            baseUrlKey = expectedBaseKey;
+          }
+          const rawVars = Array.isArray(env.variables)
             ? env.variables.map((row) => ({ key: String(row.key || ""), value: String(row.value ?? "") }))
             : base.variables.map((row) => ({ ...row }));
+          const variables = [];
+          const byKey = new Map();
+          for (const row of rawVars) {
+            let key = row.key;
+            if (key === DEFAULT_BASE_URL_KEY && baseUrlKey !== DEFAULT_BASE_URL_KEY) key = baseUrlKey;
+            else if (varMigration[key]) key = varMigration[key];
+            if (key && byKey.has(key)) {
+              const existing = byKey.get(key);
+              if (!String(existing.value || "").trim() && String(row.value || "").trim()) existing.value = row.value;
+              continue;
+            }
+            const entry = { key, value: row.value };
+            if (key) byKey.set(key, entry);
+            variables.push(entry);
+          }
           const known = new Set(variables.map((row) => row.key).filter(Boolean));
           for (const row of base.variables) {
             if (!row.key || known.has(row.key)) continue;
             // A renamed base URL variable already covers the default `baseUrl` row.
             if (row.key === DEFAULT_BASE_URL_KEY && baseUrlKey !== DEFAULT_BASE_URL_KEY) continue;
+            if (expectedBaseKey && row.key === DEFAULT_BASE_URL_KEY && expectedBaseKey !== DEFAULT_BASE_URL_KEY) continue;
             variables.push({ ...row });
           }
           const defaultsByKey = Object.fromEntries((base.variables || []).filter((row) => row.key).map((row) => [row.key, row.value ?? ""]));
@@ -2299,7 +2384,12 @@
             if (String(row.value ?? "").trim()) continue;
             if (defaultsByKey[row.key]) row.value = defaultsByKey[row.key];
           }
-          const headerGroups = { ...(env.headerGroups || {}) };
+          const headerGroups = {};
+          for (const [group, rows] of Object.entries(env.headerGroups || {})) {
+            headerGroups[group] = Array.isArray(rows)
+              ? rows.map((row) => ({ key: String(row.key || ""), value: migrateTemplateRefs(row.value, varMigration) }))
+              : [];
+          }
           for (const [group, rows] of Object.entries(base.headerGroups)) {
             if (!headerGroups[group]) headerGroups[group] = rows.map((row) => ({ ...row }));
           }
@@ -2549,6 +2639,7 @@
           </div>
           <div class="env-block">
             <div class="env-label">Variables</div>
+            <div class="env-cols"><span>Key</span><span>Value</span><span></span></div>
             ${(env.variables || [])
               .map(
                 (row, index) => `<div class="env-kv ${row.key === baseUrlKeyOf(env) ? "base-url" : ""}" data-var="${index}">
@@ -2562,13 +2653,23 @@
           </div>
           <div class="env-block">
             <div class="env-label">Header group</div>
-            <div class="chip-row">
-              ${groups
-                .map((group) => `<button type="button" class="chip-btn ${group === store.activeGroup ? "on" : ""}" data-group="${escapeAttr(group)}">${escapeAttr(group)}</button>`)
-                .join("")}
+            <div class="env-hint">Headers attached to Try-it requests. <code>{{VAR}}</code> reads from Variables above.</div>
+            <div class="env-group-bar">
+              <select class="env-select" id="group-select" aria-label="Header group">
+                ${groups
+                  .map((group) => {
+                    const hdrs = ((env.headerGroups && env.headerGroups[group]) || [])
+                      .map((r) => r.key)
+                      .filter((k) => k && k.toLowerCase() !== "content-type");
+                    const label = hdrs.length ? `${group} (${hdrs.join(", ")})` : group;
+                    return `<option value="${escapeAttr(group)}" ${group === store.activeGroup ? "selected" : ""}>${escapeAttr(label)}</option>`;
+                  })
+                  .join("")}
+              </select>
               <button type="button" class="ghost-btn" id="add-group" title="Add header group">+</button>
               <button type="button" class="ghost-btn" id="remove-group" title="Remove header group" ${canRemoveGroup ? "" : "disabled"}>×</button>
             </div>
+            <div class="env-cols"><span>Header</span><span>Value</span><span></span></div>
             ${groupRows
               .map(
                 (row, index) => `<div class="env-kv" data-hdr="${index}">
@@ -2647,15 +2748,16 @@
           renderEnvPop();
           renderMain();
         };
-        document.getElementById("env-pop").querySelectorAll("[data-group]").forEach((button) => {
-          button.onclick = (event) => {
+        const groupSelect = document.getElementById("group-select");
+        if (groupSelect) {
+          groupSelect.onchange = (event) => {
             event.stopPropagation();
-            store.activeGroup = button.dataset.group;
+            store.activeGroup = groupSelect.value;
             persistStore();
             renderEnvPop();
             renderMain();
           };
-        });
+        }
         document.getElementById("add-group").onclick = (event) => {
           event.stopPropagation();
           let name = "group";
