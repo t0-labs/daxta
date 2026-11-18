@@ -83,9 +83,11 @@ function stripRegisterScripts(scripts: Record<string, string>): string[] {
   const changed: string[] = [];
   const re =
     /^NODE_OPTIONS=(['"])?(?:[^'"]*\s)?--require\s+@t0\.labs\/daxta\/register\s*([^'"]*)\1\s+/i;
+  const titlePrecheckRe = /^(?:(?:npx|pnpm\s+exec)\s+)?daxta\s+titles(?:\s+--[a-z-]+)*\s+&&\s+/i;
   for (const [key, value] of Object.entries(scripts)) {
-    if (!value.includes('@t0.labs/daxta/register') && !/\bdaxta\s+test\b/.test(value)) continue;
+    if (!value.includes('@t0.labs/daxta/register') && !/\bdaxta\s+test\b/.test(value) && !titlePrecheckRe.test(value)) continue;
     let next = value
+      .replace(titlePrecheckRe, '')
       .replace(re, '')
       .replace(/\s*--require\s+@t0\.labs\/daxta\/register\b/g, '')
       .replace(/NODE_OPTIONS=(['"])\s*\1\s*/g, '')

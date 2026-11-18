@@ -64,6 +64,20 @@ function isDaxtaInstalled(cwd: string): boolean {
   return existsSync(path.join(cwd, 'node_modules', '@t0.labs', 'daxta', 'package.json'));
 }
 
+const TITLE_PRECHECK_RE = /^(?:(?:npx|pnpm\s+exec)\s+)?daxta\s+titles(?:\s+--[a-z-]+)*\s+&&\s+/i;
+
+function stripTitlePrecheck(command: string): string {
+  return command.replace(TITLE_PRECHECK_RE, '').trim();
+}
+
+function attachTitlePrecheck(pkg: PackageJson, testScript: string, cleanCommand: string): boolean {
+  if (!pkg.scripts) return false;
+  const next = `daxta titles && ${cleanCommand}`;
+  if (pkg.scripts[testScript] === next) return false;
+  pkg.scripts[testScript] = next;
+  return true;
+}
+
 function removeDaxtaAliasScripts(pkg: PackageJson): string[] {
   const scripts = pkg.scripts ?? {};
   const removed: string[] = [];
@@ -334,7 +348,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
       `Attach to ${testScript}`,
       () => {
         const details: string[] = [];
-        let command = pkg.scripts![testScript];
+        let command = stripTitlePrecheck(pkg.scripts![testScript]);
 
         // Load existing testCommand from config if script was wrapped previously
         const configPath = path.join(cwd, 'daxta.config.ts');
@@ -342,7 +356,7 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
         if (existsSync(configPath)) {
           const cfg = readFileSync(configPath, 'utf8');
           const m = cfg.match(/testCommand\s*:\s*['"`]([^'"`]+)['"`]/);
-          savedCommand = m?.[1];
+          savedCommand = m?.[1] ? stripTitlePrecheck(m[1]) : undefined;
         }
 
         if (isDaxtaWrappedScript(command) && savedCommand && !isDaxtaWrappedScript(savedCommand)) {
@@ -369,6 +383,11 @@ export async function installDaxta(options: InstallOptions = {}): Promise<void> 
         const hookNotes = injectJestHooks(jestPath, dryRun);
         details.push(...hookNotes);
         details.push(`plugin on ${path.relative(cwd, jestPath)}`);
+
+        if (attachTitlePrecheck(pkg, testScript, command)) {
+          if (!dryRun) writeJson(pkgPath, pkg);
+          details.push(`attached "daxta titles &&" precheck to ${testScript}`);
+        }
 
         const note = upsertTestWiringInConfig(
           cwd,
