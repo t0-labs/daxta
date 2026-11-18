@@ -33,3 +33,15 @@ test('strips bare METHOD /path prefix and AUTHENTICATION/SECURITY sections from 
     'should return dashboard tokens',
   );
 });
+
+test('uses innermost section and strips nested Title — METHOD /path prefixes', () => {
+  const nestedInvalid =
+    'Find All Terminals — GET /v1/me/terminals POSITIVE CASES Find All Terminals — GET /v1/me/terminals INVALID CASES returns error when headers are missing';
+  assert.strictEqual(caseGroup(nestedInvalid), 'INVALID CASES');
+  assert.strictEqual(caseName(nestedInvalid), 'returns error when headers are missing');
+
+  const nestedSemantic =
+    'Find All Terminals — GET /v1/me/terminals POSITIVE CASES Find All Terminals — GET /v1/me/terminals SEMANTIC ERROR CASES returns error when merchant has no terminals';
+  assert.strictEqual(caseGroup(nestedSemantic), 'SEMANTIC ERROR CASES');
+  assert.strictEqual(caseName(nestedSemantic), 'returns error when merchant has no terminals');
+});

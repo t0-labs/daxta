@@ -185,24 +185,30 @@ export const CASE_GROUP_ORDER: string[] = [
   'Other',
 ];
 
+const SECTION_TOKEN_RE =
+  /(SEMANTIC ERROR CASES\s*-\s*AUTH|FALSE\s+POSITIVE CASES|POSITIVE CASES|SEMANTIC ERROR CASES|INVALID CASES|OMITTED(?: FIELD)? CASES)/gi;
+
 export function caseGroup(test?: string): string {
   if (!test) return 'Other';
-  if (/SEMANTIC ERROR CASES\s*-\s*AUTH/i.test(test)) return 'SEMANTIC ERROR CASES - AUTH';
-  // "FALSE POSITIVE CASES" is the same bucket the viewer renders as "False positive cases".
-  if (/FALSE\s+POSITIVE CASES/i.test(test)) return 'SEMANTIC ERROR CASES';
-  if (/POSITIVE CASES/i.test(test)) return 'POSITIVE CASES';
-  if (/SEMANTIC ERROR CASES/i.test(test)) return 'SEMANTIC ERROR CASES';
-  if (/INVALID CASES/i.test(test)) return 'INVALID CASES';
+  const matches = [...test.matchAll(SECTION_TOKEN_RE)];
+  const last = matches[matches.length - 1]?.[1];
+  if (last) {
+    if (/SEMANTIC ERROR CASES\s*-\s*AUTH/i.test(last)) return 'SEMANTIC ERROR CASES - AUTH';
+    // "FALSE POSITIVE CASES" is the same bucket the viewer renders as "False positive cases".
+    if (/FALSE\s+POSITIVE CASES/i.test(last)) return 'SEMANTIC ERROR CASES';
+    if (/POSITIVE CASES/i.test(last)) return 'POSITIVE CASES';
+    if (/SEMANTIC ERROR CASES/i.test(last)) return 'SEMANTIC ERROR CASES';
+    if (/INVALID CASES/i.test(last)) return 'INVALID CASES';
+    if (/OMITTED/i.test(last)) return 'OMITTED CASES';
+  }
   if (/OMITTED/i.test(test)) return 'OMITTED CASES';
   return 'Other';
 }
 
 export function caseSectionLabel(test?: string): string {
   if (!test) return '';
-  const match = test.match(
-    /((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)/i,
-  );
-  return match?.[1]?.toUpperCase() ?? '';
+  const matches = [...test.matchAll(SECTION_TOKEN_RE)];
+  return matches[matches.length - 1]?.[1]?.toUpperCase() ?? '';
 }
 
 /**
@@ -245,19 +251,22 @@ function stripSectionPrefix(value: string): string {
 
 export function caseName(test?: string): string {
   if (!test) return 'example';
-  let rest = test
-    .replace(new RegExp(`^.+?\\s+[—–-]\\s+(?:${HTTP_VERBS})\\s+\\S+(?:\\s+\\([^)]*\\))*\\s*`, 'i'), '')
-    .replace(new RegExp(`^(?:${HTTP_VERBS})\\s+\\/\\S+(?:\\s+\\([^)]*\\))*\\s*`, 'i'), '')
-    .replace(new RegExp(`^.*?\\[(?:${HTTP_VERBS})\\](?:\\s+\\([^)]*\\))*\\s*`, 'i'), '');
-  rest = stripSectionPrefix(rest.trim());
-
-  // "Admin Find One Basket By Id API - GET /path POSITIVE CASES returns…"
-  rest = stripSectionPrefix(rest.replace(/^.+?\bAPI\s*[-–—]\s*(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+/i, ''));
-
-  // Drop leading human title if still present before the case text
   const title = apiTitle(test);
-  if (title && rest.startsWith(title)) {
-    rest = stripSectionPrefix(rest.slice(title.length).replace(/^[-–—\s]+/, ''));
+  let rest = test;
+
+  // Nested describes can repeat `Title — METHOD /path` + section prefix; strip until stable.
+  for (let pass = 0; pass < 4; pass += 1) {
+    const before = rest;
+    rest = rest
+      .replace(new RegExp(`^.+?\\s+[—–-]\\s+(?:${HTTP_VERBS})\\s+\\S+(?:\\s+\\([^)]*\\))*\\s*`, 'i'), '')
+      .replace(new RegExp(`^(?:${HTTP_VERBS})\\s+\\/\\S+(?:\\s+\\([^)]*\\))*\\s*`, 'i'), '')
+      .replace(new RegExp(`^.*?\\[(?:${HTTP_VERBS})\\](?:\\s+\\([^)]*\\))*\\s*`, 'i'), '');
+    rest = stripSectionPrefix(rest.trim());
+    rest = stripSectionPrefix(rest.replace(/^.+?\bAPI\s*[-–—]\s*(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+/i, ''));
+    if (title && rest.startsWith(title)) {
+      rest = stripSectionPrefix(rest.slice(title.length).replace(/^[-–—\s]+/, ''));
+    }
+    if (rest === before) break;
   }
 
   return rest || test;

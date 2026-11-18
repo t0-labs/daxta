@@ -18,13 +18,21 @@ const GENERIC_IT = new Set([
   'returns error when unauthorized',
 ]);
 
+const SECTION_RE =
+  /(SEMANTIC ERROR CASES\s*-\s*AUTH|FALSE\s+POSITIVE CASES|POSITIVE CASES|SEMANTIC ERROR CASES|INVALID CASES|OMITTED(?: FIELD)? CASES)/gi;
+
 export function parseCaseSection(raw?: string): CaseSection | undefined {
   if (!raw) return undefined;
-  if (/SEMANTIC ERROR CASES\s*-\s*AUTH/i.test(raw)) return 'auth';
-  if (/FALSE\s+POSITIVE CASES/i.test(raw)) return 'semantic';
-  if (/POSITIVE CASES/i.test(raw)) return 'positive';
-  if (/SEMANTIC ERROR CASES/i.test(raw)) return 'semantic';
-  if (/INVALID CASES/i.test(raw)) return 'invalid';
+  const matches = [...raw.matchAll(SECTION_RE)];
+  const last = matches[matches.length - 1]?.[1];
+  if (last) {
+    if (/SEMANTIC ERROR CASES\s*-\s*AUTH/i.test(last)) return 'auth';
+    if (/FALSE\s+POSITIVE CASES/i.test(last)) return 'semantic';
+    if (/POSITIVE CASES/i.test(last)) return 'positive';
+    if (/SEMANTIC ERROR CASES/i.test(last)) return 'semantic';
+    if (/INVALID CASES/i.test(last)) return 'invalid';
+    if (/OMITTED/i.test(last)) return 'omitted';
+  }
   if (/OMITTED/i.test(raw)) return 'omitted';
   return undefined;
 }
