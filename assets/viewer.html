@@ -749,22 +749,65 @@
         color: var(--obsidian);
         font-weight: 600;
       }
+      .empty-select-wrap {
+        flex: 1;
+        min-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 24px;
+      }
       .empty-select-prompt {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 14px;
         text-align: center;
+        max-width: 340px;
+        user-select: none;
+      }
+      .empty-select-logo {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        filter: grayscale(100%);
+        opacity: 0.24;
+        transition: opacity 0.2s ease;
+      }
+      .empty-select-prompt:hover .empty-select-logo {
+        opacity: 0.38;
       }
       .empty-select-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--obsidian);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        color: var(--stone);
       }
       .empty-select-sub {
-        font: 500 12px/1.4 var(--mono);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--hairline);
+        background: var(--inset);
+        font: 500 11px/1.3 var(--mono);
         color: var(--smoke);
+      }
+      .empty-select-hint {
+        font: 400 11px/1.4 var(--mono);
+        color: var(--smoke);
+        opacity: 0.75;
+      }
+      .empty-select-hint kbd {
+        display: inline-block;
+        padding: 1px 5px;
+        border-radius: 4px;
+        border: 1px solid var(--hairline);
+        background: var(--white);
+        font: 500 10px/1.3 var(--mono);
+        color: var(--stone);
       }
       .tree-children {
         display: none;
@@ -4140,7 +4183,8 @@
             document.getElementById("main").innerHTML = `<div class="empty">No operations in this workspace yet.</div>`;
           } else {
             const totalExCount = ops.reduce((sum, entry) => sum + (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0), 0);
-            document.getElementById("main").innerHTML = `<div class="empty"><div class="empty-select-prompt"><div class="empty-select-title">Lütfen soldan bir API seçiniz</div><div class="empty-select-sub">${ops.length} endpoints · ${totalExCount} examples</div></div></div>`;
+            const logoSrc = document.documentElement.dataset.theme === "dark" ? "__FAVICON_DATA_URI__" : "__FAVICON_LIGHT_DATA_URI__";
+            document.getElementById("main").innerHTML = `<div class="empty-select-wrap"><div class="empty-select-prompt"><img class="empty-select-logo" src="${logoSrc}" alt="DAxTA" /><div class="empty-select-title">Lütfen soldan bir API seçiniz</div><div class="empty-select-sub">${ops.length} API · ${totalExCount} examples</div><div class="empty-select-hint">Hızlı arama için <kbd>/</kbd> veya <kbd>⌘K</kbd></div></div></div>`;
           }
           const dock = document.getElementById("ex-dock");
           if (dock) dock.innerHTML = "";
