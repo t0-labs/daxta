@@ -3766,7 +3766,7 @@
       const treePathSegments = (item) => item.treeSegments || item.path.split("/").filter(Boolean);
       const apiVersions = [...new Set(ops.map((item) => treePathSegments(item)[0]).filter(Boolean))];
       let activeVersion = "";
-      const expandedFolders = new Set(apiVersions.slice(0, 1).map((version) => "/" + version));
+      const expandedFolders = new Set();
       const expandedExampleOps = new Set();
       /** `${opId}::${group}` entries the user opened; groups start collapsed. */
       const expandedExampleGroups = new Set();
