@@ -8,7 +8,10 @@
     <link rel="apple-touch-icon" href="__FAVICON_LIGHT_DATA_URI__" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         --canvas: #050505;
@@ -35,6 +38,86 @@
         --radius: 2px;
         --ring: 0 0 0 1px #262626;
         --ghost: none;
+        --bar-h: 0px;
+      }
+      body.has-lastrun-bar {
+        --bar-h: 32px;
+      }
+      .lastrun-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 32px;
+        z-index: 205;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 36px;
+        background: #0a0a0a;
+        color: #f4f4f4;
+        border-bottom: 1px solid #262626;
+        font: 500 12px/1 var(--sans);
+      }
+      .lastrun-bar[hidden] {
+        display: none;
+      }
+      .lastrun-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #3dcc70;
+        flex: none;
+      }
+      .lastrun-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #d4d4d4;
+      }
+      .lastrun-text strong {
+        color: #ffffff;
+        font-weight: 600;
+      }
+      .lastrun-text code {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: #a3a3a3;
+      }
+      .lastrun-action {
+        border: 1px solid #333333;
+        border-radius: var(--radius);
+        background: #171717;
+        color: #f4f4f4;
+        padding: 3px 8px;
+        font: 500 11px/1.2 var(--mono);
+        cursor: pointer;
+        white-space: nowrap;
+        flex: none;
+      }
+      .lastrun-action:hover {
+        background: #262626;
+        border-color: #525252;
+      }
+      .lastrun-action.on {
+        background: #16301f;
+        border-color: #3dcc70;
+        color: #3dcc70;
+      }
+      .lastrun-close {
+        position: absolute;
+        right: 10px;
+        border: 0;
+        background: transparent;
+        color: #8a8a8a;
+        font-size: 15px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px;
+      }
+      .lastrun-close:hover {
+        color: #ffffff;
       }
       html[data-theme="light"] {
         --canvas: #fafafa;
@@ -59,9 +142,17 @@
         --ring: 0 0 0 1px #e6e6e6;
         --ghost: 0 0 0 1px #e6e6e6;
       }
-      * { box-sizing: border-box; }
-      html, body { height: 100%; overflow: hidden; }
-      :focus { outline: none; }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+      :focus {
+        outline: none;
+      }
       :focus-visible {
         outline: 2px solid #c6c6c6;
         outline-offset: 2px;
@@ -72,7 +163,11 @@
         color: var(--obsidian);
         font: 13px/1.45 var(--sans);
       }
-      button, input { font: inherit; color: inherit; }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+      }
 
       .topnav {
         height: 44px;
@@ -84,15 +179,26 @@
         background: var(--nav);
         border-bottom: 1px solid var(--hairline);
         position: fixed;
-        top: 0;
+        top: var(--bar-h);
         left: 0;
         right: 0;
         z-index: 200;
       }
-      body.searching .topnav { z-index: 210; }
-      body.search-palette .topnav { z-index: 40; }
-      .brand-wrap { display: flex; align-items: center; min-width: 0; justify-self: start; }
-      .workspace { display: none; }
+      body.searching .topnav {
+        z-index: 210;
+      }
+      body.search-palette .topnav {
+        z-index: 40;
+      }
+      .brand-wrap {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        justify-self: start;
+      }
+      .workspace {
+        display: none;
+      }
       .brand {
         font-size: 13px;
         font-weight: 600;
@@ -129,7 +235,9 @@
         letter-spacing: -0.02em;
         color: var(--ok);
       }
-      .ep-status.err { color: var(--err); }
+      .ep-status.err {
+        color: var(--err);
+      }
       .ep-label {
         min-width: 0;
         overflow: hidden;
@@ -142,7 +250,9 @@
         margin: 0 0 8px;
         flex: none;
       }
-      .prefix-bar[hidden] { display: none; }
+      .prefix-bar[hidden] {
+        display: none;
+      }
       .prefix-chip {
         height: 22px;
         padding: 0 8px;
@@ -153,12 +263,20 @@
         font: 500 11px/22px var(--mono);
         cursor: pointer;
       }
-      .prefix-chip:hover { color: var(--obsidian); background: var(--inset); }
+      .prefix-chip:hover {
+        color: var(--obsidian);
+        background: var(--inset);
+      }
       .prefix-chip.on {
         background: var(--inset);
         color: var(--obsidian);
       }
-      .nav-tools { display: flex; align-items: center; gap: 8px; justify-self: end; }
+      .nav-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-self: end;
+      }
       .nav-tools .btn {
         height: 28px;
         padding: 0 10px;
@@ -169,8 +287,14 @@
         height: 28px;
         padding: 0;
       }
-      .nav-tools .btn.icon svg { width: 16px; height: 16px; }
-      .more-wrap { position: relative; flex: none; }
+      .nav-tools .btn.icon svg {
+        width: 16px;
+        height: 16px;
+      }
+      .more-wrap {
+        position: relative;
+        flex: none;
+      }
       .more-pop {
         display: none;
         position: absolute;
@@ -183,7 +307,9 @@
         padding: 6px;
         z-index: 220;
       }
-      .more-wrap.open .more-pop { display: block; }
+      .more-wrap.open .more-pop {
+        display: block;
+      }
       .more-item {
         width: 100%;
         display: flex;
@@ -199,21 +325,34 @@
         font: 500 12px/1 var(--sans);
         text-align: left;
       }
-      .more-item:hover { background: var(--inset); }
+      .more-item:hover {
+        background: var(--inset);
+      }
       .more-item-ico {
         width: 16px;
         height: 16px;
         flex: none;
         color: var(--charcoal);
       }
-      .more-item-ico svg { width: 16px; height: 16px; display: block; }
-      .more-item-label { flex: 1; min-width: 0; }
+      .more-item-ico svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+      .more-item-label {
+        flex: 1;
+        min-width: 0;
+      }
       .more-item-meta {
         color: var(--stone);
         font: 500 11px/1 var(--mono);
       }
-      html[data-theme="light"] .theme-moon { display: none; }
-      html:not([data-theme="light"]) .theme-sun { display: none; }
+      html[data-theme="light"] .theme-moon {
+        display: none;
+      }
+      html:not([data-theme="light"]) .theme-sun {
+        display: none;
+      }
       .more-sep {
         height: 1px;
         background: var(--hairline);
@@ -243,7 +382,9 @@
         border-radius: 2px;
         padding: 3px 5px;
       }
-      .btn[data-tip] { position: relative; }
+      .btn[data-tip] {
+        position: relative;
+      }
       .btn[data-tip]::after {
         content: attr(data-tip);
         position: absolute;
@@ -259,7 +400,9 @@
         white-space: nowrap;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.12s ease, transform 0.12s ease;
+        transition:
+          opacity 0.12s ease,
+          transform 0.12s ease;
         z-index: 50;
       }
       .btn[data-tip]:hover::after {
@@ -296,19 +439,25 @@
         pointer-events: none;
         background: var(--inset);
       }
-      .search::placeholder { color: var(--smoke); }
+      .search::placeholder {
+        color: var(--smoke);
+      }
       .search-wrap.open .search {
         border-color: var(--obsidian);
         border-radius: var(--radius) var(--radius) 0 0;
       }
-      .search-wrap.open .search-kbd { display: none; }
+      .search-wrap.open .search-kbd {
+        display: none;
+      }
       body.searching:not(.search-palette) .tree-scroll,
       body.searching:not(.search-palette) .prefix-bar,
       body.searching:not(.search-palette) .nav-foot {
         filter: blur(7px);
         opacity: 0.4;
         pointer-events: none;
-        transition: filter 0.2s ease, opacity 0.2s ease;
+        transition:
+          filter 0.2s ease,
+          opacity 0.2s ease;
       }
       .search-backdrop {
         display: none;
@@ -325,7 +474,9 @@
       html[data-theme="light"] .search-backdrop {
         background: rgba(250, 250, 250, 0.55);
       }
-      body.search-palette .search-backdrop { display: flex; }
+      body.search-palette .search-backdrop {
+        display: flex;
+      }
       .search-palette-card {
         width: min(640px, 100%);
         background: var(--white);
@@ -345,8 +496,12 @@
         font-size: 15px;
         letter-spacing: -0.02em;
       }
-      .search-palette-input:focus { outline: none; }
-      .search-palette-input::placeholder { color: var(--smoke); }
+      .search-palette-input:focus {
+        outline: none;
+      }
+      .search-palette-input::placeholder {
+        color: var(--smoke);
+      }
       .search-palette-panel {
         max-height: min(420px, 52vh);
         overflow: auto;
@@ -373,7 +528,9 @@
         z-index: 31;
         padding: 6px;
       }
-      .search-wrap.open .search-panel { display: block; }
+      .search-wrap.open .search-panel {
+        display: block;
+      }
       .search-hit {
         display: flex;
         align-items: center;
@@ -388,7 +545,9 @@
         color: var(--charcoal);
       }
       .search-hit:hover,
-      .search-hit.active { background: var(--inset); }
+      .search-hit.active {
+        background: var(--inset);
+      }
       .search-hit-path {
         min-width: 0;
         font: 12px/1.35 var(--mono);
@@ -411,8 +570,13 @@
         font-size: 13px;
         text-align: center;
       }
-      .env-wrap { position: relative; flex: none; }
-      .env-wrap.open .env-pop { display: block; }
+      .env-wrap {
+        position: relative;
+        flex: none;
+      }
+      .env-wrap.open .env-pop {
+        display: block;
+      }
       .env-trigger {
         flex: none;
         width: 180px;
@@ -442,7 +606,9 @@
         border-bottom: 1px solid var(--obsidian);
         transform: translateY(-70%) rotate(45deg);
       }
-      .env-wrap.open .env-trigger::after { transform: translateY(-20%) rotate(225deg); }
+      .env-wrap.open .env-trigger::after {
+        transform: translateY(-20%) rotate(225deg);
+      }
       .env-pop {
         display: none;
         position: absolute;
@@ -458,8 +624,12 @@
         padding: 16px;
         z-index: 40;
       }
-      .env-block { margin-bottom: 20px; }
-      .env-block:last-child { margin-bottom: 0; }
+      .env-block {
+        margin-bottom: 20px;
+      }
+      .env-block:last-child {
+        margin-bottom: 0;
+      }
       .env-label {
         font-family: var(--mono);
         font-size: 11px;
@@ -635,10 +805,23 @@
         font-size: 16px;
         line-height: 1;
       }
-      .ghost-btn:hover { color: var(--obsidian); }
-      .ghost-btn:disabled { opacity: 0.35; cursor: default; }
-      .ghost-btn:disabled:hover { color: var(--stone); }
-      .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
+      .ghost-btn:hover {
+        color: var(--obsidian);
+      }
+      .ghost-btn:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+      .ghost-btn:disabled:hover {
+        color: var(--stone);
+      }
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+        align-items: center;
+      }
       .chip-btn {
         border: 0;
         background: var(--inset);
@@ -663,12 +846,37 @@
         color: var(--charcoal);
         word-break: break-all;
       }
-      .env-base-line span { color: var(--stone); }
+      .env-base-line span {
+        color: var(--stone);
+      }
       .env-quick {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
         margin-top: 8px;
+      }
+      .env-new-form {
+        margin-top: 8px;
+        padding: 10px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--paper);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .env-new-form[hidden] {
+        display: none;
+      }
+      .env-new-fields {
+        display: grid;
+        grid-template-columns: 0.9fr 1.4fr;
+        gap: 6px;
+      }
+      .env-new-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
       }
       .env-kv.base-url .env-cell[data-field="key"] {
         font-weight: 600;
@@ -684,8 +892,14 @@
         color: var(--white);
         box-shadow: none;
       }
-      .btn.primary:hover { opacity: 0.92; color: var(--white); }
-      .btn.primary:disabled { opacity: 0.45; cursor: default; }
+      .btn.primary:hover {
+        opacity: 0.92;
+        color: var(--white);
+      }
+      .btn.primary:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
       .live-err {
         color: #8a2e2e;
         font-size: 13px;
@@ -698,11 +912,13 @@
         display: grid;
         grid-template-columns: var(--sidebar-w, 320px) 6px minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr) auto;
-        height: calc(100vh - 44px);
-        margin-top: 44px;
+        height: calc(100vh - 44px - var(--bar-h));
+        margin-top: calc(44px + var(--bar-h));
         transition: grid-template-columns 0.32s cubic-bezier(0.22, 1, 0.36, 1);
       }
-      body.sidebar-resizing .app { transition: none; }
+      body.sidebar-resizing .app {
+        transition: none;
+      }
       .app.sidebar-collapsed {
         grid-template-columns: 0 0 minmax(0, 1fr);
       }
@@ -756,8 +972,14 @@
         margin-bottom: 8px;
         flex: none;
       }
-      .nav-filter::placeholder { color: var(--smoke); }
-      .tree-scroll { flex: 1; min-height: 0; overflow: auto; }
+      .nav-filter::placeholder {
+        color: var(--smoke);
+      }
+      .tree-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+      }
       .nav-foot {
         flex: none;
         margin-top: 8px;
@@ -796,8 +1018,16 @@
         cursor: col-resize !important;
         user-select: none !important;
       }
-      .tree-root { display: flex; flex-direction: column; gap: 2px; }
-      .tree-folder { display: flex; flex-direction: column; gap: 2px; }
+      .tree-root {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .tree-folder {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
       .tree-folder-toggle {
         display: flex;
         align-items: center;
@@ -812,7 +1042,10 @@
         color: var(--charcoal);
         font: 500 12px/1.4 var(--mono);
       }
-      .tree-folder-toggle:hover { background: var(--white); color: var(--obsidian); }
+      .tree-folder-toggle:hover {
+        background: var(--white);
+        color: var(--obsidian);
+      }
       .tree-folder-toggle .chev {
         width: 10px;
         height: 10px;
@@ -832,7 +1065,10 @@
         transform: rotate(-45deg);
         transition: transform 0.15s ease;
       }
-      .tree-folder.open > .tree-folder-toggle .chev::before { transform: rotate(45deg); top: 0; }
+      .tree-folder.open > .tree-folder-toggle .chev::before {
+        transform: rotate(45deg);
+        top: 0;
+      }
       .tree-folder-name {
         min-width: 0;
         overflow: hidden;
@@ -884,6 +1120,25 @@
       .nav-summary strong {
         color: var(--obsidian);
         font-weight: 600;
+      }
+      .nav-lastrun-btn {
+        border: 1px solid var(--hairline);
+        border-radius: 999px;
+        background: var(--paper);
+        color: var(--charcoal);
+        padding: 2px 7px;
+        font: 500 10px/1.3 var(--mono);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .nav-lastrun-btn:hover {
+        background: var(--inset);
+        color: var(--obsidian);
+      }
+      .nav-lastrun-btn.on {
+        background: color-mix(in srgb, var(--ok) 14%, var(--paper));
+        border-color: color-mix(in srgb, var(--ok) 55%, var(--hairline));
+        color: var(--ok);
       }
       .empty-select-wrap {
         flex: 1;
@@ -951,7 +1206,11 @@
         padding-left: 8px;
         border-left: 1px solid var(--hairline);
       }
-      .tree-folder.open > .tree-children { display: flex; flex-direction: column; gap: 2px; }
+      .tree-folder.open > .tree-children {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
       .tree-empty {
         padding: 24px 12px;
         color: var(--stone);
@@ -971,15 +1230,22 @@
         border-radius: var(--radius);
         cursor: pointer;
       }
-      .nav-item:hover { background: transparent; }
+      .nav-item:hover {
+        background: transparent;
+      }
       .nav-op {
         display: flex;
         flex-direction: column;
         gap: 0;
         border-radius: var(--radius);
       }
-      .nav-op:hover { background: transparent; }
-      .nav-op.active { background: transparent; box-shadow: none; }
+      .nav-op:hover {
+        background: transparent;
+      }
+      .nav-op.active {
+        background: transparent;
+        box-shadow: none;
+      }
       .nav-op-row {
         display: flex;
         align-items: center;
@@ -1000,7 +1266,10 @@
         justify-content: center;
         padding: 0;
       }
-      .nav-expand:hover { color: var(--obsidian); background: var(--inset); }
+      .nav-expand:hover {
+        color: var(--obsidian);
+        background: var(--inset);
+      }
       .nav-expand .chev {
         width: 6px;
         height: 6px;
@@ -1013,15 +1282,24 @@
         transform: rotate(45deg);
         margin-top: 0;
       }
-      .nav-expand:disabled { opacity: 0.25; cursor: default; }
+      .nav-expand:disabled {
+        opacity: 0.25;
+        cursor: default;
+      }
       .nav-examples {
         display: none;
         flex-direction: column;
         gap: 2px;
         margin: 0 4px 6px 18px;
       }
-      .nav-op.examples-open > .nav-examples { display: flex; }
-      .nav-ex-group { display: flex; flex-direction: column; gap: 0; }
+      .nav-op.examples-open > .nav-examples {
+        display: flex;
+      }
+      .nav-ex-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
       .nav-ex-group-label {
         display: flex;
         align-items: center;
@@ -1032,10 +1310,18 @@
         letter-spacing: 0.02em;
         color: var(--stone);
       }
-      .nav-ex-group-label.ok { color: var(--ok); }
-      .nav-ex-group-label.warn { color: var(--warn); }
-      .nav-ex-group-label.omit { color: var(--accent); }
-      .nav-ex-group-label.err { color: var(--err); }
+      .nav-ex-group-label.ok {
+        color: var(--ok);
+      }
+      .nav-ex-group-label.warn {
+        color: var(--warn);
+      }
+      .nav-ex-group-label.omit {
+        color: var(--accent);
+      }
+      .nav-ex-group-label.err {
+        color: var(--err);
+      }
       .nav-ex-items {
         display: flex;
         flex-direction: column;
@@ -1044,10 +1330,22 @@
         padding-left: 8px;
         border-left: 1px solid var(--hairline);
       }
-      .nav-ex-group.ok > .nav-ex-items { border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
-      .nav-ex-group.warn > .nav-ex-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
-      .nav-ex-group.omit > .nav-ex-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
-      .nav-ex-group.err > .nav-ex-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
+      .nav-ex-group.ok > .nav-ex-items {
+        border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline));
+      }
+      .nav-ex-group.warn > .nav-ex-items {
+        border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline));
+      }
+      .nav-ex-group.omit > .nav-ex-items {
+        border-left-color: color-mix(
+          in srgb,
+          var(--accent) 40%,
+          var(--hairline)
+        );
+      }
+      .nav-ex-group.err > .nav-ex-items {
+        border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline));
+      }
       .nav-ex-count {
         font: 600 10px/1.4 var(--mono);
         color: inherit;
@@ -1069,8 +1367,15 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .nav-example:hover { background: color-mix(in srgb, var(--obsidian) 4%, transparent); color: var(--charcoal); }
-      .nav-example.on { color: var(--obsidian); background: color-mix(in srgb, var(--obsidian) 8%, transparent); font-weight: 500; }
+      .nav-example:hover {
+        background: color-mix(in srgb, var(--obsidian) 4%, transparent);
+        color: var(--charcoal);
+      }
+      .nav-example.on {
+        color: var(--obsidian);
+        background: color-mix(in srgb, var(--obsidian) 8%, transparent);
+        font-weight: 500;
+      }
       .nav-ver {
         flex: none;
         padding: 1px 4px;
@@ -1100,7 +1405,10 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .nav-op.active .nav-title { color: var(--obsidian); font-weight: 500; }
+      .nav-op.active .nav-title {
+        color: var(--obsidian);
+        font-weight: 500;
+      }
 
       .export-backdrop {
         display: none;
@@ -1113,8 +1421,12 @@
         justify-content: center;
         padding: 24px;
       }
-      body.exporting .export-backdrop { display: flex; }
-      body.exporting { overflow: hidden; }
+      body.exporting .export-backdrop {
+        display: flex;
+      }
+      body.exporting {
+        overflow: hidden;
+      }
       /** The backdrop covers the viewport, but focus and scroll still reach the page behind it. */
       body.exporting > *:not(.export-backdrop) {
         pointer-events: none;
@@ -1164,20 +1476,72 @@
         cursor: pointer;
         line-height: 1.35;
       }
-      .export-check input { margin-top: 2px; }
+      .export-check input {
+        margin-top: 2px;
+      }
       .export-tryit-meta {
-        margin: -4px 0 0 22px;
+        margin: -2px 0 0 22px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
         font-size: 12px;
         color: var(--stone);
-        font-family: var(--mono);
+      }
+      .export-preset-chips {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .export-preset-chip {
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--white);
+        color: var(--charcoal);
+        padding: 3px 8px;
+        font: 500 11px/1.3 var(--mono);
+        cursor: pointer;
+      }
+      .export-preset-chip.on {
+        background: var(--obsidian);
+        color: var(--white);
+        border-color: var(--obsidian);
+      }
+      .export-preset-select {
+        height: 24px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--white);
+        color: var(--obsidian);
+        padding: 0 6px;
+        font: 11px/1 var(--mono);
+        cursor: pointer;
+      }
+      .export-preset-url {
+        font: 11px/1.3 var(--mono);
+        color: var(--stone);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .export-toolbars {
+        border-bottom: 1px solid var(--hairline);
       }
       .export-toolbar {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 6px;
-        padding: 10px 20px;
-        border-bottom: 1px solid var(--hairline);
+        padding: 9px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .export-toolbar:last-child {
+        border-bottom: 0;
+      }
+      .export-tool-summary {
+        margin-left: auto;
+        font: 500 11px/1.4 var(--mono);
+        color: var(--stone);
       }
       .export-tool-label {
         font: 600 10px/1.6 var(--sans);
@@ -1192,7 +1556,9 @@
         margin: 0 4px;
         background: var(--hairline);
       }
-      .export-tool-sep[hidden] { display: none; }
+      .export-tool-sep[hidden] {
+        display: none;
+      }
       .export-tool-chips {
         display: inline-flex;
         flex-wrap: wrap;
@@ -1210,7 +1576,9 @@
         color: var(--charcoal);
         font: 500 12px/1.5 var(--sans);
         cursor: pointer;
-        transition: border-color 0.12s ease, background 0.12s ease;
+        transition:
+          border-color 0.12s ease,
+          background 0.12s ease;
       }
       .section-chip .dot {
         width: 6px;
@@ -1219,35 +1587,77 @@
         background: currentColor;
         flex: none;
       }
-      .section-chip.ok .dot { background: var(--ok); }
-      .section-chip.warn .dot { background: var(--warn); }
-      .section-chip.omit .dot { background: var(--accent); }
-      .section-chip.err .dot { background: var(--err); }
-      .section-chip.plain { color: var(--obsidian); }
-      .section-chip:hover { background: var(--inset); }
-      .section-chip .dot { opacity: 0.35; }
+      .section-chip.ok .dot {
+        background: var(--ok);
+      }
+      .section-chip.warn .dot {
+        background: var(--warn);
+      }
+      .section-chip.omit .dot {
+        background: var(--accent);
+      }
+      .section-chip.err .dot {
+        background: var(--err);
+      }
+      .section-chip.plain {
+        color: var(--obsidian);
+      }
+      .section-chip:hover {
+        background: var(--inset);
+      }
+      .section-chip .dot {
+        opacity: 0.35;
+      }
       .section-chip.on .dot,
-      .section-chip.part .dot { opacity: 1; }
+      .section-chip.part .dot {
+        opacity: 1;
+      }
       .section-chip.part .dot {
         background: none;
         border: 1.5px solid currentColor;
       }
-      .section-chip.on { color: var(--obsidian); }
-      .section-chip.ok.on { border-color: color-mix(in srgb, var(--ok) 55%, var(--hairline)); background: color-mix(in srgb, var(--ok) 10%, var(--paper)); }
-      .section-chip.warn.on { border-color: color-mix(in srgb, var(--warn) 55%, var(--hairline)); background: color-mix(in srgb, var(--warn) 10%, var(--paper)); }
-      .section-chip.omit.on { border-color: color-mix(in srgb, var(--accent) 55%, var(--hairline)); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
-      .section-chip.err.on { border-color: color-mix(in srgb, var(--err) 55%, var(--hairline)); background: color-mix(in srgb, var(--err) 10%, var(--paper)); }
-      .section-chip.ok.part .dot { color: var(--ok); }
-      .section-chip.warn.part .dot { color: var(--warn); }
-      .section-chip.omit.part .dot { color: var(--accent); }
-      .section-chip.err.part .dot { color: var(--err); }
+      .section-chip.on {
+        color: var(--obsidian);
+      }
+      .section-chip.ok.on {
+        border-color: color-mix(in srgb, var(--ok) 55%, var(--hairline));
+        background: color-mix(in srgb, var(--ok) 10%, var(--paper));
+      }
+      .section-chip.warn.on {
+        border-color: color-mix(in srgb, var(--warn) 55%, var(--hairline));
+        background: color-mix(in srgb, var(--warn) 10%, var(--paper));
+      }
+      .section-chip.omit.on {
+        border-color: color-mix(in srgb, var(--accent) 55%, var(--hairline));
+        background: color-mix(in srgb, var(--accent) 10%, var(--paper));
+      }
+      .section-chip.err.on {
+        border-color: color-mix(in srgb, var(--err) 55%, var(--hairline));
+        background: color-mix(in srgb, var(--err) 10%, var(--paper));
+      }
+      .section-chip.ok.part .dot {
+        color: var(--ok);
+      }
+      .section-chip.warn.part .dot {
+        color: var(--warn);
+      }
+      .section-chip.omit.part .dot {
+        color: var(--accent);
+      }
+      .section-chip.err.part .dot {
+        color: var(--err);
+      }
       .export-body {
         flex: 1;
         overflow: auto;
         padding: 8px 12px 16px;
       }
-      .export-folder { margin: 0; }
-      .export-folder.collapsed > .export-folder-children { display: none; }
+      .export-folder {
+        margin: 0;
+      }
+      .export-folder.collapsed > .export-folder-children {
+        display: none;
+      }
       .export-folder-head {
         display: flex;
         align-items: center;
@@ -1261,7 +1671,29 @@
         color: var(--charcoal);
         cursor: pointer;
       }
-      .export-folder-head:hover { background: var(--inset); }
+      .export-folder-head:hover {
+        background: var(--inset);
+      }
+      .export-folder-toggle,
+      .export-op-toggle {
+        border: 0;
+        background: none;
+        padding: 0;
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: inherit;
+        cursor: pointer;
+        flex: none;
+      }
+      .export-folder-head input[type="checkbox"],
+      .export-op-title input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+        flex: none;
+      }
       .export-folder-head .chev {
         width: 6px;
         height: 6px;
@@ -1290,8 +1722,12 @@
       .export-op {
         padding: 0;
       }
-      .export-op:last-child { border-bottom: 0; }
-      .export-op.collapsed > .export-op-groups { display: none; }
+      .export-op:last-child {
+        border-bottom: 0;
+      }
+      .export-op.collapsed > .export-op-groups {
+        display: none;
+      }
       .export-op-title {
         display: flex;
         align-items: center;
@@ -1305,7 +1741,9 @@
         color: var(--obsidian);
         cursor: pointer;
       }
-      .export-op-title:hover { background: var(--inset); }
+      .export-op-title:hover {
+        background: var(--inset);
+      }
       .export-op-title .chev {
         width: 6px;
         height: 6px;
@@ -1327,7 +1765,9 @@
         font: 600 10px/1.4 var(--mono);
         color: var(--stone);
       }
-      .export-op-groups { padding: 2px 0 8px; }
+      .export-op-groups {
+        padding: 2px 0 8px;
+      }
       .export-op-title .path {
         font-family: var(--mono);
         font-size: 11px;
@@ -1336,8 +1776,12 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .export-group { margin: 0 0 6px; }
-      .export-group:last-child { margin-bottom: 0; }
+      .export-group {
+        margin: 0 0 6px;
+      }
+      .export-group:last-child {
+        margin-bottom: 0;
+      }
       .export-group-head {
         display: flex;
         align-items: center;
@@ -1348,10 +1792,18 @@
         cursor: pointer;
         color: var(--charcoal);
       }
-      .export-group-head.ok { color: var(--ok); }
-      .export-group-head.warn { color: var(--warn); }
-      .export-group-head.omit { color: var(--accent); }
-      .export-group-head.err { color: var(--err); }
+      .export-group-head.ok {
+        color: var(--ok);
+      }
+      .export-group-head.warn {
+        color: var(--warn);
+      }
+      .export-group-head.omit {
+        color: var(--accent);
+      }
+      .export-group-head.err {
+        color: var(--err);
+      }
       .export-group-count {
         font: 600 10px/1.4 var(--mono);
         color: var(--stone);
@@ -1362,11 +1814,25 @@
         padding-left: 8px;
         border-left: 1px solid var(--hairline);
       }
-      .export-group.ok > .export-group-items { border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline)); }
-      .export-group.warn > .export-group-items { border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline)); }
-      .export-group.omit > .export-group-items { border-left-color: color-mix(in srgb, var(--accent) 40%, var(--hairline)); }
-      .export-group.err > .export-group-items { border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline)); }
-      .export-group.collapsed > .export-group-items { display: none; }
+      .export-group.ok > .export-group-items {
+        border-left-color: color-mix(in srgb, var(--ok) 40%, var(--hairline));
+      }
+      .export-group.warn > .export-group-items {
+        border-left-color: color-mix(in srgb, var(--warn) 40%, var(--hairline));
+      }
+      .export-group.omit > .export-group-items {
+        border-left-color: color-mix(
+          in srgb,
+          var(--accent) 40%,
+          var(--hairline)
+        );
+      }
+      .export-group.err > .export-group-items {
+        border-left-color: color-mix(in srgb, var(--err) 40%, var(--hairline));
+      }
+      .export-group.collapsed > .export-group-items {
+        display: none;
+      }
       .export-group-toggle {
         display: inline-flex;
         align-items: center;
@@ -1402,8 +1868,13 @@
         color: var(--charcoal);
         line-height: 1.35;
       }
-      .export-ex input { margin-top: 2px; }
-      .export-ex label { cursor: pointer; min-width: 0; }
+      .export-ex input {
+        margin-top: 2px;
+      }
+      .export-ex label {
+        cursor: pointer;
+        min-width: 0;
+      }
       .export-empty {
         padding: 28px 16px;
         text-align: center;
@@ -1434,18 +1905,39 @@
         background: #e4e4e7;
         color: #27272a;
       }
-      .method.get { background: #f4f4f5; color: #52525b; }
-      .method.patch { background: #d4d4d8; color: #18181b; }
-      .method.put { background: #a1a1aa; color: #fafafa; }
-      .method.post { background: #3f3f46; color: #fafafa; }
-      .method.delete { background: #111111; color: #ffffff; }
+      .method.get {
+        background: #f4f4f5;
+        color: #52525b;
+      }
+      .method.patch {
+        background: #d4d4d8;
+        color: #18181b;
+      }
+      .method.put {
+        background: #a1a1aa;
+        color: #fafafa;
+      }
+      .method.post {
+        background: #3f3f46;
+        color: #fafafa;
+      }
+      .method.delete {
+        background: #111111;
+        color: #ffffff;
+      }
       .schema-block {
         padding: 10px 12px 12px;
         border-top: 1px solid var(--hairline);
       }
-      .schema-block .meta-label { margin-bottom: 8px; display: block; }
+      .schema-block .meta-label {
+        margin-bottom: 8px;
+        display: block;
+      }
 
-      .ex-block { margin: 0; position: relative; }
+      .ex-block {
+        margin: 0;
+        position: relative;
+      }
       .foot-bar {
         grid-column: 3;
         grid-row: 2;
@@ -1471,13 +1963,18 @@
         background: transparent;
         border: 0;
       }
-      .ex-dock:empty { display: none; }
+      .ex-dock:empty {
+        display: none;
+      }
       .ex-dock .dd-menu {
         top: auto;
         bottom: calc(100% + 4px);
         max-height: min(380px, 45vh);
       }
-      .dd { position: relative; width: 100%; }
+      .dd {
+        position: relative;
+        width: 100%;
+      }
       .dd-toggle {
         width: 100%;
         height: 28px;
@@ -1507,8 +2004,12 @@
         font: 600 11px/1 var(--mono);
         min-width: 28px;
       }
-      .dd-status.ok { color: var(--ok); }
-      .dd-status.err { color: var(--err); }
+      .dd-status.ok {
+        color: var(--ok);
+      }
+      .dd-status.err {
+        color: var(--err);
+      }
       .dd-kind {
         color: var(--stone);
         font-size: 12px;
@@ -1531,7 +2032,9 @@
         border-bottom: 1px solid var(--obsidian);
         transform: translateY(-70%) rotate(45deg);
       }
-      .dd.open .dd-toggle::after { transform: translateY(-20%) rotate(225deg); }
+      .dd.open .dd-toggle::after {
+        transform: translateY(-20%) rotate(225deg);
+      }
       .dd-menu {
         display: none;
         position: absolute;
@@ -1547,7 +2050,10 @@
         box-shadow: none;
         padding: 0;
       }
-      .dd.open .dd-menu { display: flex; flex-direction: column; }
+      .dd.open .dd-menu {
+        display: flex;
+        flex-direction: column;
+      }
       .dd-search {
         height: 32px;
         margin: 8px 8px 4px;
@@ -1557,7 +2063,10 @@
         font-size: 12px;
         background: var(--white);
       }
-      .dd-list { overflow: auto; padding: 4px 0 8px; }
+      .dd-list {
+        overflow: auto;
+        padding: 4px 0 8px;
+      }
       .dd-group {
         display: flex;
         align-items: center;
@@ -1570,10 +2079,18 @@
         color: var(--stone);
         padding: 10px 12px 4px;
       }
-      .dd-group.ok { color: var(--ok); }
-      .dd-group.warn { color: var(--warn); }
-      .dd-group.omit { color: var(--accent); }
-      .dd-group.err { color: var(--err); }
+      .dd-group.ok {
+        color: var(--ok);
+      }
+      .dd-group.warn {
+        color: var(--warn);
+      }
+      .dd-group.omit {
+        color: var(--accent);
+      }
+      .dd-group.err {
+        color: var(--err);
+      }
       .dd-count {
         font: 600 10px/1.4 var(--mono);
         color: var(--stone);
@@ -1592,14 +2109,21 @@
         font-size: 13px;
         cursor: pointer;
       }
-      .dd-item:hover, .dd-item.on { background: var(--inset); }
+      .dd-item:hover,
+      .dd-item.on {
+        background: var(--inset);
+      }
       .dd-item .st {
         font: 600 11px/1 var(--mono);
         width: 28px;
         flex: none;
       }
-      .dd-item .st.ok { color: var(--ok); }
-      .dd-item .st.err { color: var(--err); }
+      .dd-item .st.ok {
+        color: var(--ok);
+      }
+      .dd-item .st.err {
+        color: var(--err);
+      }
 
       .urlbar {
         display: flex;
@@ -1629,7 +2153,9 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .url .method { flex: none; }
+      .url .method {
+        flex: none;
+      }
       .btn {
         border: 1px solid var(--hairline);
         background: var(--white);
@@ -1643,8 +2169,14 @@
         font-size: 12px;
         text-decoration: none;
       }
-      .btn:hover { color: var(--obsidian); }
-      .btn.sm { height: 32px; padding: 0 10px; font-size: 12px; }
+      .btn:hover {
+        color: var(--obsidian);
+      }
+      .btn.sm {
+        height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
       .btn.icon {
         width: 32px;
         height: 32px;
@@ -1654,9 +2186,18 @@
         justify-content: center;
         color: var(--stone);
       }
-      .btn.icon:hover:not(:disabled) { color: var(--obsidian); }
-      .btn.icon svg { width: 15px; height: 15px; display: block; }
-      .btn:disabled { opacity: 0.4; cursor: default; }
+      .btn.icon:hover:not(:disabled) {
+        color: var(--obsidian);
+      }
+      .btn.icon svg {
+        width: 15px;
+        height: 15px;
+        display: block;
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
 
       .toast {
         position: fixed;
@@ -1671,7 +2212,9 @@
         box-shadow: var(--ring);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.18s ease, transform 0.18s ease;
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
         z-index: 100;
       }
       .toast.show {
@@ -1721,7 +2264,11 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
-      .card-head-actions { display: flex; align-items: center; gap: 8px; }
+      .card-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       .mode-toggle {
         display: flex;
         border: 1px solid var(--hairline);
@@ -1737,7 +2284,10 @@
         cursor: pointer;
         color: var(--stone);
       }
-      .mode-toggle button.on { background: var(--obsidian); color: var(--white); }
+      .mode-toggle button.on {
+        background: var(--obsidian);
+        color: var(--white);
+      }
       .card-body {
         padding: 0;
         display: flex;
@@ -1757,7 +2307,9 @@
         padding: 10px 12px;
         border-top: 1px solid var(--hairline);
       }
-      .meta-block:first-child { border-top: 0; }
+      .meta-block:first-child {
+        border-top: 0;
+      }
       .meta-toolbar {
         display: flex;
         align-items: center;
@@ -1771,8 +2323,15 @@
         text-transform: uppercase;
         color: var(--obsidian);
       }
-      .meta-source { color: var(--smoke); font: 11px/1 var(--mono); }
-      .meta-empty { color: var(--smoke); font-size: 12px; padding: 2px 0; }
+      .meta-source {
+        color: var(--smoke);
+        font: 11px/1 var(--mono);
+      }
+      .meta-empty {
+        color: var(--smoke);
+        font-size: 12px;
+        padding: 2px 0;
+      }
       .kv {
         display: flex;
         align-items: center;
@@ -1781,7 +2340,9 @@
         font-size: 12px;
         min-width: 0;
       }
-      .kv:last-child { margin-bottom: 0; }
+      .kv:last-child {
+        margin-bottom: 0;
+      }
       .kname {
         flex: none;
         width: 110px;
@@ -1814,21 +2375,48 @@
         overflow: auto;
         font: 12px/1.5 var(--mono);
       }
-      .k { color: var(--obsidian); }
-      .s { color: var(--accent); }
-      .n { color: var(--charcoal); }
-      .p { color: #666666; }
-      .empty { color: var(--stone); font-size: 13px; padding: 14px 16px; }
+      .k {
+        color: var(--obsidian);
+      }
+      .s {
+        color: var(--accent);
+      }
+      .n {
+        color: var(--charcoal);
+      }
+      .p {
+        color: #666666;
+      }
+      .empty {
+        color: var(--stone);
+        font-size: 13px;
+        padding: 14px 16px;
+      }
       .code {
         font: 600 11px/1 var(--mono);
         padding: 3px 6px;
         border-radius: 2px;
         background: var(--inset);
       }
-      .code.ok { background: var(--ok-bg); color: var(--ok); }
-      .code.err { background: var(--err-bg); color: var(--err); }
-      .code-text { color: var(--stone); font-size: 12px; }
-      .res-meta { display: flex; align-items: center; gap: 10px; color: var(--stone); font: 11px/1 var(--mono); }
+      .code.ok {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+      .code.err {
+        background: var(--err-bg);
+        color: var(--err);
+      }
+      .code-text {
+        color: var(--stone);
+        font-size: 12px;
+      }
+      .res-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--stone);
+        font: 11px/1 var(--mono);
+      }
 
       .schemas {
         display: grid;
@@ -1876,9 +2464,15 @@
         padding-left: 8px;
         margin-left: 2px;
       }
-      .row .name.nested[data-depth="2"] { margin-left: 14px; }
-      .row .name.nested[data-depth="3"] { margin-left: 26px; }
-      .row .name.nested[data-depth="4"] { margin-left: 38px; }
+      .row .name.nested[data-depth="2"] {
+        margin-left: 14px;
+      }
+      .row .name.nested[data-depth="3"] {
+        margin-left: 26px;
+      }
+      .row .name.nested[data-depth="4"] {
+        margin-left: 38px;
+      }
       .row .loc,
       .row .type {
         color: var(--stone);
@@ -1893,7 +2487,9 @@
         text-align: right;
         min-height: 1em;
       }
-      .flag.req { color: var(--err); }
+      .flag.req {
+        color: var(--err);
+      }
 
       .work-foot {
         margin-top: 24px;
@@ -1902,40 +2498,75 @@
       }
 
       @media (max-width: 960px) {
-        html, body { overflow: auto; height: auto; }
+        html,
+        body {
+          overflow: auto;
+          height: auto;
+        }
         .app {
           grid-template-columns: 1fr;
           grid-template-rows: auto 1fr auto;
           height: auto;
           min-height: calc(100vh - 44px);
         }
-        .sidebar, .workbench, .foot-bar { grid-column: 1; grid-row: auto; }
-        .sidebar { max-height: 40vh; }
+        .sidebar,
+        .workbench,
+        .foot-bar {
+          grid-column: 1;
+          grid-row: auto;
+        }
+        .sidebar {
+          max-height: 40vh;
+        }
         .app.sidebar-collapsed .sidebar {
           max-height: 0 !important;
           padding: 0 !important;
           opacity: 0;
           pointer-events: none;
         }
-        .foot-bar { position: sticky; bottom: 0; }
-        .sidebar-resizer { display: none; }
-        .pair, .schemas { grid-template-columns: 1fr; }
-        .workbench { overflow: auto; height: auto; }
-        .pair { flex: none; height: auto; overflow: visible; }
-        .card { height: auto; max-height: 70vh; }
-        .search-wrap { width: min(280px, 70vw); }
+        .foot-bar {
+          position: sticky;
+          bottom: 0;
+        }
+        .sidebar-resizer {
+          display: none;
+        }
+        .pair,
+        .schemas {
+          grid-template-columns: 1fr;
+        }
+        .workbench {
+          overflow: auto;
+          height: auto;
+        }
+        .pair {
+          flex: none;
+          height: auto;
+          overflow: visible;
+        }
+        .card {
+          height: auto;
+          max-height: 70vh;
+        }
+        .search-wrap {
+          width: min(280px, 70vw);
+        }
       }
 
-      .method { border-radius: 2px; }
+      .method {
+        border-radius: 2px;
+      }
       html:not([data-theme="light"]) .btn.primary {
         background: #f3f3f3;
         color: #0a0a0a;
       }
-      html:not([data-theme="light"]) .btn.primary:hover { color: #0a0a0a; }
-
+      html:not([data-theme="light"]) .btn.primary:hover {
+        color: #0a0a0a;
+      }
     </style>
   </head>
   <body>
+    <div class="lastrun-bar" id="lastrun-bar" hidden></div>
     <header class="topnav">
       <div class="brand-wrap">
         <div class="brand" id="brand">DAxTA API Document</div>
@@ -1945,34 +2576,102 @@
       </div>
       <div class="nav-tools">
         <div class="env-wrap" id="env-wrap">
-          <button class="env-trigger" id="env-trigger" type="button">local · —</button>
+          <button class="env-trigger" id="env-trigger" type="button">
+            local · —
+          </button>
           <div class="env-pop" id="env-pop"></div>
         </div>
         <div class="more-wrap" id="more-wrap">
-          <button class="btn icon" id="more-toggle" type="button" data-tip="Menu" aria-label="Menu" aria-expanded="false" aria-haspopup="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+          <button
+            class="btn icon"
+            id="more-toggle"
+            type="button"
+            data-tip="Menu"
+            aria-label="Menu"
+            aria-expanded="false"
+            aria-haspopup="true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="12" r="1.4" />
+              <circle cx="12" cy="12" r="1.4" />
+              <circle cx="19" cy="12" r="1.4" />
+            </svg>
           </button>
           <div class="more-pop" id="more-pop" role="menu">
-            <button class="more-item" id="theme-toggle" type="button" role="menuitem">
+            <button
+              class="more-item"
+              id="theme-toggle"
+              type="button"
+              role="menuitem"
+            >
               <span class="more-item-ico theme-sun" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path
+                    d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                  />
+                </svg>
               </span>
               <span class="more-item-ico theme-moon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/></svg>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z" />
+                </svg>
               </span>
               <span class="more-item-label">Theme</span>
               <span class="more-item-meta" id="theme-label">Dark</span>
             </button>
-            <button class="more-item" id="export-openapi" type="button" role="menuitem">
+            <button
+              class="more-item"
+              id="export-openapi"
+              type="button"
+              role="menuitem"
+            >
               <span class="more-item-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
               </span>
               <span class="more-item-label">Export</span>
             </button>
             <div class="more-sep"></div>
             <div class="more-section">Shortcuts</div>
-            <div class="more-shortcut"><span>Search</span><kbd id="shortcut-palette">⌘K</kbd></div>
-            <div class="more-shortcut"><span>Sidebar search</span><kbd>/</kbd></div>
+            <div class="more-shortcut">
+              <span>Search</span><kbd id="shortcut-palette">⌘K</kbd>
+            </div>
+            <div class="more-shortcut">
+              <span>Sidebar search</span><kbd>/</kbd>
+            </div>
             <div class="more-shortcut"><span>Close</span><kbd>Esc</kbd></div>
           </div>
         </div>
@@ -1980,55 +2679,153 @@
     </header>
     <div class="search-backdrop" id="search-backdrop">
       <div class="search-palette-card" id="search-palette-card">
-        <input class="search-palette-input" id="search-palette-input" placeholder="Search endpoints..." autocomplete="off" spellcheck="false" />
-        <div class="search-palette-panel" id="search-palette-panel" role="listbox"></div>
-        <div class="search-palette-hint">↑↓ navigate · enter open · esc close</div>
+        <input
+          class="search-palette-input"
+          id="search-palette-input"
+          placeholder="Search endpoints..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div
+          class="search-palette-panel"
+          id="search-palette-panel"
+          role="listbox"
+        ></div>
+        <div class="search-palette-hint">
+          ↑↓ navigate · enter open · esc close
+        </div>
       </div>
     </div>
-    <div class="export-backdrop" id="export-backdrop" role="dialog" aria-modal="true" aria-labelledby="export-title">
+    <div
+      class="export-backdrop"
+      id="export-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-title"
+    >
       <div class="export-modal" id="export-modal">
         <div class="export-head">
           <h2 id="export-title">Export Postman</h2>
-          <p>Pick examples, then download a Collection with the docs folder tree. Env + headers come from the active Try-it preset.</p>
+          <p>
+            Pick examples, then download a Collection with the docs folder tree.
+            Env + headers come from the active Try-it preset.
+          </p>
         </div>
         <div class="export-options">
           <label class="export-check">
             <input type="checkbox" id="export-include-tryit" checked />
-            <span>Include env + headers <span style="color:var(--stone)">(Collection uses <code id="export-base-var">{{baseUrl}}</code> / <code>{{vars}}</code> + environment file)</span></span>
+            <span
+              >Download environment file
+              <span style="color: var(--stone)"
+                >(Collection always keeps
+                <code id="export-base-var">{{baseUrl}}</code> &amp;
+                <code>{{vars}}</code>; check to also download <code>.postman_environment.json</code>)</span
+              ></span
+            >
           </label>
           <div class="export-tryit-meta" id="export-tryit-meta">—</div>
         </div>
-        <div class="export-toolbar">
-          <span class="export-tool-label">Examples</span>
-          <button type="button" class="section-chip plain" id="export-all">All</button>
-          <button type="button" class="section-chip plain" id="export-none">None</button>
-          <span class="export-tool-sep" id="export-sections-sep" hidden></span>
-          <span class="export-tool-chips" id="export-sections"></span>
+        <div class="export-toolbars">
+          <div class="export-toolbar">
+            <span class="export-tool-label">APIs</span>
+            <button
+              type="button"
+              class="section-chip plain"
+              id="export-apis-all"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              class="section-chip plain"
+              id="export-apis-none"
+            >
+              None
+            </button>
+            <button
+              type="button"
+              class="section-chip plain"
+              id="export-apis-lastrun"
+              hidden
+            ></button>
+            <span class="export-tool-summary" id="export-summary"></span>
+          </div>
+          <div class="export-toolbar">
+            <span class="export-tool-label">Examples</span>
+            <button type="button" class="section-chip plain" id="export-all">
+              All
+            </button>
+            <button type="button" class="section-chip plain" id="export-none">
+              None
+            </button>
+            <span
+              class="export-tool-sep"
+              id="export-sections-sep"
+              hidden
+            ></span>
+            <span class="export-tool-chips" id="export-sections"></span>
+          </div>
         </div>
         <div class="export-body" id="export-body"></div>
         <div class="export-foot">
-          <button type="button" class="btn sm" id="export-cancel">Cancel</button>
-          <button type="button" class="btn primary sm" id="export-confirm">Download</button>
+          <button type="button" class="btn sm" id="export-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn primary sm" id="export-confirm">
+            Download
+          </button>
         </div>
       </div>
     </div>
     <div class="app" id="app">
       <aside class="sidebar">
         <div class="search-wrap" id="search-wrap">
-          <input class="search" id="search" placeholder="Search endpoints..." autocomplete="off" spellcheck="false" />
+          <input
+            class="search"
+            id="search"
+            placeholder="Search endpoints..."
+            autocomplete="off"
+            spellcheck="false"
+          />
           <span class="search-kbd">/</span>
           <div class="search-panel" id="search-panel" role="listbox"></div>
         </div>
         <div class="prefix-bar" id="prefix-bar" hidden></div>
         <div class="nav-summary" id="nav-summary"></div>
         <div class="tree-scroll" id="nav"></div>
-        <div class="nav-foot"><span>Generated by DAxTA</span><span id="nav-version"></span></div>
+        <div class="nav-foot">
+          <span>Generated by DAxTA</span><span id="nav-version"></span>
+        </div>
       </aside>
-      <button type="button" class="sidebar-resizer" id="sidebar-resizer" aria-label="Resize sidebar" title="Drag to resize · double-click to collapse"></button>
+      <button
+        type="button"
+        class="sidebar-resizer"
+        id="sidebar-resizer"
+        aria-label="Resize sidebar"
+        title="Drag to resize · double-click to collapse"
+      ></button>
       <main class="workbench" id="main"></main>
       <div class="foot-bar">
-        <button class="btn icon sidebar-toggle" id="sidebar-toggle" type="button" data-tip="Sidebar" aria-label="Toggle sidebar" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16"/></svg>
+        <button
+          class="btn icon sidebar-toggle"
+          id="sidebar-toggle"
+          type="button"
+          data-tip="Sidebar"
+          aria-label="Toggle sidebar"
+          aria-pressed="false"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="4" width="18" height="16" rx="1" />
+            <path d="M9 4v16" />
+          </svg>
         </button>
         <div class="ex-dock" id="ex-dock"></div>
       </div>
@@ -2039,17 +2836,27 @@
     <script>
       const spec = window.__SPEC__ || {};
       const viewer = spec["x-viewer"] || {};
-      const workspace = (spec.info && spec.info["x-workspace"]) || viewer.workspace || "";
-      const defaultBaseUrlFromSpec = String((viewer.baseUrl || (spec.servers && spec.servers[0] && spec.servers[0].url) || "http://localhost:3000")).replace(/\/$/, "");
-      const docsPathSuffix = String(viewer.docsPath || "/docs").replace(/\/$/, "") || "/docs";
+      const workspace =
+        (spec.info && spec.info["x-workspace"]) || viewer.workspace || "";
+      const defaultBaseUrlFromSpec = String(
+        viewer.baseUrl ||
+          (spec.servers && spec.servers[0] && spec.servers[0].url) ||
+          "http://localhost:3000",
+      ).replace(/\/$/, "");
+      const docsPathSuffix =
+        String(viewer.docsPath || "/docs").replace(/\/$/, "") || "/docs";
 
       const inferBaseUrlFromLocation = () => {
         if (typeof location === "undefined") return null;
-        if (location.protocol !== "http:" && location.protocol !== "https:") return null;
+        if (location.protocol !== "http:" && location.protocol !== "https:")
+          return null;
         let pathname = (location.pathname || "/").replace(/\/$/, "") || "";
-        if (pathname === docsPathSuffix) return location.origin.replace(/\/$/, "");
+        if (pathname === docsPathSuffix)
+          return location.origin.replace(/\/$/, "");
         if (pathname.endsWith(docsPathSuffix)) {
-          const prefix = pathname.slice(0, -docsPathSuffix.length).replace(/\/$/, "");
+          const prefix = pathname
+            .slice(0, -docsPathSuffix.length)
+            .replace(/\/$/, "");
           return (location.origin + prefix).replace(/\/$/, "");
         }
         const idx = pathname.indexOf(docsPathSuffix + "/");
@@ -2065,7 +2872,8 @@
       const defaultBaseUrl = locationBaseUrl || defaultBaseUrlFromSpec;
       const title = (spec.info && spec.info.title) || "API Documentation";
       const STORE_KEY = "openapi-docs-env:" + (workspace || "default");
-      const SIDEBAR_STORE_KEY = "openapi-docs-sidebar:" + (workspace || "default");
+      const SIDEBAR_STORE_KEY =
+        "openapi-docs-sidebar:" + (workspace || "default");
       const SIDEBAR_MIN = 200;
       const SIDEBAR_MAX = 560;
       const SIDEBAR_DEFAULT = 320;
@@ -2073,9 +2881,13 @@
       const docsBaseForApi = (() => {
         if (typeof location === "undefined") return docsPathSuffix;
         let pathname = (location.pathname || "/").replace(/\/$/, "") || "";
-        if (pathname === docsPathSuffix || pathname.endsWith(docsPathSuffix)) return pathname || docsPathSuffix;
+        if (pathname === docsPathSuffix || pathname.endsWith(docsPathSuffix))
+          return pathname || docsPathSuffix;
         const idx = pathname.indexOf(docsPathSuffix);
-        if (idx >= 0) return pathname.slice(0, idx + docsPathSuffix.length) || docsPathSuffix;
+        if (idx >= 0)
+          return (
+            pathname.slice(0, idx + docsPathSuffix.length) || docsPathSuffix
+          );
         return docsPathSuffix;
       })();
       const ENV_STORE_URL = docsBaseForApi + "/env.json";
@@ -2087,7 +2899,9 @@
           const parsed = JSON.parse(raw);
           const width = Number(parsed.width);
           return {
-            width: Number.isFinite(width) ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, width)) : SIDEBAR_DEFAULT,
+            width: Number.isFinite(width)
+              ? Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, width))
+              : SIDEBAR_DEFAULT,
             collapsed: Boolean(parsed.collapsed),
           };
         } catch {
@@ -2105,9 +2919,18 @@
         app.classList.toggle("sidebar-collapsed", sidebarLayout.collapsed);
         const toggle = document.getElementById("sidebar-toggle");
         if (toggle) {
-          toggle.setAttribute("aria-pressed", sidebarLayout.collapsed ? "true" : "false");
-          toggle.setAttribute("data-tip", sidebarLayout.collapsed ? "Show sidebar" : "Hide sidebar");
-          toggle.setAttribute("aria-label", sidebarLayout.collapsed ? "Show sidebar" : "Hide sidebar");
+          toggle.setAttribute(
+            "aria-pressed",
+            sidebarLayout.collapsed ? "true" : "false",
+          );
+          toggle.setAttribute(
+            "data-tip",
+            sidebarLayout.collapsed ? "Show sidebar" : "Hide sidebar",
+          );
+          toggle.setAttribute(
+            "aria-label",
+            sidebarLayout.collapsed ? "Show sidebar" : "Hide sidebar",
+          );
         }
         if (resizer) {
           resizer.title = "Drag to resize · double-click to collapse";
@@ -2117,7 +2940,10 @@
 
       const persistSidebarLayout = () => {
         try {
-          localStorage.setItem(SIDEBAR_STORE_KEY, JSON.stringify(sidebarLayout));
+          localStorage.setItem(
+            SIDEBAR_STORE_KEY,
+            JSON.stringify(sidebarLayout),
+          );
         } catch {}
       };
 
@@ -2134,10 +2960,15 @@
         const onMove = (event) => {
           if (!dragging) return;
           if (event.cancelable) event.preventDefault();
-          const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+          const clientX = event.touches
+            ? event.touches[0].clientX
+            : event.clientX;
           const delta = clientX - startX;
           if (Math.abs(delta) > 2) moved = true;
-          const next = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startWidth + delta));
+          const next = Math.min(
+            SIDEBAR_MAX,
+            Math.max(SIDEBAR_MIN, startWidth + delta),
+          );
           sidebarLayout.width = next;
           sidebarLayout.collapsed = false;
           applySidebarLayout();
@@ -2179,15 +3010,18 @@
 
       const toggleSidebar = () => {
         sidebarLayout.collapsed = !sidebarLayout.collapsed;
-        if (!sidebarLayout.collapsed && sidebarLayout.width < SIDEBAR_MIN) sidebarLayout.width = SIDEBAR_DEFAULT;
+        if (!sidebarLayout.collapsed && sidebarLayout.width < SIDEBAR_MIN)
+          sidebarLayout.width = SIDEBAR_DEFAULT;
         applySidebarLayout();
         persistSidebarLayout();
       };
 
-      document.getElementById("sidebar-toggle")?.addEventListener("click", (event) => {
-        event.preventDefault();
-        toggleSidebar();
-      });
+      document
+        .getElementById("sidebar-toggle")
+        ?.addEventListener("click", (event) => {
+          event.preventDefault();
+          toggleSidebar();
+        });
 
       initSidebarResize();
 
@@ -2201,19 +3035,35 @@
 
       const varNameFromHeader = (header) => {
         const lower = String(header).toLowerCase();
-        const headerVars = (spec["x-viewer"] && spec["x-viewer"].headerVariables) || {};
+        const headerVars =
+          (spec["x-viewer"] && spec["x-viewer"].headerVariables) || {};
         for (const [k, v] of Object.entries(headerVars)) {
           if (String(k).toLowerCase() === lower) {
             const m = String(v).match(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/);
             if (m) return m[1];
           }
         }
-        if (spec["x-viewer"] && spec["x-viewer"].headerVarStyle === "upper-snake") {
-          return String(header).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "");
+        if (
+          spec["x-viewer"] &&
+          spec["x-viewer"].headerVarStyle === "upper-snake"
+        ) {
+          return String(header)
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
         }
-        const parts = String(header).replace(/^x-/, "").split("-").filter(Boolean);
+        const parts = String(header)
+          .replace(/^x-/, "")
+          .split("-")
+          .filter(Boolean);
         if (!parts.length) return String(header).replace(/[^a-zA-Z0-9]/g, "");
-        return parts[0] + parts.slice(1).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
+        return (
+          parts[0] +
+          parts
+            .slice(1)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join("")
+        );
       };
 
       /** Pull try-it defaults from recorded success traffic + parameter examples. */
@@ -2228,13 +3078,20 @@
           for (const op of Object.values(pathItem || {})) {
             if (!op || typeof op !== "object") continue;
             for (const param of op.parameters || []) {
-              if (param && param.in === "header" && param.name && param.example != null) {
+              if (
+                param &&
+                param.in === "header" &&
+                param.name &&
+                param.example != null
+              ) {
                 take(param.name, param.example, false);
               }
             }
             for (const scenario of op["x-scenarios"] || []) {
               const success = scenario.status >= 200 && scenario.status < 300;
-              for (const [header, value] of Object.entries(scenario.headers || {})) {
+              for (const [header, value] of Object.entries(
+                scenario.headers || {},
+              )) {
                 if (!String(header).toLowerCase().startsWith("x-")) continue;
                 take(header, value, success);
               }
@@ -2255,11 +3112,18 @@
         try {
           host = new URL(host).hostname;
         } catch {
-          host = host.replace(/^[a-z]+:\/\//i, "").split("/")[0].split(":")[0];
+          host = host
+            .replace(/^[a-z]+:\/\//i, "")
+            .split("/")[0]
+            .split(":")[0];
         }
         host = host.toLowerCase();
         if (!host) return "local";
-        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(host) || host.endsWith(".local")) return "local";
+        if (
+          ["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(host) ||
+          host.endsWith(".local")
+        )
+          return "local";
         const keywords = [
           [/\bstag(e|ing)\b/, "staging"],
           [/\b(dev|development)\b/, "development"],
@@ -2274,7 +3138,11 @@
           if (labels.some((label) => pattern.test(label))) return name;
         }
         const generic = new Set(["api", "www", "app", "gateway", "edge"]);
-        return labels.slice(0, -2).filter((label) => label && !generic.has(label))[0] || "production";
+        return (
+          labels
+            .slice(0, -2)
+            .filter((label) => label && !generic.has(label))[0] || "production"
+        );
       };
 
       /** Envs come from spec.servers (built per env preset); viewer.envPresets only overrides/extends. */
@@ -2283,18 +3151,25 @@
         for (const server of Array.isArray(spec.servers) ? spec.servers : []) {
           const url = String((server && server.url) || "").replace(/\/$/, "");
           if (!url) continue;
-          const name = String((server && server.description) || "").trim() || envNameFromUrl(url);
+          const name =
+            String((server && server.description) || "").trim() ||
+            envNameFromUrl(url);
           if (!presets[name]) presets[name] = { baseUrl: url };
         }
         const overrides = viewer.envPresets;
         if (overrides && typeof overrides === "object") {
           for (const [name, preset] of Object.entries(overrides)) {
             if (!name || !preset || typeof preset !== "object") continue;
-            const baseUrl = String(preset.baseUrl || (presets[name] && presets[name].baseUrl) || defaultBaseUrl).replace(/\/$/, "");
+            const baseUrl = String(
+              preset.baseUrl ||
+                (presets[name] && presets[name].baseUrl) ||
+                defaultBaseUrl,
+            ).replace(/\/$/, "");
             presets[name] = { ...preset, baseUrl: baseUrl || defaultBaseUrl };
           }
         }
-        if (!Object.keys(presets).length) presets[envNameFromUrl(defaultBaseUrl)] = { baseUrl: defaultBaseUrl };
+        if (!Object.keys(presets).length)
+          presets[envNameFromUrl(defaultBaseUrl)] = { baseUrl: defaultBaseUrl };
         return presets;
       })();
 
@@ -2302,7 +3177,10 @@
 
       /** The base URL variable can be renamed per env (e.g. ONBOARDING_SERVICE) for Postman. */
       const baseUrlKeyOf = (env) => {
-        const key = env && typeof env.baseUrlKey === "string" ? env.baseUrlKey.trim() : "";
+        const key =
+          env && typeof env.baseUrlKey === "string"
+            ? env.baseUrlKey.trim()
+            : "";
         return key || DEFAULT_BASE_URL_KEY;
       };
 
@@ -2315,7 +3193,8 @@
       };
 
       const buildHeaderTemplate = () => {
-        const schemes = (spec.components && spec.components.securitySchemes) || {};
+        const schemes =
+          (spec.components && spec.components.securitySchemes) || {};
         const variables = [];
         const varKeys = new Set();
         const headerGroups = {};
@@ -2324,7 +3203,8 @@
           const header = scheme.name;
           const varName = varNameFromHeader(header);
           if (!varKeys.has(varName)) {
-            const seeded = defaultHeaderValues[String(header).toLowerCase()] || "";
+            const seeded =
+              defaultHeaderValues[String(header).toLowerCase()] || "";
             variables.push({ key: varName, value: seeded });
             varKeys.add(varName);
           }
@@ -2356,22 +3236,40 @@
                 byKey[row.key] = { key: row.key, value: row.value };
               }
             }
-            if (!byKey["content-type"]) byKey["content-type"] = { key: "content-type", value: "application/json" };
+            if (!byKey["content-type"])
+              byKey["content-type"] = {
+                key: "content-type",
+                value: "application/json",
+              };
             headerGroups[comboKey] = Object.values(byKey);
           }
         }
         const groupNames = Object.keys(headerGroups);
-        if (!groupNames.length) headerGroups.default = [{ key: "content-type", value: "application/json" }];
+        if (!groupNames.length)
+          headerGroups.default = [
+            { key: "content-type", value: "application/json" },
+          ];
         return { variables, headerGroups };
       };
 
       const envFromPreset = (preset) => {
         const template = buildHeaderTemplate();
-        const baseUrl = String((preset && preset.baseUrl) || defaultBaseUrl).replace(/\/$/, "") || defaultBaseUrl;
+        const baseUrl =
+          String((preset && preset.baseUrl) || defaultBaseUrl).replace(
+            /\/$/,
+            "",
+          ) || defaultBaseUrl;
         const baseUrlKey = baseUrlKeyOf(preset);
-        const variables = [{ key: baseUrlKey, value: baseUrl }, ...template.variables.map((row) => ({ ...row }))];
+        const variables = [
+          { key: baseUrlKey, value: baseUrl },
+          ...template.variables.map((row) => ({ ...row })),
+        ];
         const known = new Set(variables.map((row) => row.key));
-        if (preset && preset.variables && typeof preset.variables === "object") {
+        if (
+          preset &&
+          preset.variables &&
+          typeof preset.variables === "object"
+        ) {
           for (const [key, value] of Object.entries(preset.variables)) {
             if (!key || key === baseUrlKey) continue;
             if (known.has(key)) {
@@ -2395,7 +3293,8 @@
         for (const [name, preset] of Object.entries(configuredPresets)) {
           envs[name] = envFromPreset(preset);
         }
-        if (!Object.keys(envs).length) envs.local = envFromPreset({ baseUrl: defaultBaseUrl });
+        if (!Object.keys(envs).length)
+          envs.local = envFromPreset({ baseUrl: defaultBaseUrl });
         const names = Object.keys(envs);
         const activeEnv = names.includes("local") ? "local" : names[0];
         const groupNames = Object.keys(envs[activeEnv].headerGroups || {});
@@ -2408,19 +3307,31 @@
 
       const cloneDefaultEnv = () => {
         const defaults = buildDefaultStore();
-        const name = defaults.envs.local ? "local" : Object.keys(defaults.envs)[0];
+        const name = defaults.envs.local
+          ? "local"
+          : Object.keys(defaults.envs)[0];
         return JSON.parse(JSON.stringify(defaults.envs[name]));
       };
 
       const legacyCamelVarFromHeader = (header) => {
-        const parts = String(header).replace(/^x-/, "").split("-").filter(Boolean);
+        const parts = String(header)
+          .replace(/^x-/, "")
+          .split("-")
+          .filter(Boolean);
         if (!parts.length) return String(header).replace(/[^a-zA-Z0-9]/g, "");
-        return parts[0] + parts.slice(1).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
+        return (
+          parts[0] +
+          parts
+            .slice(1)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join("")
+        );
       };
 
       const buildVarMigrationMap = () => {
         const map = {};
-        const schemes = (spec.components && spec.components.securitySchemes) || {};
+        const schemes =
+          (spec.components && spec.components.securitySchemes) || {};
         for (const scheme of Object.values(schemes)) {
           if (!scheme || scheme.in !== "header" || !scheme.name) continue;
           const legacy = legacyCamelVarFromHeader(scheme.name);
@@ -2433,14 +3344,18 @@
       const migrateTemplateRefs = (value, varMigration) => {
         let out = String(value ?? "");
         for (const [oldKey, newKey] of Object.entries(varMigration)) {
-          out = out.replace(new RegExp("\\{\\{\\s*" + oldKey + "\\s*\\}\\}", "g"), "{{" + newKey + "}}");
+          out = out.replace(
+            new RegExp("\\{\\{\\s*" + oldKey + "\\s*\\}\\}", "g"),
+            "{{" + newKey + "}}",
+          );
         }
         return out;
       };
 
       const mergeStore = (saved) => {
         const defaults = buildDefaultStore();
-        if (!saved || !saved.envs || typeof saved.envs !== "object") return defaults;
+        if (!saved || !saved.envs || typeof saved.envs !== "object")
+          return defaults;
         const varMigration = buildVarMigrationMap();
         const envs = {};
         for (const [name, env] of Object.entries(saved.envs)) {
@@ -2448,36 +3363,66 @@
           const presetCfg = configuredPresets[name];
           const expectedBaseKey = presetCfg ? baseUrlKeyOf(presetCfg) : "";
           let baseUrlKey = baseUrlKeyOf(env);
-          if (expectedBaseKey && expectedBaseKey !== DEFAULT_BASE_URL_KEY && baseUrlKey === DEFAULT_BASE_URL_KEY) {
+          if (
+            expectedBaseKey &&
+            expectedBaseKey !== DEFAULT_BASE_URL_KEY &&
+            baseUrlKey === DEFAULT_BASE_URL_KEY
+          ) {
             baseUrlKey = expectedBaseKey;
           }
           const rawVars = Array.isArray(env.variables)
-            ? env.variables.map((row) => ({ key: String(row.key || ""), value: String(row.value ?? "") }))
+            ? env.variables.map((row) => ({
+                key: String(row.key || ""),
+                value: String(row.value ?? ""),
+              }))
             : base.variables.map((row) => ({ ...row }));
           const variables = [];
           const byKey = new Map();
           for (const row of rawVars) {
             let key = row.key;
-            if (key === DEFAULT_BASE_URL_KEY && baseUrlKey !== DEFAULT_BASE_URL_KEY) key = baseUrlKey;
+            if (
+              key === DEFAULT_BASE_URL_KEY &&
+              baseUrlKey !== DEFAULT_BASE_URL_KEY
+            )
+              key = baseUrlKey;
             else if (varMigration[key]) key = varMigration[key];
             if (key && byKey.has(key)) {
               const existing = byKey.get(key);
-              if (!String(existing.value || "").trim() && String(row.value || "").trim()) existing.value = row.value;
+              if (
+                !String(existing.value || "").trim() &&
+                String(row.value || "").trim()
+              )
+                existing.value = row.value;
               continue;
             }
             const entry = { key, value: row.value };
             if (key) byKey.set(key, entry);
             variables.push(entry);
           }
-          const known = new Set(variables.map((row) => row.key).filter(Boolean));
+          const known = new Set(
+            variables.map((row) => row.key).filter(Boolean),
+          );
           for (const row of base.variables) {
             if (!row.key || known.has(row.key)) continue;
             // A renamed base URL variable already covers the default `baseUrl` row.
-            if (row.key === DEFAULT_BASE_URL_KEY && baseUrlKey !== DEFAULT_BASE_URL_KEY) continue;
-            if (expectedBaseKey && row.key === DEFAULT_BASE_URL_KEY && expectedBaseKey !== DEFAULT_BASE_URL_KEY) continue;
+            if (
+              row.key === DEFAULT_BASE_URL_KEY &&
+              baseUrlKey !== DEFAULT_BASE_URL_KEY
+            )
+              continue;
+            if (
+              expectedBaseKey &&
+              row.key === DEFAULT_BASE_URL_KEY &&
+              expectedBaseKey !== DEFAULT_BASE_URL_KEY
+            )
+              continue;
             variables.push({ ...row });
           }
-          const defaultsByKey = Object.fromEntries((base.variables || []).filter((row) => row.key).map((row) => [row.key, row.value ?? ""]));
+          const defaultsByKey = Object.fromEntries(
+            (base.variables || [])
+              .filter((row) => row.key)
+              .map((row) => [row.key, row.value ?? ""]),
+          );
           for (const row of variables) {
             if (!row.key) continue;
             if (String(row.value ?? "").trim()) continue;
@@ -2486,13 +3431,20 @@
           const headerGroups = {};
           for (const [group, rows] of Object.entries(env.headerGroups || {})) {
             headerGroups[group] = Array.isArray(rows)
-              ? rows.map((row) => ({ key: String(row.key || ""), value: migrateTemplateRefs(row.value, varMigration) }))
+              ? rows.map((row) => ({
+                  key: String(row.key || ""),
+                  value: migrateTemplateRefs(row.value, varMigration),
+                }))
               : [];
           }
           for (const [group, rows] of Object.entries(base.headerGroups)) {
-            if (!headerGroups[group]) headerGroups[group] = rows.map((row) => ({ ...row }));
+            if (!headerGroups[group])
+              headerGroups[group] = rows.map((row) => ({ ...row }));
           }
-          if (!Object.keys(headerGroups).length) headerGroups.default = [{ key: "content-type", value: "application/json" }];
+          if (!Object.keys(headerGroups).length)
+            headerGroups.default = [
+              { key: "content-type", value: "application/json" },
+            ];
           envs[name] = { variables, headerGroups, baseUrlKey };
         }
         // Seed any config presets that are missing from the saved store (don't wipe existing).
@@ -2501,9 +3453,13 @@
           envs[name] = envFromPreset(preset);
         }
         if (!Object.keys(envs).length) return defaults;
-        const activeEnv = envs[saved.activeEnv] ? saved.activeEnv : Object.keys(envs)[0];
+        const activeEnv = envs[saved.activeEnv]
+          ? saved.activeEnv
+          : Object.keys(envs)[0];
         const groups = Object.keys(envs[activeEnv].headerGroups || {});
-        const activeGroup = groups.includes(saved.activeGroup) ? saved.activeGroup : groups[0] || "default";
+        const activeGroup = groups.includes(saved.activeGroup)
+          ? saved.activeGroup
+          : groups[0] || "default";
         return { activeEnv, activeGroup, envs };
       };
 
@@ -2520,13 +3476,16 @@
        */
       const applyServingBaseUrl = (state) => {
         if (!locationBaseUrl || !state || !state.envs) return state;
-        const preferred = ["local", "development", "dev"].find((name) => state.envs[name]);
+        const preferred = ["local", "development", "dev"].find(
+          (name) => state.envs[name],
+        );
         if (preferred) {
           setEnvBaseUrl(state.envs[preferred], locationBaseUrl);
           return state;
         }
         const names = Object.keys(state.envs);
-        if (names.length === 1) setEnvBaseUrl(state.envs[names[0]], locationBaseUrl);
+        if (names.length === 1)
+          setEnvBaseUrl(state.envs[names[0]], locationBaseUrl);
         return state;
       };
 
@@ -2567,7 +3526,8 @@
           const res = await fetch(ENV_STORE_URL, { cache: "no-store" });
           if (!res.ok) return false;
           const remote = await res.json();
-          if (!remote || typeof remote !== "object" || !remote.envs) return false;
+          if (!remote || typeof remote !== "object" || !remote.envs)
+            return false;
           store = applyServingBaseUrl(mergeStore(remote));
           writeLocalStore();
           return true;
@@ -2576,21 +3536,36 @@
         }
       };
 
-      const activeEnvConfig = () => store.envs[store.activeEnv] || store.envs[Object.keys(store.envs)[0]];
+      const activeEnvConfig = () =>
+        store.envs[store.activeEnv] || store.envs[Object.keys(store.envs)[0]];
 
       const varMap = () => {
         const env = activeEnvConfig();
-        return Object.fromEntries((env.variables || []).filter((row) => row.key).map((row) => [row.key, row.value ?? ""]));
+        return Object.fromEntries(
+          (env.variables || [])
+            .filter((row) => row.key)
+            .map((row) => [row.key, row.value ?? ""]),
+        );
       };
 
       const interpolate = (value, vars, depth = 0) => {
         if (value == null || depth > 8) return value;
         if (typeof value === "object") {
-          if (Array.isArray(value)) return value.map((item) => interpolate(item, vars, depth));
-          return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, interpolate(nested, vars, depth)]));
+          if (Array.isArray(value))
+            return value.map((item) => interpolate(item, vars, depth));
+          return Object.fromEntries(
+            Object.entries(value).map(([key, nested]) => [
+              key,
+              interpolate(nested, vars, depth),
+            ]),
+          );
         }
         if (typeof value !== "string") return value;
-        return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => (key in vars ? String(interpolate(vars[key], vars, depth + 1)) : "{{" + key + "}}"));
+        return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) =>
+          key in vars
+            ? String(interpolate(vars[key], vars, depth + 1))
+            : "{{" + key + "}}",
+        );
       };
 
       const resolvedHeadersFromGroup = (groupName) => {
@@ -2598,7 +3573,14 @@
         const groups = env.headerGroups || {};
         const group = groups[groupName] || groups[Object.keys(groups)[0]] || [];
         const vars = varMap();
-        return Object.fromEntries(group.filter((row) => row.key).map((row) => [row.key, String(interpolate(row.value || "", vars))]));
+        return Object.fromEntries(
+          group
+            .filter((row) => row.key)
+            .map((row) => [
+              row.key,
+              String(interpolate(row.value || "", vars)),
+            ]),
+        );
       };
 
       const resolvedHeaders = () => resolvedHeadersFromGroup(store.activeGroup);
@@ -2646,7 +3628,11 @@
           }
         }
         if (!Object.keys(byKey).length) return null;
-        if (!byKey["content-type"]) byKey["content-type"] = { key: "content-type", value: "application/json" };
+        if (!byKey["content-type"])
+          byKey["content-type"] = {
+            key: "content-type",
+            value: "application/json",
+          };
         groups[name] = Object.values(byKey);
         return name;
       };
@@ -2662,14 +3648,18 @@
         store.activeGroup = name;
         persistStore();
         syncEnvTrigger();
-        if (document.getElementById("env-wrap")?.classList.contains("open")) renderEnvPop();
+        if (document.getElementById("env-wrap")?.classList.contains("open"))
+          renderEnvPop();
       };
 
       const activeBaseUrlKey = () => baseUrlKeyOf(activeEnvConfig());
 
       const currentBaseUrl = () => {
         const vars = varMap();
-        return String(interpolate(vars[activeBaseUrlKey()] || defaultBaseUrl, vars) || defaultBaseUrl).replace(/\/$/, "");
+        return String(
+          interpolate(vars[activeBaseUrlKey()] || defaultBaseUrl, vars) ||
+            defaultBaseUrl,
+        ).replace(/\/$/, "");
       };
 
       const envLabel = () => store.activeEnv + " · " + store.activeGroup;
@@ -2679,13 +3669,17 @@
         if (!trigger) return;
         trigger.textContent = envLabel();
         const base = varMap()[activeBaseUrlKey()] || "";
-        trigger.title = base ? store.activeEnv + " · " + base + " · " + store.activeGroup : envLabel();
+        trigger.title = base
+          ? store.activeEnv + " · " + base + " · " + store.activeGroup
+          : envLabel();
       };
 
       const presetBaseUrl = (name) => {
         const env = store.envs[name];
         if (!env) return "";
-        const row = (env.variables || []).find((entry) => entry.key === baseUrlKeyOf(env));
+        const row = (env.variables || []).find(
+          (entry) => entry.key === baseUrlKeyOf(env),
+        );
         return row ? String(row.value || "") : "";
       };
 
@@ -2703,14 +3697,27 @@
         const env = activeEnvConfig();
         const envNames = Object.keys(store.envs);
         const groups = Object.keys(env.headerGroups || {});
-        if (!groups.includes(store.activeGroup)) store.activeGroup = groups[0] || "default";
+        if (!groups.includes(store.activeGroup))
+          store.activeGroup = groups[0] || "default";
         const groupRows = env.headerGroups[store.activeGroup] || [];
         const canRemoveEnv = envNames.length > 1;
         const canRemoveGroup = groups.length > 1;
         const activeBase = presetBaseUrl(store.activeEnv) || defaultBaseUrl;
         const quickPresets = [
-          { id: "staging", baseUrl: (configuredPresets.staging && configuredPresets.staging.baseUrl) || "https://api.staging.example.com" },
-          { id: "production", baseUrl: (configuredPresets.production && configuredPresets.production.baseUrl) || "https://api.example.com" },
+          {
+            id: "staging",
+            baseUrl:
+              (configuredPresets.staging &&
+                configuredPresets.staging.baseUrl) ||
+              "https://api.staging.example.com",
+          },
+          {
+            id: "production",
+            baseUrl:
+              (configuredPresets.production &&
+                configuredPresets.production.baseUrl) ||
+              "https://api.example.com",
+          },
         ].filter((preset) => !store.envs[preset.id]);
 
         document.getElementById("env-pop").innerHTML = `
@@ -2718,12 +3725,25 @@
             <div class="env-label">Presets</div>
             <div class="chip-row">
               ${envNames
-                .map((id) => `<button type="button" class="chip-btn ${id === store.activeEnv ? "on" : ""}" data-env="${escapeAttr(id)}" title="${escapeAttr(presetBaseUrl(id))}">${escapeAttr(id)}</button>`)
+                .map(
+                  (id) =>
+                    `<button type="button" class="chip-btn ${id === store.activeEnv ? "on" : ""}" data-env="${escapeAttr(id)}" title="${escapeAttr(presetBaseUrl(id))}">${escapeAttr(id)}</button>`,
+                )
                 .join("")}
               <button type="button" class="ghost-btn" id="add-env" title="Add preset">+</button>
               <button type="button" class="ghost-btn" id="dup-env" title="Duplicate preset">⧉</button>
               <button type="button" class="ghost-btn" id="remove-env" title="Remove preset" ${canRemoveEnv ? "" : "disabled"}>×</button>
             </div>
+            <form class="env-new-form" id="env-new-form" hidden>
+              <div class="env-new-fields">
+                <input class="env-cell" id="new-env-name" placeholder="staging" spellcheck="false" autocomplete="off" />
+                <input class="env-cell" id="new-env-url" placeholder="${escapeAttr(defaultBaseUrl)}" spellcheck="false" autocomplete="off" />
+              </div>
+              <div class="env-new-actions">
+                <button type="button" class="btn sm" id="new-env-cancel">Cancel</button>
+                <button type="submit" class="btn primary sm">Add preset</button>
+              </div>
+            </form>
             <div class="env-base-line"><span>${escapeAttr(baseUrlKeyOf(env))}</span> · ${escapeAttr(activeBase)}</div>
             ${
               quickPresets.length
@@ -2741,7 +3761,10 @@
             <div class="env-cols"><span>Key</span><span>Value</span><span></span></div>
             ${(env.variables || [])
               .map(
-                (row, index) => `<div class="env-kv ${row.key === baseUrlKeyOf(env) ? "base-url" : ""}" data-var="${index}">
+                (
+                  row,
+                  index,
+                ) => `<div class="env-kv ${row.key === baseUrlKeyOf(env) ? "base-url" : ""}" data-var="${index}">
                   <input class="env-cell" data-field="key" spellcheck="false" value="${escapeAttr(row.key)}" title="${row.key === baseUrlKeyOf(env) ? "Base URL variable — rename it to match your Postman collection" : escapeAttr(row.key)}" />
                   <input class="env-cell" data-field="value" spellcheck="false" value="${escapeAttr(row.value)}" />
                   <button type="button" class="ghost-btn" data-remove-var="${index}" ${row.key === baseUrlKeyOf(env) ? "disabled" : ""}>×</button>
@@ -2755,7 +3778,10 @@
             <div class="env-hint">Headers attached to Try-it requests. <code>{{VAR}}</code> reads from Variables above.</div>
             <div class="env-group-bar">
               ${(() => {
-                const activeHdrs = ((env.headerGroups && env.headerGroups[store.activeGroup]) || [])
+                const activeHdrs = (
+                  (env.headerGroups && env.headerGroups[store.activeGroup]) ||
+                  []
+                )
                   .map((r) => r.key)
                   .filter((k) => k && k.toLowerCase() !== "content-type");
                 return `<div class="group-dd" id="group-dd">
@@ -2766,9 +3792,14 @@
                   <div class="group-dd-menu" role="listbox">
                     ${groups
                       .map((group) => {
-                        const hdrs = ((env.headerGroups && env.headerGroups[group]) || [])
+                        const hdrs = (
+                          (env.headerGroups && env.headerGroups[group]) ||
+                          []
+                        )
                           .map((r) => r.key)
-                          .filter((k) => k && k.toLowerCase() !== "content-type");
+                          .filter(
+                            (k) => k && k.toLowerCase() !== "content-type",
+                          );
                         return `<button type="button" class="group-dd-opt ${group === store.activeGroup ? "on" : ""}" data-group="${escapeAttr(group)}" role="option" aria-selected="${group === store.activeGroup ? "true" : "false"}">
                           <span class="group-dd-opt-name">${escapeAttr(group)}</span>
                           ${hdrs.length ? `<span class="group-dd-opt-hdrs">${escapeAttr(hdrs.join(" · "))}</span>` : `<span class="group-dd-opt-hdrs">default</span>`}
@@ -2797,42 +3828,81 @@
 
         syncEnvTrigger();
 
-        document.getElementById("env-pop").querySelectorAll("[data-env]").forEach((button) => {
-          button.onclick = (event) => {
-            event.stopPropagation();
-            store.activeEnv = button.dataset.env;
-            const nextGroups = Object.keys(activeEnvConfig().headerGroups || {});
-            if (!nextGroups.includes(store.activeGroup)) store.activeGroup = nextGroups[0] || "default";
-            persistStore();
-            renderEnvPop();
-            renderMain();
-          };
-        });
-        document.getElementById("env-pop").querySelectorAll("[data-quick-preset]").forEach((button) => {
-          button.onclick = (event) => {
-            event.stopPropagation();
-            if (!addNamedPreset(button.dataset.quickPreset, button.dataset.base)) return;
-            persistStore();
-            renderEnvPop();
-            renderMain();
-          };
-        });
+        document
+          .getElementById("env-pop")
+          .querySelectorAll("[data-env]")
+          .forEach((button) => {
+            button.onclick = (event) => {
+              event.stopPropagation();
+              store.activeEnv = button.dataset.env;
+              const nextGroups = Object.keys(
+                activeEnvConfig().headerGroups || {},
+              );
+              if (!nextGroups.includes(store.activeGroup))
+                store.activeGroup = nextGroups[0] || "default";
+              persistStore();
+              renderEnvPop();
+              renderMain();
+            };
+          });
+        document
+          .getElementById("env-pop")
+          .querySelectorAll("[data-quick-preset]")
+          .forEach((button) => {
+            button.onclick = (event) => {
+              event.stopPropagation();
+              if (
+                !addNamedPreset(button.dataset.quickPreset, button.dataset.base)
+              )
+                return;
+              persistStore();
+              renderEnvPop();
+              renderMain();
+            };
+          });
+        const newEnvForm = document.getElementById("env-new-form");
+        const newEnvName = document.getElementById("new-env-name");
+        const newEnvUrl = document.getElementById("new-env-url");
+        const newEnvCancel = document.getElementById("new-env-cancel");
         document.getElementById("add-env").onclick = (event) => {
           event.stopPropagation();
-          const typed = window.prompt("Preset name (e.g. staging)", "staging");
-          if (!typed) return;
-          const name = typed.trim().replace(/\s+/g, "-");
-          if (!name) return;
-          if (store.envs[name]) {
-            store.activeEnv = name;
-          } else {
-            const base = window.prompt("baseUrl", configuredPresets[name]?.baseUrl || defaultBaseUrl) || defaultBaseUrl;
-            addNamedPreset(name, base.replace(/\/$/, ""));
+          if (!newEnvForm) return;
+          newEnvForm.hidden = !newEnvForm.hidden;
+          if (!newEnvForm.hidden && newEnvName) {
+            newEnvName.value = "";
+            if (newEnvUrl) newEnvUrl.value = defaultBaseUrl;
+            newEnvName.focus();
           }
-          persistStore();
-          renderEnvPop();
-          renderMain();
         };
+        if (newEnvCancel && newEnvForm) {
+          newEnvCancel.onclick = (event) => {
+            event.stopPropagation();
+            newEnvForm.hidden = true;
+          };
+        }
+        if (newEnvForm) {
+          newEnvForm.onsubmit = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const typed = newEnvName ? newEnvName.value : "";
+            const name = typed.trim().replace(/\s+/g, "-");
+            if (!name) {
+              if (newEnvName) newEnvName.focus();
+              return;
+            }
+            if (store.envs[name]) {
+              store.activeEnv = name;
+            } else {
+              const rawBase = newEnvUrl ? newEnvUrl.value.trim() : "";
+              const base =
+                rawBase || configuredPresets[name]?.baseUrl || defaultBaseUrl;
+              addNamedPreset(name, base.replace(/\/$/, ""));
+            }
+            persistStore();
+            renderEnvPop();
+            renderMain();
+          };
+        }
         document.getElementById("dup-env").onclick = (event) => {
           event.stopPropagation();
           const source = store.activeEnv;
@@ -2855,7 +3925,9 @@
           delete store.envs[store.activeEnv];
           store.activeEnv = Object.keys(store.envs)[0];
           const nextGroups = Object.keys(activeEnvConfig().headerGroups || {});
-          store.activeGroup = nextGroups.includes(store.activeGroup) ? store.activeGroup : nextGroups[0] || "default";
+          store.activeGroup = nextGroups.includes(store.activeGroup)
+            ? store.activeGroup
+            : nextGroups[0] || "default";
           persistStore();
           renderEnvPop();
           renderMain();
@@ -2885,7 +3957,9 @@
           const groupsMap = activeEnvConfig().headerGroups;
           while (groupsMap[name + n]) n += 1;
           name = name + n;
-          groupsMap[name] = [{ key: "content-type", value: "application/json" }];
+          groupsMap[name] = [
+            { key: "content-type", value: "application/json" },
+          ];
           store.activeGroup = name;
           persistStore();
           renderEnvPop();
@@ -2902,65 +3976,90 @@
           renderEnvPop();
           renderMain();
         };
-        document.getElementById("env-pop").querySelectorAll("[data-var]").forEach((row) => {
-          row.querySelectorAll("input").forEach((input) => {
-            input.oninput = () => {
-              const index = Number(row.dataset.var);
-              const field = input.dataset.field;
-              const env = activeEnvConfig();
-              if (!env.variables[index] || (field !== "key" && field !== "value")) return;
-              const wasBaseUrl = env.variables[index].key === baseUrlKeyOf(env);
-              env.variables[index][field] = input.value;
-              // Renaming the base URL row (e.g. to ONBOARDING_SERVICE) retargets the whole env.
-              if (field === "key" && wasBaseUrl) {
-                env.baseUrlKey = input.value.trim() || DEFAULT_BASE_URL_KEY;
-                const label = document.querySelector(".env-base-line span");
-                if (label) label.textContent = env.baseUrlKey;
-              }
-              persistStore();
-              syncEnvTrigger();
-              if (wasBaseUrl) renderMain();
-            };
-            input.onchange = () => renderMain();
+        document
+          .getElementById("env-pop")
+          .querySelectorAll("[data-var]")
+          .forEach((row) => {
+            row.querySelectorAll("input").forEach((input) => {
+              input.oninput = () => {
+                const index = Number(row.dataset.var);
+                const field = input.dataset.field;
+                const env = activeEnvConfig();
+                if (
+                  !env.variables[index] ||
+                  (field !== "key" && field !== "value")
+                )
+                  return;
+                const wasBaseUrl =
+                  env.variables[index].key === baseUrlKeyOf(env);
+                env.variables[index][field] = input.value;
+                // Renaming the base URL row (e.g. to ONBOARDING_SERVICE) retargets the whole env.
+                if (field === "key" && wasBaseUrl) {
+                  env.baseUrlKey = input.value.trim() || DEFAULT_BASE_URL_KEY;
+                  const label = document.querySelector(".env-base-line span");
+                  if (label) label.textContent = env.baseUrlKey;
+                }
+                persistStore();
+                syncEnvTrigger();
+                if (wasBaseUrl) renderMain();
+              };
+              input.onchange = () => renderMain();
+            });
           });
-        });
-        document.getElementById("env-pop").querySelectorAll("[data-remove-var]").forEach((button) => {
-          button.onclick = (event) => {
-            event.stopPropagation();
-            activeEnvConfig().variables.splice(Number(button.dataset.removeVar), 1);
-            persistStore();
-            renderEnvPop();
-            renderMain();
-          };
-        });
+        document
+          .getElementById("env-pop")
+          .querySelectorAll("[data-remove-var]")
+          .forEach((button) => {
+            button.onclick = (event) => {
+              event.stopPropagation();
+              activeEnvConfig().variables.splice(
+                Number(button.dataset.removeVar),
+                1,
+              );
+              persistStore();
+              renderEnvPop();
+              renderMain();
+            };
+          });
         document.getElementById("add-var").onclick = (event) => {
           event.stopPropagation();
           activeEnvConfig().variables.push({ key: "", value: "" });
           persistStore();
           renderEnvPop();
         };
-        document.getElementById("env-pop").querySelectorAll("[data-hdr]").forEach((row) => {
-          row.querySelectorAll("input").forEach((input) => {
-            input.oninput = () => {
-              const index = Number(row.dataset.hdr);
-              const field = input.dataset.field;
-              const rows = activeEnvConfig().headerGroups[store.activeGroup] || [];
-              if (!rows[index] || (field !== "key" && field !== "value")) return;
-              rows[index][field] = input.value;
-              persistStore();
-            };
-            input.onchange = () => renderMain();
+        document
+          .getElementById("env-pop")
+          .querySelectorAll("[data-hdr]")
+          .forEach((row) => {
+            row.querySelectorAll("input").forEach((input) => {
+              input.oninput = () => {
+                const index = Number(row.dataset.hdr);
+                const field = input.dataset.field;
+                const rows =
+                  activeEnvConfig().headerGroups[store.activeGroup] || [];
+                if (!rows[index] || (field !== "key" && field !== "value"))
+                  return;
+                rows[index][field] = input.value;
+                persistStore();
+              };
+              input.onchange = () => renderMain();
+            });
           });
-        });
-        document.getElementById("env-pop").querySelectorAll("[data-remove-hdr]").forEach((button) => {
-          button.onclick = (event) => {
-            event.stopPropagation();
-            (activeEnvConfig().headerGroups[store.activeGroup] || []).splice(Number(button.dataset.removeHdr), 1);
-            persistStore();
-            renderEnvPop();
-            renderMain();
-          };
-        });
+        document
+          .getElementById("env-pop")
+          .querySelectorAll("[data-remove-hdr]")
+          .forEach((button) => {
+            button.onclick = (event) => {
+              event.stopPropagation();
+              (activeEnvConfig().headerGroups[store.activeGroup] || []).splice(
+                Number(button.dataset.removeHdr),
+                1,
+              );
+              persistStore();
+              renderEnvPop();
+              renderMain();
+            };
+          });
         document.getElementById("add-hdr").onclick = (event) => {
           event.stopPropagation();
           const groupsMap = activeEnvConfig().headerGroups;
@@ -2979,17 +4078,33 @@
         document.documentElement.setAttribute("data-theme", next);
         localStorage.setItem("daxta-theme", next);
         const fav = document.getElementById("favicon");
-        if (fav) fav.setAttribute("href", next === "light" ? "__FAVICON_DATA_URI__" : "__FAVICON_LIGHT_DATA_URI__");
+        if (fav)
+          fav.setAttribute(
+            "href",
+            next === "light"
+              ? "__FAVICON_DATA_URI__"
+              : "__FAVICON_LIGHT_DATA_URI__",
+          );
         const themeLabel = document.getElementById("theme-label");
-        if (themeLabel) themeLabel.textContent = next === "light" ? "Light" : "Dark";
+        if (themeLabel)
+          themeLabel.textContent = next === "light" ? "Light" : "Dark";
       };
       applyTheme(localStorage.getItem("daxta-theme") || "dark");
       const shortcutPalette = document.getElementById("shortcut-palette");
-      if (shortcutPalette) shortcutPalette.textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K";
-      document.getElementById("theme-toggle")?.addEventListener("click", (event) => {
-        event.stopPropagation();
-        applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
-      });
+      if (shortcutPalette)
+        shortcutPalette.textContent = /Mac|iPhone|iPad/.test(navigator.platform)
+          ? "⌘K"
+          : "Ctrl+K";
+      document
+        .getElementById("theme-toggle")
+        ?.addEventListener("click", (event) => {
+          event.stopPropagation();
+          applyTheme(
+            document.documentElement.getAttribute("data-theme") === "dark"
+              ? "light"
+              : "dark",
+          );
+        });
       const moreWrap = document.getElementById("more-wrap");
       const moreToggle = document.getElementById("more-toggle");
       const setMoreOpen = (open) => {
@@ -3002,23 +4117,49 @@
         envWrap.classList.remove("open");
         setMoreOpen(next);
       });
-      document.getElementById("more-pop")?.addEventListener("click", (event) => event.stopPropagation());
+      document
+        .getElementById("more-pop")
+        ?.addEventListener("click", (event) => event.stopPropagation());
       const specVersion = (spec.info && spec.info.version) || "";
       const navVersion = document.getElementById("nav-version");
-      if (navVersion) navVersion.textContent = specVersion ? (specVersion.startsWith("v") ? specVersion : "v" + specVersion) : "";
+      if (navVersion)
+        navVersion.textContent = specVersion
+          ? specVersion.startsWith("v")
+            ? specVersion
+            : "v" + specVersion
+          : "";
 
       const envWrap = document.getElementById("env-wrap");
-      document.getElementById("env-trigger").addEventListener("click", (event) => {
-        event.stopPropagation();
-        setMoreOpen(false);
-        envWrap.classList.toggle("open");
-        if (envWrap.classList.contains("open")) renderEnvPop();
-      });
-      document.getElementById("env-pop").addEventListener("click", (event) => event.stopPropagation());
+      document
+        .getElementById("env-trigger")
+        .addEventListener("click", (event) => {
+          event.stopPropagation();
+          setMoreOpen(false);
+          envWrap.classList.toggle("open");
+          if (envWrap.classList.contains("open")) renderEnvPop();
+        });
+      document
+        .getElementById("env-pop")
+        .addEventListener("click", (event) => event.stopPropagation());
       renderEnvPop();
 
-      const VIEWER_EXTENSIONS = new Set(["x-viewer", "x-docs", "x-scenarios", "x-tree-segments", "x-workspace"]);
-      const HTTP_EXPORT = ["get", "post", "put", "patch", "delete", "options", "head", "trace"];
+      const VIEWER_EXTENSIONS = new Set([
+        "x-viewer",
+        "x-docs",
+        "x-scenarios",
+        "x-tree-segments",
+        "x-workspace",
+      ]);
+      const HTTP_EXPORT = [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "trace",
+      ];
 
       const stripExt = (value) => {
         if (Array.isArray(value)) return value.map(stripExt);
@@ -3034,9 +4175,13 @@
       /** Path keys follow sidebar tree; real URL kept on x-daxta-url-path when remapped. */
       const exportPathFromTree = (urlPath, treeSegments) => {
         const originalParts = urlPath.split("/").filter(Boolean);
-        const paramIdx = originalParts.findIndex((part) => String(part).startsWith("{"));
+        const paramIdx = originalParts.findIndex((part) =>
+          String(part).startsWith("{"),
+        );
         const tail = paramIdx >= 0 ? originalParts.slice(paramIdx) : [];
-        const treeHasParam = treeSegments.some((part) => String(part).startsWith("{"));
+        const treeHasParam = treeSegments.some((part) =>
+          String(part).startsWith("{"),
+        );
         const parts =
           treeSegments.length === 0
             ? originalParts
@@ -3052,7 +4197,8 @@
           if (!key || byKey.has(key)) return;
           byKey.set(key, { key, summary: summary || key });
         };
-        const reqExamples = operation?.requestBody?.content?.["application/json"]?.examples;
+        const reqExamples =
+          operation?.requestBody?.content?.["application/json"]?.examples;
         for (const [key, example] of Object.entries(reqExamples || {})) {
           add(key, example && example.summary);
         }
@@ -3111,7 +4257,8 @@
         const out = {};
         for (const [key, example] of Object.entries(examples)) {
           if (!example || typeof example !== "object") continue;
-          const summary = String(example.summary || example.description || key).trim() || key;
+          const summary =
+            String(example.summary || example.description || key).trim() || key;
           let name = summary;
           let n = 2;
           while (Object.prototype.hasOwnProperty.call(out, name)) {
@@ -3151,7 +4298,10 @@
             responses[status] = {
               ...response,
               // Single example: description becomes the scenario title (Postman uses this as the example name).
-              description: labels.length === 1 ? labels[0] : response.description || status,
+              description:
+                labels.length === 1
+                  ? labels[0]
+                  : response.description || status,
               content: { ...response.content, "application/json": media },
             };
           }
@@ -3160,7 +4310,7 @@
         return next;
       };
 
-      const toExportSpec = (source, selectedByOpId) => {
+      const toExportSpec = (source, selectedByOpId, selectedOpIds) => {
         const pathsIn = source.paths || {};
         const pathsOut = {};
         const tagNames = new Set();
@@ -3170,30 +4320,54 @@
 
           let treeSegments = null;
           for (const [method, operation] of Object.entries(pathItem)) {
-            if (!HTTP_EXPORT.includes(method) || !operation || typeof operation !== "object") continue;
-            treeSegments = operation["x-tree-segments"] || urlPath.split("/").filter(Boolean);
+            if (
+              !HTTP_EXPORT.includes(method) ||
+              !operation ||
+              typeof operation !== "object"
+            )
+              continue;
+            treeSegments =
+              operation["x-tree-segments"] ||
+              urlPath.split("/").filter(Boolean);
             break;
           }
           if (!treeSegments) treeSegments = urlPath.split("/").filter(Boolean);
 
           const exportPath = exportPathFromTree(urlPath, treeSegments);
           const itemOut = { ...(pathsOut[exportPath] || {}) };
+          let addedMethod = false;
 
           for (const [method, operation] of Object.entries(pathItem)) {
-            if (!HTTP_EXPORT.includes(method) || !operation || typeof operation !== "object") {
-              if (!HTTP_EXPORT.includes(method) && itemOut[method] === undefined) {
+            if (
+              !HTTP_EXPORT.includes(method) ||
+              !operation ||
+              typeof operation !== "object"
+            ) {
+              if (
+                !HTTP_EXPORT.includes(method) &&
+                itemOut[method] === undefined
+              ) {
                 itemOut[method] = stripExt(operation);
               }
               continue;
             }
-            const segments = operation["x-tree-segments"] || urlPath.split("/").filter(Boolean);
-            let cleaned = stripExt(operation);
             const opId = method + ":" + urlPath;
+            if (selectedOpIds && !selectedOpIds.has(opId)) continue;
+            addedMethod = true;
+            const segments =
+              operation["x-tree-segments"] ||
+              urlPath.split("/").filter(Boolean);
+            let cleaned = stripExt(operation);
             if (selectedByOpId && selectedByOpId.has(opId)) {
-              cleaned = filterOperationExamples(cleaned, selectedByOpId.get(opId));
+              cleaned = filterOperationExamples(
+                cleaned,
+                selectedByOpId.get(opId),
+              );
             }
             cleaned = promoteOperationExampleLabels(cleaned);
-            const tagParts = segments.filter((part) => !String(part).startsWith("{"));
+            const tagParts = segments.filter(
+              (part) => !String(part).startsWith("{"),
+            );
             const tag = tagParts.length ? tagParts.join(" / ") : "API";
             cleaned.tags = [tag];
             cleaned["x-tree-segments"] = segments;
@@ -3201,26 +4375,37 @@
             if (exportPath !== urlPath) cleaned["x-daxta-url-path"] = urlPath;
             itemOut[method] = cleaned;
           }
-          pathsOut[exportPath] = itemOut;
+          if (addedMethod || Object.keys(pathsOut[exportPath] || {}).length) {
+            pathsOut[exportPath] = itemOut;
+          }
         }
 
         const ordered = {};
-        for (const key of Object.keys(pathsOut).sort((a, b) => a.localeCompare(b))) ordered[key] = pathsOut[key];
+        for (const key of Object.keys(pathsOut).sort((a, b) =>
+          a.localeCompare(b),
+        ))
+          ordered[key] = pathsOut[key];
 
         return {
           openapi: source.openapi || "3.0.3",
           info: stripExt(source.info) || { title: title, version: "0.0.0" },
           ...(source.servers ? { servers: stripExt(source.servers) } : {}),
-          tags: [...tagNames].sort((a, b) => a.localeCompare(b)).map((name) => ({ name })),
+          tags: [...tagNames]
+            .sort((a, b) => a.localeCompare(b))
+            .map((name) => ({ name })),
           paths: ordered,
-          ...(source.components ? { components: stripExt(source.components) } : {}),
+          ...(source.components
+            ? { components: stripExt(source.components) }
+            : {}),
         };
       };
 
       const headerRowsForExport = () => {
         const env = activeEnvConfig();
         const groups = env.headerGroups || {};
-        return groups[store.activeGroup] || groups[Object.keys(groups)[0]] || [];
+        return (
+          groups[store.activeGroup] || groups[Object.keys(groups)[0]] || []
+        );
       };
 
       const buildPostmanEnvironment = () => {
@@ -3240,7 +4425,9 @@
           known.add(baseKey);
           values.unshift({
             key: baseKey,
-            value: String(presetBaseUrl(store.activeEnv) || defaultBaseUrl || ""),
+            value: String(
+              presetBaseUrl(store.activeEnv) || defaultBaseUrl || "",
+            ),
             type: "default",
             enabled: true,
           });
@@ -3251,11 +4438,19 @@
           for (const match of matches) {
             if (known.has(match[1])) continue;
             known.add(match[1]);
-            values.push({ key: match[1], value: "", type: "default", enabled: true });
+            values.push({
+              key: match[1],
+              value: "",
+              type: "default",
+              enabled: true,
+            });
           }
         }
         return {
-          id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : String(Date.now()),
           name: (workspace || title || "API") + " · " + store.activeEnv,
           values,
           _postman_variable_scope: "environment",
@@ -3284,17 +4479,26 @@
         const pathParams = [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
         return {
           raw: base + (path.startsWith("/") ? path : "/" + path),
-          host: base.startsWith("{{") ? [base] : [base.replace(/^https?:\/\//, "").split("/")[0]],
-          path: segments.map((seg) => (seg.startsWith("{") && seg.endsWith("}") ? ":" + seg.slice(1, -1) : seg)),
+          host: base.startsWith("{{")
+            ? [base]
+            : [base.replace(/^https?:\/\//, "").split("/")[0]],
+          path: segments.map((seg) =>
+            seg.startsWith("{") && seg.endsWith("}")
+              ? ":" + seg.slice(1, -1)
+              : seg,
+          ),
           variable: pathParams.map((key) => ({ key, value: "" })),
         };
       };
 
       const collectionFolderSegments = (urlPath, operation) => {
         const fromTree = operation && operation["x-tree-segments"];
-        const parts = Array.isArray(fromTree) && fromTree.length
-          ? fromTree.map(String)
-          : String(urlPath || "").split("/").filter(Boolean);
+        const parts =
+          Array.isArray(fromTree) && fromTree.length
+            ? fromTree.map(String)
+            : String(urlPath || "")
+                .split("/")
+                .filter(Boolean);
         const named = parts.filter((part) => part && !part.startsWith("{"));
         return named.length ? named : ["API"];
       };
@@ -3303,7 +4507,13 @@
         let level = root;
         for (let index = 0; index < segments.length; index += 1) {
           const name = segments[index];
-          let folder = level.find((entry) => entry && entry.name === name && Array.isArray(entry.item) && !entry.request);
+          let folder = level.find(
+            (entry) =>
+              entry &&
+              entry.name === name &&
+              Array.isArray(entry.item) &&
+              !entry.request,
+          );
           if (!folder) {
             folder = { name, item: [] };
             level.push(folder);
@@ -3314,36 +4524,70 @@
       };
 
       const sortCollectionTree = (items) => {
-        const folders = items.filter((entry) => entry && Array.isArray(entry.item) && !entry.request);
+        const folders = items.filter(
+          (entry) => entry && Array.isArray(entry.item) && !entry.request,
+        );
         const requests = items.filter((entry) => entry && entry.request);
-        folders.sort((left, right) => String(left.name).localeCompare(String(right.name)));
-        for (const folder of folders) folder.item = sortCollectionTree(folder.item);
-        requests.sort((left, right) => String(left.name).localeCompare(String(right.name)));
+        folders.sort((left, right) =>
+          String(left.name).localeCompare(String(right.name)),
+        );
+        for (const folder of folders)
+          folder.item = sortCollectionTree(folder.item);
+        requests.sort((left, right) =>
+          String(left.name).localeCompare(String(right.name)),
+        );
         return [...folders, ...requests];
       };
 
       const collectionRequestHeaders = (operation, includeTryIt) => {
-        const headerVars = (spec["x-viewer"] && spec["x-viewer"].headerVariables) || {};
+        const headerVars =
+          (spec["x-viewer"] && spec["x-viewer"].headerVariables) || {};
         const headerVarsLower = Object.fromEntries(
-          Object.entries(headerVars).map(([k, v]) => [String(k).toLowerCase(), String(v)]),
+          Object.entries(headerVars).map(([k, v]) => [
+            String(k).toLowerCase(),
+            String(v),
+          ]),
         );
-        const upperSnake = spec["x-viewer"] && spec["x-viewer"].headerVarStyle === "upper-snake";
+        const upperSnake =
+          spec["x-viewer"] && spec["x-viewer"].headerVarStyle === "upper-snake";
         const byLower = new Map();
         const add = (key, value) => {
           if (!key) return;
           const lower = String(key).toLowerCase();
           if (lower === "host" || lower === "content-length") return;
-          let mapped = lower !== "content-type" ? headerVarsLower[lower] : undefined;
+          let mapped =
+            lower !== "content-type" ? headerVarsLower[lower] : undefined;
           if (!mapped && upperSnake && lower.startsWith("x-")) {
             mapped = "{{" + lower.toUpperCase().replace(/-/g, "_") + "}}";
           }
-          byLower.set(lower, { key, value: mapped ?? (value != null ? String(value) : ""), type: "text" });
+          byLower.set(lower, {
+            key,
+            value: mapped ?? (value != null ? String(value) : ""),
+            type: "text",
+          });
         };
         for (const param of operation.parameters || []) {
-          if (param && param.in === "header" && param.name) add(param.name, param.example != null ? param.example : "");
+          if (param && param.in === "header" && param.name)
+            add(param.name, param.example != null ? param.example : "");
         }
-        if (includeTryIt) {
-          for (const row of headerRowsForExport()) add(row.key, row.value ?? "");
+        const schemes =
+          (spec.components && spec.components.securitySchemes) || {};
+        for (const req of operation.security || []) {
+          if (!req || typeof req !== "object") continue;
+          for (const schemeId of Object.keys(req)) {
+            const scheme = schemes[schemeId];
+            if (
+              scheme &&
+              scheme.in === "header" &&
+              scheme.name &&
+              !byLower.has(String(scheme.name).toLowerCase())
+            ) {
+              add(scheme.name, "");
+            }
+          }
+        }
+        if (operation.requestBody && !byLower.has("content-type")) {
+          add("content-type", "application/json");
         }
         return [...byLower.values()];
       };
@@ -3353,10 +4597,8 @@
        * When includeTryIt, requests use the env's base URL variable and the active header group;
        * the env file is downloaded separately.
        */
-      const buildPostmanCollection = (openapi, includeTryIt) => {
-        const baseVar = "{{" + activeBaseUrlKey() + "}}";
-        const specServer = (openapi.servers && openapi.servers[0] && openapi.servers[0].url) || baseVar;
-        const serverUrl = includeTryIt ? baseVar : specServer;
+      const buildPostmanCollection = (openapi) => {
+        const serverUrl = "{{" + activeBaseUrlKey() + "}}";
         const root = [];
 
         for (const [urlPath, pathItem] of Object.entries(openapi.paths || {})) {
@@ -3365,9 +4607,11 @@
             const operation = pathItem[method];
             if (!operation || typeof operation !== "object") continue;
             const requestPath = operation["x-daxta-url-path"] || urlPath;
-            const requestHeaders = collectionRequestHeaders(operation, includeTryIt);
+            const requestHeaders = collectionRequestHeaders(operation);
 
-            const reqExamples = operation.requestBody?.content?.["application/json"]?.examples || {};
+            const reqExamples =
+              operation.requestBody?.content?.["application/json"]?.examples ||
+              {};
             const firstReq = Object.values(reqExamples)[0];
             const defaultBody =
               firstReq && firstReq.value !== undefined
@@ -3383,21 +4627,40 @@
               description: operation.summary || "",
             };
             if (defaultBody !== undefined) {
-              baseRequest.body = { mode: "raw", raw: defaultBody, options: { raw: { language: "json" } } };
-              if (!requestHeaders.some((h) => String(h.key).toLowerCase() === "content-type")) {
-                baseRequest.header = [...requestHeaders, { key: "Content-Type", value: "application/json", type: "text" }];
+              baseRequest.body = {
+                mode: "raw",
+                raw: defaultBody,
+                options: { raw: { language: "json" } },
+              };
+              if (
+                !requestHeaders.some(
+                  (h) => String(h.key).toLowerCase() === "content-type",
+                )
+              ) {
+                baseRequest.header = [
+                  ...requestHeaders,
+                  {
+                    key: "Content-Type",
+                    value: "application/json",
+                    type: "text",
+                  },
+                ];
               }
             }
 
             const responses = [];
-            for (const [status, response] of Object.entries(operation.responses || {})) {
-              const examples = response?.content?.["application/json"]?.examples || {};
+            for (const [status, response] of Object.entries(
+              operation.responses || {},
+            )) {
+              const examples =
+                response?.content?.["application/json"]?.examples || {};
               const entries = Object.entries(examples);
               if (!entries.length) {
                 responses.push({
                   name: response.description || STATUS_EXPORT[status] || status,
                   originalRequest: baseRequest,
-                  status: STATUS_EXPORT[status] || response.description || status,
+                  status:
+                    STATUS_EXPORT[status] || response.description || status,
                   code: Number(status) || 0,
                   _postman_previewlanguage: "json",
                   header: [{ key: "Content-Type", value: "application/json" }],
@@ -3406,15 +4669,28 @@
                 continue;
               }
               for (const [exKey, example] of entries) {
-                const name = (example && (example.summary || example.description)) || exKey;
-                const reqMatch = reqExamples[exKey] || reqExamples[name] || firstReq;
-                const requestForExample = { ...baseRequest, header: [...(baseRequest.header || [])] };
+                const name =
+                  (example && (example.summary || example.description)) ||
+                  exKey;
+                const reqMatch =
+                  reqExamples[exKey] || reqExamples[name] || firstReq;
+                const requestForExample = {
+                  ...baseRequest,
+                  header: [...(baseRequest.header || [])],
+                };
                 if (reqMatch && reqMatch.value !== undefined) {
                   const raw =
-                    typeof reqMatch.value === "string" ? reqMatch.value : JSON.stringify(reqMatch.value, null, 2);
-                  requestForExample.body = { mode: "raw", raw, options: { raw: { language: "json" } } };
+                    typeof reqMatch.value === "string"
+                      ? reqMatch.value
+                      : JSON.stringify(reqMatch.value, null, 2);
+                  requestForExample.body = {
+                    mode: "raw",
+                    raw,
+                    options: { raw: { language: "json" } },
+                  };
                 }
-                const bodyValue = example && example.value !== undefined ? example.value : "";
+                const bodyValue =
+                  example && example.value !== undefined ? example.value : "";
                 responses.push({
                   name,
                   originalRequest: requestForExample,
@@ -3422,16 +4698,24 @@
                   code: Number(status) || 0,
                   _postman_previewlanguage: "json",
                   header: [{ key: "Content-Type", value: "application/json" }],
-                  body: typeof bodyValue === "string" ? bodyValue : JSON.stringify(bodyValue, null, 2),
+                  body:
+                    typeof bodyValue === "string"
+                      ? bodyValue
+                      : JSON.stringify(bodyValue, null, 2),
                 });
               }
             }
 
-            pushIntoFolderTree(root, collectionFolderSegments(urlPath, operation), {
-              name: operation.summary || method.toUpperCase() + " " + requestPath,
-              request: baseRequest,
-              response: responses,
-            });
+            pushIntoFolderTree(
+              root,
+              collectionFolderSegments(urlPath, operation),
+              {
+                name:
+                  operation.summary || method.toUpperCase() + " " + requestPath,
+                request: baseRequest,
+                response: responses,
+              },
+            );
           }
         }
 
@@ -3439,10 +4723,20 @@
 
         return {
           info: {
-            _postman_id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-            name: (openapi.info && openapi.info.title) || workspace || title || "API",
-            description: (openapi.info && openapi.info.description) || "Exported from API docs with named examples",
-            schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+            _postman_id:
+              typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : String(Date.now()),
+            name:
+              (openapi.info && openapi.info.title) ||
+              workspace ||
+              title ||
+              "API",
+            description:
+              (openapi.info && openapi.info.description) ||
+              "Exported from API docs with named examples",
+            schema:
+              "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
           },
           item,
         };
@@ -3464,7 +4758,35 @@
 
       const syncExportTryItUi = () => {
         const meta = document.getElementById("export-tryit-meta");
-        if (meta) meta.textContent = store.activeEnv + " · " + store.activeGroup;
+        const envNames = Object.keys(store.envs || {});
+        const activeBase = presetBaseUrl(store.activeEnv) || defaultBaseUrl;
+        if (meta) {
+          meta.innerHTML = `
+            <span class="export-preset-chips">
+              ${envNames
+                .map(
+                  (id) =>
+                    `<button type="button" class="export-preset-chip ${id === store.activeEnv ? "on" : ""}" data-export-env="${escapeAttr(id)}">${escapeAttr(id)}</button>`,
+                )
+                .join("")}
+            </span>
+            <span class="export-preset-url" title="${escapeAttr(activeBase)}">${escapeAttr(activeBase)}</span>
+          `;
+          meta.querySelectorAll("[data-export-env]").forEach((btn) => {
+            btn.onclick = () => {
+              store.activeEnv = btn.dataset.exportEnv;
+              const nextGroups = Object.keys(
+                activeEnvConfig().headerGroups || {},
+              );
+              if (!nextGroups.includes(store.activeGroup))
+                store.activeGroup = nextGroups[0] || "default";
+              persistStore();
+              syncEnvTrigger();
+              syncExportTryItUi();
+              renderMain();
+            };
+          });
+        }
         const baseVar = document.getElementById("export-base-var");
         if (baseVar) baseVar.textContent = "{{" + activeBaseUrlKey() + "}}";
       };
@@ -3473,7 +4795,8 @@
       const exampleSectionLookup = (item) => {
         const byName = new Map();
         for (const scenario of item.scenarios || []) {
-          if (scenario && scenario.name) byName.set(scenario.name, scenario.group || "Other");
+          if (scenario && scenario.name)
+            byName.set(scenario.name, scenario.group || "Other");
         }
         return (example) => byName.get(example.summary) || "Other";
       };
@@ -3489,11 +4812,16 @@
         const order = GROUP_ORDER.filter((name) => bySection.has(name)).concat(
           [...bySection.keys()].filter((name) => !GROUP_ORDER.includes(name)),
         );
-        return order.map((section) => ({ section, examples: bySection.get(section) }));
+        return order.map((section) => ({
+          section,
+          examples: bySection.get(section),
+        }));
       };
 
       const sectionCheckboxes = (section) => [
-        ...document.querySelectorAll(`#export-body .export-group-items input[data-section="${CSS.escape(section)}"]`),
+        ...document.querySelectorAll(
+          `#export-body .export-group-items input[data-section="${CSS.escape(section)}"]`,
+        ),
       ];
 
       /** Chips mirror what is checked below: filled = all of it, outlined-part = some. */
@@ -3501,26 +4829,97 @@
         document.querySelectorAll("[data-export-section]").forEach((chip) => {
           const boxes = sectionCheckboxes(chip.dataset.exportSection);
           const checked = boxes.filter((box) => box.checked).length;
-          chip.classList.toggle("on", boxes.length > 0 && checked === boxes.length);
+          chip.classList.toggle(
+            "on",
+            boxes.length > 0 && checked === boxes.length,
+          );
           chip.classList.toggle("part", checked > 0 && checked < boxes.length);
-          chip.setAttribute("aria-pressed", checked === boxes.length && boxes.length > 0 ? "true" : "false");
+          chip.setAttribute(
+            "aria-pressed",
+            checked === boxes.length && boxes.length > 0 ? "true" : "false",
+          );
         });
       };
 
       const syncExportGroupChecks = () => {
-        document.querySelectorAll("#export-body .export-group").forEach((group) => {
-          const head = group.querySelector(".export-group-check");
-          const boxes = [...group.querySelectorAll(".export-group-items input[type=checkbox]")];
-          if (!head || !boxes.length) return;
-          const checked = boxes.filter((box) => box.checked).length;
-          head.checked = checked === boxes.length;
-          head.indeterminate = checked > 0 && checked < boxes.length;
-        });
+        document
+          .querySelectorAll("#export-body .export-group")
+          .forEach((group) => {
+            const head = group.querySelector(".export-group-check");
+            const boxes = [
+              ...group.querySelectorAll(
+                ".export-group-items input[type=checkbox]",
+              ),
+            ];
+            if (!head || !boxes.length) return;
+            const checked = boxes.filter((box) => box.checked).length;
+            head.checked = checked === boxes.length;
+            head.indeterminate = checked > 0 && checked < boxes.length;
+          });
+        let totalOps = 0;
+        let selectedOps = 0;
+        let selectedEx = 0;
+        document
+          .querySelectorAll("#export-body .export-op")
+          .forEach((block) => {
+            totalOps += 1;
+            const opCheck = block.querySelector(".export-op-check");
+            const boxes = [
+              ...block.querySelectorAll(
+                ".export-group-items input[type=checkbox]",
+              ),
+            ];
+            const checked = boxes.filter((box) => box.checked).length;
+            selectedEx += checked;
+            if (checked > 0) selectedOps += 1;
+            if (opCheck && boxes.length) {
+              opCheck.checked = checked === boxes.length;
+              opCheck.indeterminate = checked > 0 && checked < boxes.length;
+            }
+          });
+        document
+          .querySelectorAll("#export-body .export-folder")
+          .forEach((folder) => {
+            const folderCheck = folder.querySelector(
+              ":scope > .export-folder-head > .export-folder-check",
+            );
+            const boxes = [
+              ...folder.querySelectorAll(
+                ".export-group-items input[type=checkbox]",
+              ),
+            ];
+            if (!folderCheck || !boxes.length) return;
+            const checked = boxes.filter((box) => box.checked).length;
+            folderCheck.checked = checked === boxes.length;
+            folderCheck.indeterminate = checked > 0 && checked < boxes.length;
+          });
+        const summary = document.getElementById("export-summary");
+        if (summary)
+          summary.textContent =
+            selectedOps + " / " + totalOps + " API · " + selectedEx + " ex";
+        const confirm = document.getElementById("export-confirm");
+        if (confirm) confirm.disabled = selectedOps === 0;
         syncExportSectionChips();
       };
 
+      const scopedExportOps = () => {
+        const allOps = [
+          ...document.querySelectorAll("#export-body .export-op"),
+        ];
+        const activeOps = allOps.filter((block) => {
+          const check = block.querySelector(".export-op-check");
+          return check && (check.checked || check.indeterminate);
+        });
+        return activeOps.length > 0 && activeOps.length < allOps.length
+          ? activeOps
+          : allOps;
+      };
+
       /** Chips sit side by side, so the repeated "cases" tail only adds noise. */
-      const shortGroup = (section) => displayGroup(section).replace(/\s+cases\b/gi, "").trim();
+      const shortGroup = (section) =>
+        displayGroup(section)
+          .replace(/\s+cases\b/gi, "")
+          .trim();
 
       const renderExportSectionButtons = (sections) => {
         const host = document.getElementById("export-sections");
@@ -3535,7 +4934,16 @@
           .join("");
         host.querySelectorAll("[data-export-section]").forEach((chip) => {
           chip.onclick = () => {
-            const boxes = sectionCheckboxes(chip.dataset.exportSection);
+            const opsScope = scopedExportOps();
+            const boxes = opsScope.flatMap((block) =>
+              [
+                ...block.querySelectorAll(
+                  ".export-group-items input[type=checkbox]",
+                ),
+              ].filter(
+                (box) => box.dataset.section === chip.dataset.exportSection,
+              ),
+            );
             const next = !boxes.every((box) => box.checked);
             boxes.forEach((box) => {
               box.checked = next;
@@ -3552,23 +4960,29 @@
         const exportable = ops
           .map((item) => ({ item, examples: listOperationExamples(item.op) }))
           .filter((entry) => entry.examples.length);
-        const examplesById = new Map(exportable.map((entry) => [entry.item.id, entry.examples]));
+        const examplesById = new Map(
+          exportable.map((entry) => [entry.item.id, entry.examples]),
+        );
 
         const renderOpBlock = (item) => {
-            const examples = examplesById.get(item.id) || [];
-            if (!examples.length) return "";
-            const grouped = groupExamplesBySection(item, examples);
-            for (const { section } of grouped) sections.add(section);
-            return `<div class="export-op collapsed" data-op="${escapeAttr(item.id)}">
-              <button type="button" class="export-op-title" aria-expanded="false" title="Show sections">
-                <span class="chev"></span>
+          const examples = examplesById.get(item.id) || [];
+          if (!examples.length) return "";
+          const grouped = groupExamplesBySection(item, examples);
+          for (const { section } of grouped) sections.add(section);
+          return `<div class="export-op collapsed" data-op="${escapeAttr(item.id)}">
+              <div class="export-op-title">
+                <button type="button" class="export-op-toggle" aria-expanded="false" title="Show sections"><span class="chev"></span></button>
+                <input type="checkbox" class="export-op-check" data-op="${escapeAttr(item.id)}" checked />
                 <span class="method ${item.method}">${item.method}</span>
                 <span class="path" title="${escapeAttr(item.path)}">${escapeAttr(item.title)}</span>
                 <span class="export-op-count">${examples.length}</span>
-              </button>
+              </div>
               <div class="export-op-groups">${grouped
                 .map(
-                  ({ section, examples: rows }) => `<div class="export-group collapsed ${groupTone(section)}">
+                  ({
+                    section,
+                    examples: rows,
+                  }) => `<div class="export-group collapsed ${groupTone(section)}">
                     <label class="export-group-head ${groupTone(section)}">
                       <button type="button" class="export-group-toggle" aria-expanded="false" title="Show examples"><span class="chev"></span></button>
                       <input type="checkbox" class="export-group-check" checked />
@@ -3591,12 +5005,22 @@
 
         /** Same folder tree as the sidebar, so the export mirrors what the docs show. */
         const countExamples = (node) =>
-          node.ops.reduce((total, item) => total + (examplesById.get(item.id) || []).length, 0) +
-          Object.values(node.children).reduce((total, child) => total + countExamples(child), 0);
+          node.ops.reduce(
+            (total, item) => total + (examplesById.get(item.id) || []).length,
+            0,
+          ) +
+          Object.values(node.children).reduce(
+            (total, child) => total + countExamples(child),
+            0,
+          );
 
         const renderExportNode = (node) => {
           const opsHtml = [...node.ops]
-            .sort((left, right) => (METHOD_ORDER[left.method] ?? 99) - (METHOD_ORDER[right.method] ?? 99))
+            .sort(
+              (left, right) =>
+                (METHOD_ORDER[left.method] ?? 99) -
+                (METHOD_ORDER[right.method] ?? 99),
+            )
             .map(renderOpBlock)
             .join("");
           const foldersHtml = Object.entries(node.children)
@@ -3604,11 +5028,12 @@
               const total = countExamples(child);
               if (!total) return "";
               return `<div class="export-folder collapsed">
-                <button type="button" class="export-folder-head" aria-expanded="false">
-                  <span class="chev"></span>
+                <div class="export-folder-head">
+                  <button type="button" class="export-folder-toggle" aria-expanded="false" title="Show folder"><span class="chev"></span></button>
+                  <input type="checkbox" class="export-folder-check" checked />
                   <span class="export-folder-name">${escapeHtml(name)}</span>
                   <span class="export-op-count">${total}</span>
-                </button>
+                </div>
                 <div class="export-folder-children">${renderExportNode(child)}</div>
               </div>`;
             })
@@ -3616,16 +5041,43 @@
           return opsHtml + foldersHtml;
         };
 
-        const tree = renderExportNode(buildPathTree(exportable.map((entry) => entry.item)));
-        body.innerHTML = tree || `<div class="export-empty">No recorded examples yet — export will include schemas only.</div>`;
+        const tree = renderExportNode(
+          buildPathTree(exportable.map((entry) => entry.item)),
+        );
+        body.innerHTML =
+          tree ||
+          `<div class="export-empty">No recorded examples yet — export will include schemas only.</div>`;
 
         body.querySelectorAll(".export-folder").forEach((folder) => {
-          const toggle = folder.querySelector(".export-folder-head");
-          if (!toggle) return;
-          toggle.onclick = () => {
-            const collapsed = folder.classList.toggle("collapsed");
-            toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-          };
+          const head = folder.querySelector(":scope > .export-folder-head");
+          const toggle = folder.querySelector(
+            ":scope > .export-folder-head > .export-folder-toggle",
+          );
+          const check = folder.querySelector(
+            ":scope > .export-folder-head > .export-folder-check",
+          );
+          if (head) {
+            head.onclick = (event) => {
+              if (event.target === check) return;
+              const collapsed = folder.classList.toggle("collapsed");
+              if (toggle)
+                toggle.setAttribute(
+                  "aria-expanded",
+                  collapsed ? "false" : "true",
+                );
+            };
+          }
+          if (check) {
+            check.onclick = (event) => event.stopPropagation();
+            check.onchange = () => {
+              folder
+                .querySelectorAll(".export-group-items input[type=checkbox]")
+                .forEach((box) => {
+                  box.checked = check.checked;
+                });
+              syncExportGroupChecks();
+            };
+          }
         });
 
         const ordered = GROUP_ORDER.filter((name) => sections.has(name)).concat(
@@ -3634,24 +5086,48 @@
         renderExportSectionButtons(ordered);
 
         body.querySelectorAll(".export-op").forEach((block) => {
-          const toggle = block.querySelector(".export-op-title");
-          if (!toggle) return;
-          toggle.onclick = () => {
-            const collapsed = block.classList.toggle("collapsed");
-            toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-            toggle.title = collapsed ? "Show sections" : "Hide sections";
-          };
+          const titleRow = block.querySelector(".export-op-title");
+          const toggle = block.querySelector(".export-op-toggle");
+          const opCheck = block.querySelector(".export-op-check");
+          if (titleRow) {
+            titleRow.onclick = (event) => {
+              if (event.target === opCheck) return;
+              const collapsed = block.classList.toggle("collapsed");
+              if (toggle) {
+                toggle.setAttribute(
+                  "aria-expanded",
+                  collapsed ? "false" : "true",
+                );
+                toggle.title = collapsed ? "Show sections" : "Hide sections";
+              }
+            };
+          }
+          if (opCheck) {
+            opCheck.onclick = (event) => event.stopPropagation();
+            opCheck.onchange = () => {
+              block
+                .querySelectorAll(".export-group-items input[type=checkbox]")
+                .forEach((box) => {
+                  box.checked = opCheck.checked;
+                });
+              syncExportGroupChecks();
+            };
+          }
         });
 
         body.querySelectorAll(".export-group").forEach((group) => {
           const head = group.querySelector(".export-group-check");
-          const boxes = [...group.querySelectorAll(".export-group-items input[type=checkbox]")];
+          const boxes = [
+            ...group.querySelectorAll(
+              ".export-group-items input[type=checkbox]",
+            ),
+          ];
           if (head) {
             head.onchange = () => {
               boxes.forEach((box) => {
                 box.checked = head.checked;
               });
-              head.indeterminate = false;
+              syncExportGroupChecks();
             };
           }
           boxes.forEach((box) => {
@@ -3664,11 +5140,27 @@
               event.preventDefault();
               event.stopPropagation();
               const collapsed = group.classList.toggle("collapsed");
-              toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+              toggle.setAttribute(
+                "aria-expanded",
+                collapsed ? "false" : "true",
+              );
               toggle.title = collapsed ? "Show examples" : "Hide examples";
             };
           }
         });
+
+        const lastRunBtn = document.getElementById("export-apis-lastrun");
+        if (lastRunBtn) {
+          const matchingOps = [...body.querySelectorAll(".export-op")].filter((block) => lastRunOpSet.has(block.dataset.op));
+          if (matchingOps.length) {
+            lastRunBtn.hidden = false;
+            lastRunBtn.textContent = "Last test (" + matchingOps.length + ")";
+            const files = ((lastRunMeta && lastRunMeta.testFiles) || []).map((f) => String(f).split("/").pop()).join(", ");
+            lastRunBtn.title = files ? "Select APIs from last test run: " + files : "Select APIs from last test run";
+          } else {
+            lastRunBtn.hidden = true;
+          }
+        }
 
         syncExportGroupChecks();
         syncExportTryItUi();
@@ -3678,18 +5170,35 @@
 
       const collectSelectedExamples = () => {
         const selectedByOpId = new Map();
-        document.querySelectorAll("#export-body input[type=checkbox]").forEach((input) => {
-          const opId = input.dataset.op;
-          const key = input.dataset.key;
-          if (!opId || !key) return;
-          if (!selectedByOpId.has(opId)) selectedByOpId.set(opId, new Set());
-          if (input.checked) selectedByOpId.get(opId).add(key);
-        });
+        document
+          .querySelectorAll(
+            "#export-body .export-group-items input[type=checkbox]",
+          )
+          .forEach((input) => {
+            const opId = input.dataset.op;
+            const key = input.dataset.key;
+            if (!opId || !key) return;
+            if (!selectedByOpId.has(opId)) selectedByOpId.set(opId, new Set());
+            if (input.checked) selectedByOpId.get(opId).add(key);
+          });
         return selectedByOpId;
       };
 
+      const collectSelectedOpIds = () => {
+        const selected = new Set();
+        document
+          .querySelectorAll("#export-body .export-op-check")
+          .forEach((input) => {
+            if ((input.checked || input.indeterminate) && input.dataset.op)
+              selected.add(input.dataset.op);
+          });
+        return selected;
+      };
+
       const downloadJsonFile = (filename, value) => {
-        const blob = new Blob([JSON.stringify(value, null, 2) + "\n"], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(value, null, 2) + "\n"], {
+          type: "application/json",
+        });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -3708,48 +5217,128 @@
 
       const runExportDownload = () => {
         const selectedByOpId = collectSelectedExamples();
-        const exported = toExportSpec(spec, selectedByOpId);
-        const includeTryIt = Boolean(document.getElementById("export-include-tryit")?.checked);
+        const selectedOpIds = collectSelectedOpIds();
+        const exported = toExportSpec(spec, selectedByOpId, selectedOpIds);
+        const includeTryIt = Boolean(
+          document.getElementById("export-include-tryit")?.checked,
+        );
         const base = exportSafeName();
 
-        downloadJsonFile(base + ".postman_collection.json", buildPostmanCollection(exported, includeTryIt));
+        downloadJsonFile(
+          base + ".postman_collection.json",
+          buildPostmanCollection(exported, includeTryIt),
+        );
         if (includeTryIt) {
           setTimeout(() => {
-            downloadJsonFile(base + ".postman_environment.json", buildPostmanEnvironment());
+            downloadJsonFile(
+              base + ".postman_environment.json",
+              buildPostmanEnvironment(),
+            );
           }, 120);
         }
       };
 
-      document.getElementById("export-openapi").addEventListener("click", (event) => {
-        event.stopPropagation();
-        setMoreOpen(false);
-        openExportModal();
-      });
-      document.getElementById("export-cancel").addEventListener("click", closeExportModal);
-      document.getElementById("export-backdrop").addEventListener("click", (event) => {
-        if (event.target.id === "export-backdrop") closeExportModal();
-      });
-      document.getElementById("export-modal").addEventListener("click", (event) => event.stopPropagation());
-      const exampleCheckboxes = () => document.querySelectorAll("#export-body .export-group-items input[type=checkbox]");
+      document
+        .getElementById("export-openapi")
+        .addEventListener("click", (event) => {
+          event.stopPropagation();
+          setMoreOpen(false);
+          openExportModal();
+        });
+      document
+        .getElementById("export-cancel")
+        .addEventListener("click", closeExportModal);
+      document
+        .getElementById("export-backdrop")
+        .addEventListener("click", (event) => {
+          if (event.target.id === "export-backdrop") closeExportModal();
+        });
+      document
+        .getElementById("export-modal")
+        .addEventListener("click", (event) => event.stopPropagation());
+      const exampleCheckboxes = () =>
+        document.querySelectorAll("#export-body .export-group-items input[type=checkbox]");
+      document
+        .getElementById("export-apis-all")
+        .addEventListener("click", () => {
+          exampleCheckboxes().forEach((input) => {
+            input.checked = true;
+          });
+          syncExportGroupChecks();
+        });
+      document
+        .getElementById("export-apis-none")
+        .addEventListener("click", () => {
+          exampleCheckboxes().forEach((input) => {
+            input.checked = false;
+          });
+          syncExportGroupChecks();
+        });
+      document
+        .getElementById("export-apis-lastrun")
+        .addEventListener("click", () => {
+          if (!lastRunOpSet.size) return;
+          document
+            .querySelectorAll("#export-body .export-folder")
+            .forEach((folder) => folder.classList.add("collapsed"));
+          document
+            .querySelectorAll("#export-body .export-op")
+            .forEach((block) => {
+              const match = lastRunOpSet.has(block.dataset.op);
+              block
+                .querySelectorAll(".export-group-items input[type=checkbox]")
+                .forEach((input) => {
+                  input.checked = match;
+                });
+              if (match) {
+                let parent = block.parentElement;
+                while (parent && parent.id !== "export-body") {
+                  if (parent.classList.contains("export-folder"))
+                    parent.classList.remove("collapsed");
+                  parent = parent.parentElement;
+                }
+              }
+            });
+          syncExportGroupChecks();
+        });
       document.getElementById("export-all").addEventListener("click", () => {
-        exampleCheckboxes().forEach((input) => {
-          input.checked = true;
+        scopedExportOps().forEach((block) => {
+          block
+            .querySelectorAll(".export-group-items input[type=checkbox]")
+            .forEach((input) => {
+              input.checked = true;
+            });
         });
         syncExportGroupChecks();
       });
       document.getElementById("export-none").addEventListener("click", () => {
-        exampleCheckboxes().forEach((input) => {
-          input.checked = false;
+        scopedExportOps().forEach((block) => {
+          block
+            .querySelectorAll(".export-group-items input[type=checkbox]")
+            .forEach((input) => {
+              input.checked = false;
+            });
         });
         syncExportGroupChecks();
       });
-      document.getElementById("export-confirm").addEventListener("click", () => {
-        runExportDownload();
-        closeExportModal();
-      });
+      document
+        .getElementById("export-confirm")
+        .addEventListener("click", () => {
+          runExportDownload();
+          closeExportModal();
+        });
 
       const HTTP = ["get", "post", "put", "patch", "delete"];
-      const STATUS = { 200: "OK", 201: "Created", 204: "No Content", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found", 409: "Conflict", 422: "Unprocessable Entity" };
+      const STATUS = {
+        200: "OK",
+        201: "Created",
+        204: "No Content",
+        400: "Bad Request",
+        401: "Unauthorized",
+        404: "Not Found",
+        409: "Conflict",
+        422: "Unprocessable Entity",
+      };
       const GROUP_ORDER = [
         "POSITIVE CASES",
         "SEMANTIC ERROR CASES",
@@ -3772,7 +5361,9 @@
             title: item[method].summary || path,
             docs: item[method]["x-docs"] || { fields: [] },
             scenarios: item[method]["x-scenarios"] || [],
-            treeSegments: item[method]["x-tree-segments"] || path.split("/").filter(Boolean),
+            treeSegments:
+              item[method]["x-tree-segments"] ||
+              path.split("/").filter(Boolean),
           });
         }
       }
@@ -3807,7 +5398,10 @@
         toast.textContent = message;
         toast.classList.add("show");
         clearTimeout(showToast._timer);
-        showToast._timer = setTimeout(() => toast.classList.remove("show"), 1400);
+        showToast._timer = setTimeout(
+          () => toast.classList.remove("show"),
+          1400,
+        );
       };
 
       const copy = async (text, button, label) => {
@@ -3827,8 +5421,13 @@
         const vars = varMap();
         let path = item.path;
         for (const [name, value] of Object.entries(scenario.pathParams || {})) {
-          const fromVar = vars[name] ? String(interpolate(vars[name], vars)) : value;
-          path = path.replace("{" + name + "}", encodeURIComponent(fromVar ?? ""));
+          const fromVar = vars[name]
+            ? String(interpolate(vars[name], vars))
+            : value;
+          path = path.replace(
+            "{" + name + "}",
+            encodeURIComponent(fromVar ?? ""),
+          );
         }
         const query = { ...(scenario.query || {}) };
         for (const key of Object.keys(query)) {
@@ -3863,13 +5462,28 @@
 
       const toCurl = (item, scenario) => {
         const headers = requestHeadersForScenario(scenario);
-        const body = scenario.reqBody !== undefined ? interpolate(scenario.reqBody, varMap()) : undefined;
-        const lines = ["curl -X " + item.method.toUpperCase() + " '" + resolvedUrl(item, scenario).replace(/'/g, "'\\''") + "'"];
+        const body =
+          scenario.reqBody !== undefined
+            ? interpolate(scenario.reqBody, varMap())
+            : undefined;
+        const lines = [
+          "curl -X " +
+            item.method.toUpperCase() +
+            " '" +
+            resolvedUrl(item, scenario).replace(/'/g, "'\\''") +
+            "'",
+        ];
         for (const [name, value] of Object.entries(headers)) {
-          lines.push("  -H '" + name + ": " + String(value).replace(/'/g, "'\\''") + "'");
+          lines.push(
+            "  -H '" + name + ": " + String(value).replace(/'/g, "'\\''") + "'",
+          );
         }
         if (body !== undefined && item.method !== "get") {
-          lines.push("  -d '" + JSON.stringify(body, null, 2).replace(/'/g, "'\\''") + "'");
+          lines.push(
+            "  -d '" +
+              JSON.stringify(body, null, 2).replace(/'/g, "'\\''") +
+              "'",
+          );
         }
         return lines.join(" \\\n");
       };
@@ -3888,15 +5502,26 @@
       const sendRequest = async (item, scenario) => {
         const target = resolvedUrl(item, scenario);
         const headers = { ...requestHeadersForScenario(scenario) };
-        const body = scenario.reqBody !== undefined ? interpolate(scenario.reqBody, varMap()) : undefined;
-        if (body !== undefined && !headers["content-type"] && !headers["Content-Type"]) {
+        const body =
+          scenario.reqBody !== undefined
+            ? interpolate(scenario.reqBody, varMap())
+            : undefined;
+        if (
+          body !== undefined &&
+          !headers["content-type"] &&
+          !headers["Content-Type"]
+        ) {
           headers["content-type"] = "application/json";
         }
         const init = {
           method: item.method.toUpperCase(),
           headers,
         };
-        if (body !== undefined && item.method !== "get" && item.method !== "head") {
+        if (
+          body !== undefined &&
+          item.method !== "get" &&
+          item.method !== "head"
+        ) {
           init.body = typeof body === "string" ? body : JSON.stringify(body);
         }
         const started = performance.now();
@@ -3909,7 +5534,13 @@
         } catch {
           parsed = text;
         }
-        return { status: response.status, body: parsed, ok: response.ok, ms, bytes: text.length };
+        return {
+          status: response.status,
+          body: parsed,
+          ok: response.ok,
+          ms,
+          bytes: text.length,
+        };
       };
 
       const groupScenarios = (scenarios) => {
@@ -3941,7 +5572,8 @@
         if (key === "OMITTED CASES") return "omit";
         return "err";
       };
-      const statusOk = (status) => Number(status) >= 200 && Number(status) < 300;
+      const statusOk = (status) =>
+        Number(status) >= 200 && Number(status) < 300;
 
       const groupedDropdown = (scenarios, selected) => {
         const { groups, order } = groupScenarios(scenarios);
@@ -3962,17 +5594,27 @@
               .map((group) => {
                 const rows = groups[group].filter(({ scenario }) => {
                   if (!q) return true;
-                  return (String(scenario.status) + " " + (scenario.name || "") + " " + (scenario.group || "")).toLowerCase().includes(q);
+                  return (
+                    String(scenario.status) +
+                    " " +
+                    (scenario.name || "") +
+                    " " +
+                    (scenario.group || "")
+                  )
+                    .toLowerCase()
+                    .includes(q);
                 });
                 if (!rows.length) return "";
                 const label = displayGroup(group);
-                return `<div class="dd-group ${groupTone(group)}"><span>${escapeHtml(label)} (${rows.length})</span></div>` +
+                return (
+                  `<div class="dd-group ${groupTone(group)}"><span>${escapeHtml(label)} (${rows.length})</span></div>` +
                   rows
                     .map(
                       ({ scenario, index }) =>
                         `<button type="button" class="dd-item ${index === selected ? "on" : ""}" data-index="${index}"><span class="st ${statusOk(scenario.status) ? "ok" : "err"}">${escapeHtml(String(scenario.status))}</span><span>${escapeHtml(scenarioClause(scenario))}</span></button>`,
                     )
-                    .join("");
+                    .join("")
+                );
               })
               .join("")}</div>
           </div>
@@ -3985,20 +5627,30 @@
       let exampleQuery = "";
       let exampleOpen = false;
       let jsonMode = { req: "pretty", res: "pretty" };
-      const treePathSegments = (item) => item.treeSegments || item.path.split("/").filter(Boolean);
-      const apiVersions = [...new Set(ops.map((item) => treePathSegments(item)[0]).filter(Boolean))];
+      const treePathSegments = (item) =>
+        item.treeSegments || item.path.split("/").filter(Boolean);
+      const apiVersions = [
+        ...new Set(
+          ops.map((item) => treePathSegments(item)[0]).filter(Boolean),
+        ),
+      ];
       let activeVersion = "";
       const expandedFolders = new Set();
       const expandedExampleOps = new Set();
       /** `${opId}::${group}` entries the user opened; groups start collapsed. */
       const expandedExampleGroups = new Set();
       const exampleGroupKey = (opId, group) => `${opId}::${group}`;
-      const isExampleGroupCollapsed = (opId, group) => !expandedExampleGroups.has(exampleGroupKey(opId, group));
+      const isExampleGroupCollapsed = (opId, group) =>
+        !expandedExampleGroups.has(exampleGroupKey(opId, group));
 
       const scenarioNavLabel = (scenario) => {
         const name = scenario.name || "example";
         const status = scenario.status != null ? String(scenario.status) : "";
-        if (status && !name.startsWith(`${status} `) && !name.startsWith(`${status} —`)) {
+        if (
+          status &&
+          !name.startsWith(`${status} `) &&
+          !name.startsWith(`${status} —`)
+        ) {
           return `${status} — ${name}`;
         }
         return name;
@@ -4009,8 +5661,10 @@
         const dashed = `${status} — `;
         if (status && name.startsWith(dashed)) return name.slice(dashed.length);
         const spaced = `${status}  `;
-        if (status && name.startsWith(spaced)) return name.slice(spaced.length).trim();
-        if (status && name.startsWith(`${status} `)) return name.slice(status.length).trim();
+        if (status && name.startsWith(spaced))
+          return name.slice(spaced.length).trim();
+        if (status && name.startsWith(`${status} `))
+          return name.slice(status.length).trim();
         return name;
       };
 
@@ -4033,11 +5687,17 @@
 
       const kv = (label, value) => {
         if (value === undefined || value === "") return "";
-        const shown = typeof value === "object" ? JSON.stringify(value) : String(value);
+        const shown =
+          typeof value === "object" ? JSON.stringify(value) : String(value);
         return `<div class="kv" title="${escapeAttr(label)}: ${escapeAttr(shown)}"><div class="kname">${label}</div><div class="kval">${shown}</div></div>`;
       };
 
-      const metaBlock = (title, bodyHtml, source = "", { always = false } = {}) => {
+      const metaBlock = (
+        title,
+        bodyHtml,
+        source = "",
+        { always = false } = {},
+      ) => {
         if (!always && !bodyHtml) return "";
         return `<div class="meta-block">
           <div class="meta-toolbar">
@@ -4074,15 +5734,21 @@
 
       const collectVisibleItems = (node) => {
         const items = [...node.ops];
-        for (const child of Object.values(node.children)) items.push(...collectVisibleItems(child));
+        for (const child of Object.values(node.children))
+          items.push(...collectVisibleItems(child));
         return items;
       };
 
       const renderTreeNode = (node, prefix = "", q = "") => {
         const opsHtml = [...node.ops]
-          .sort((left, right) => (METHOD_ORDER[left.method] ?? 99) - (METHOD_ORDER[right.method] ?? 99))
+          .sort(
+            (left, right) =>
+              (METHOD_ORDER[left.method] ?? 99) -
+              (METHOD_ORDER[right.method] ?? 99),
+          )
           .map((item) => {
-            const hasExamples = Array.isArray(item.scenarios) && item.scenarios.length > 0;
+            const hasExamples =
+              Array.isArray(item.scenarios) && item.scenarios.length > 0;
             const examplesOpen = expandedExampleOps.has(item.id);
             const exampleCount = hasExamples ? item.scenarios.length : 0;
             return `<div class="nav-op ${item.id === currentId ? "active" : ""} ${examplesOpen ? "examples-open" : ""}" data-op-id="${escapeAttr(item.id)}">
@@ -4106,10 +5772,23 @@
           .map(([name, child]) => {
             const folderPath = (prefix ? prefix + "/" : "/") + name;
             const subtreeItems = collectVisibleItems(child);
-            if (q && !subtreeItems.some((item) => (item.method + " " + item.path + " " + item.title).toLowerCase().includes(q))) return "";
+            if (
+              q &&
+              !subtreeItems.some((item) =>
+                (item.method + " " + item.path + " " + item.title)
+                  .toLowerCase()
+                  .includes(q),
+              )
+            )
+              return "";
             const open = q ? true : expandedFolders.has(folderPath);
             const epCount = subtreeItems.length;
-            const exCount = subtreeItems.reduce((sum, entry) => sum + (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0), 0);
+            const exCount = subtreeItems.reduce(
+              (sum, entry) =>
+                sum +
+                (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0),
+              0,
+            );
             return `<div class="tree-folder ${open ? "open" : ""}" data-folder="${folderPath}">
               <button type="button" class="tree-folder-toggle" data-folder="${folderPath}">
                 <span class="chev"></span>
@@ -4124,14 +5803,62 @@
         return opsHtml + foldersHtml;
       };
 
-      const visibleOps = () => ops;
+      const lastRunMeta = viewer.lastRun && Array.isArray(viewer.lastRun.operations) ? viewer.lastRun : null;
+      const lastRunOpSet = new Set((lastRunMeta && lastRunMeta.operations) || []);
+      let navLastRunOnly = false;
+      let lastRunBarDismissed = false;
+
+      const visibleOps = () => (navLastRunOnly && lastRunOpSet.size ? ops.filter((item) => lastRunOpSet.has(item.id)) : ops);
+
+      const renderLastRunBar = () => {
+        const bar = document.getElementById("lastrun-bar");
+        if (!bar) return;
+        const lastRunCount = ops.filter((item) => lastRunOpSet.has(item.id)).length;
+        const show = lastRunCount > 0 && lastRunCount < ops.length && !lastRunBarDismissed;
+        document.body.classList.toggle("has-lastrun-bar", show);
+        bar.hidden = !show;
+        if (!show) return;
+        const files = ((lastRunMeta && lastRunMeta.testFiles) || []).map((f) => String(f).split("/").pop()).filter(Boolean);
+        const tooltip = files.length ? files.join(", ") : "";
+        bar.innerHTML =
+          `<span class="lastrun-dot"></span>` +
+          `<span class="lastrun-text" title="${escapeAttr(tooltip)}">Last test run · <strong>${lastRunCount}</strong> API</span>` +
+          `<button type="button" class="lastrun-action ${navLastRunOnly ? "on" : ""}" id="lastrun-bar-filter">${navLastRunOnly ? "Show all" : "Filter"}</button>` +
+          `<button type="button" class="lastrun-action" id="lastrun-bar-export">Export</button>` +
+          `<button type="button" class="lastrun-close" id="lastrun-bar-close" title="Dismiss" aria-label="Dismiss">×</button>`;
+        const filterBtn = document.getElementById("lastrun-bar-filter");
+        if (filterBtn) {
+          filterBtn.onclick = () => {
+            navLastRunOnly = !navLastRunOnly;
+            if (navLastRunOnly) visibleOps().forEach((item) => expandPathToItem(item));
+            renderNav();
+          };
+        }
+        const exportBtn = document.getElementById("lastrun-bar-export");
+        if (exportBtn) {
+          exportBtn.onclick = () => {
+            openExportModal();
+            const lrBtn = document.getElementById("export-apis-lastrun");
+            if (lrBtn && !lrBtn.hidden) lrBtn.click();
+          };
+        }
+        const closeBtn = document.getElementById("lastrun-bar-close");
+        if (closeBtn) {
+          closeBtn.onclick = () => {
+            lastRunBarDismissed = true;
+            renderLastRunBar();
+          };
+        }
+      };
 
       const renderNav = () => {
+        renderLastRunBar();
         const nav = document.getElementById("nav");
         const summary = document.getElementById("nav-summary");
         if (summary) {
-          const totalOpsCount = ops.length;
-          const totalExCount = ops.reduce((sum, entry) => sum + (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0), 0);
+          const shownOps = visibleOps();
+          const totalOpsCount = shownOps.length;
+          const totalExCount = shownOps.reduce((sum, entry) => sum + (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0), 0);
           summary.innerHTML = `<span><strong>${totalOpsCount}</strong> endpoints</span><span><strong>${totalExCount}</strong> examples</span>`;
         }
         const q = navQuery.trim().toLowerCase();
@@ -4156,8 +5883,14 @@
             else expandedExampleOps.add(opId);
             const wrap = button.closest(".nav-op");
             if (wrap) {
-              wrap.classList.toggle("examples-open", expandedExampleOps.has(opId));
-              button.setAttribute("aria-expanded", expandedExampleOps.has(opId) ? "true" : "false");
+              wrap.classList.toggle(
+                "examples-open",
+                expandedExampleOps.has(opId),
+              );
+              button.setAttribute(
+                "aria-expanded",
+                expandedExampleOps.has(opId) ? "true" : "false",
+              );
             }
           };
         });
@@ -4175,7 +5908,10 @@
         nav.querySelectorAll(".nav-ex-group-label").forEach((button) => {
           button.onclick = (event) => {
             event.stopPropagation();
-            const key = exampleGroupKey(button.dataset.groupOp, button.dataset.groupName);
+            const key = exampleGroupKey(
+              button.dataset.groupOp,
+              button.dataset.groupName,
+            );
             const collapsed = expandedExampleGroups.has(key);
             if (collapsed) expandedExampleGroups.delete(key);
             else expandedExampleGroups.add(key);
@@ -4247,13 +5983,24 @@
       const searchHitsHtml = (query) => {
         const q = query.trim().toLowerCase();
         const matches = q
-          ? ops.filter((item) => (item.method + " " + item.path + " " + item.title).toLowerCase().includes(q))
+          ? ops.filter((item) =>
+              (item.method + " " + item.path + " " + item.title)
+                .toLowerCase()
+                .includes(q),
+            )
           : ops;
-        if (!matches.length) return { html: `<div class="search-empty">No matching endpoints</div>`, count: 0 };
+        if (!matches.length)
+          return {
+            html: `<div class="search-empty">No matching endpoints</div>`,
+            count: 0,
+          };
         if (searchActiveIndex >= matches.length) searchActiveIndex = 0;
         const html = matches
           .map(
-            (item, index) => `<button type="button" class="search-hit ${index === searchActiveIndex ? "active" : ""}" data-id="${item.id}" role="option">
+            (
+              item,
+              index,
+            ) => `<button type="button" class="search-hit ${index === searchActiveIndex ? "active" : ""}" data-id="${item.id}" role="option">
               <span class="method ${item.method}">${item.method}</span>
               <span class="search-hit-path">${q ? highlightMatch(item.path, q) : escapeHtml(item.path)}</span>
             </button>`,
@@ -4318,7 +6065,8 @@
       };
 
       const jsonBlock = (value, pretty) => {
-        if (value === undefined) return `<div class="meta-empty">No JSON body</div>`;
+        if (value === undefined)
+          return `<div class="meta-empty">No JSON body</div>`;
         if (!pretty) {
           const raw = typeof value === "string" ? value : JSON.stringify(value);
           return `<pre>${escapeHtml(raw)}</pre>`;
@@ -4349,19 +6097,34 @@
           }
           if (Array.isArray(node)) {
             const inner = node[0];
-            const innerType = inner == null ? "unknown" : Array.isArray(inner) ? "array" : typeof inner === "object" ? "object" : typeof inner;
+            const innerType =
+              inner == null
+                ? "unknown"
+                : Array.isArray(inner)
+                  ? "array"
+                  : typeof inner === "object"
+                    ? "object"
+                    : typeof inner;
             out.push({ name: path, type: "array<" + innerType + ">" });
             if (inner && typeof inner === "object" && !Array.isArray(inner)) {
-              for (const [key, nested] of Object.entries(inner)) walk(nested, path + "[]." + key);
+              for (const [key, nested] of Object.entries(inner))
+                walk(nested, path + "[]." + key);
             }
             return;
           }
           if (typeof node === "object") {
             if (path) out.push({ name: path, type: "object" });
-            for (const [key, nested] of Object.entries(node)) walk(nested, path ? path + "." + key : key);
+            for (const [key, nested] of Object.entries(node))
+              walk(nested, path ? path + "." + key : key);
             return;
           }
-          out.push({ name: path, type: typeof node === "number" && Number.isInteger(node) ? "integer" : typeof node });
+          out.push({
+            name: path,
+            type:
+              typeof node === "number" && Number.isInteger(node)
+                ? "integer"
+                : typeof node,
+          });
         };
         walk(value, prefix);
         return out;
@@ -4373,7 +6136,9 @@
           .map((field) => {
             const depth = fieldDepth(field.name);
             const nestClass = depth ? " nested" : "";
-            const depthAttr = depth ? ` data-depth="${Math.min(depth, 4)}"` : "";
+            const depthAttr = depth
+              ? ` data-depth="${Math.min(depth, 4)}"`
+              : "";
             const flag =
               field.required === true
                 ? `<div class="flag req">required</div>`
@@ -4390,7 +6155,13 @@
       };
 
       const schemasInline = (fields, resBody) => {
-        const requestFields = fields.filter((field) => field.in === "body" || field.in === "path" || field.in === "query" || field.in === "header");
+        const requestFields = fields.filter(
+          (field) =>
+            field.in === "body" ||
+            field.in === "path" ||
+            field.in === "query" ||
+            field.in === "header",
+        );
         const responseFields = schemaFromValue(resBody);
         return {
           request: `<div class="schema-block"><span class="meta-label">Request schema</span>${schemaRows(requestFields, { showLoc: true })}</div>`,
@@ -4402,11 +6173,21 @@
         const item = ops.find((entry) => entry.id === currentId);
         if (!item) {
           if (!ops.length) {
-            document.getElementById("main").innerHTML = `<div class="empty">No operations in this workspace yet.</div>`;
+            document.getElementById("main").innerHTML =
+              `<div class="empty">No operations in this workspace yet.</div>`;
           } else {
-            const totalExCount = ops.reduce((sum, entry) => sum + (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0), 0);
-            const logoSrc = document.documentElement.dataset.theme === "dark" ? "__FAVICON_DATA_URI__" : "__FAVICON_LIGHT_DATA_URI__";
-            document.getElementById("main").innerHTML = `<div class="empty-select-wrap"><div class="empty-select-prompt"><img class="empty-select-logo" src="${logoSrc}" alt="DAxTA" /><div class="empty-select-title">Lütfen soldan bir API seçiniz</div><div class="empty-select-sub">${ops.length} API · ${totalExCount} examples</div><div class="empty-select-hint">Hızlı arama için <kbd>/</kbd> veya <kbd>⌘K</kbd></div></div></div>`;
+            const totalExCount = ops.reduce(
+              (sum, entry) =>
+                sum +
+                (Array.isArray(entry.scenarios) ? entry.scenarios.length : 0),
+              0,
+            );
+            const logoSrc =
+              document.documentElement.dataset.theme === "dark"
+                ? "__FAVICON_DATA_URI__"
+                : "__FAVICON_LIGHT_DATA_URI__";
+            document.getElementById("main").innerHTML =
+              `<div class="empty-select-wrap"><div class="empty-select-prompt"><img class="empty-select-logo" src="${logoSrc}" alt="DAxTA" /><div class="empty-select-title">Lütfen soldan bir API seçiniz</div><div class="empty-select-sub">${ops.length} API · ${totalExCount} examples</div><div class="empty-select-hint">Hızlı arama için <kbd>/</kbd> veya <kbd>⌘K</kbd></div></div></div>`;
           }
           const dock = document.getElementById("ex-dock");
           if (dock) dock.innerHTML = "";
@@ -4415,28 +6196,60 @@
           return;
         }
         if (scenarioIndex >= item.scenarios.length) scenarioIndex = 0;
-        const scenario = item.scenarios[scenarioIndex] || { status: 0, pathParams: {}, query: {}, headers: {}, name: "" };
+        const scenario = item.scenarios[scenarioIndex] || {
+          status: 0,
+          pathParams: {},
+          query: {},
+          headers: {},
+          name: "",
+        };
         const fields = item.docs.fields || [];
         ensureRequiredHeaderGroup(item.op);
         const displayHeaders = requestHeadersForScenario(scenario);
         const recordedOk = scenario.status >= 200 && scenario.status < 300;
-        const statusText = STATUS[scenario.status] || item.op.responses?.[String(scenario.status)]?.description || "";
-        const emptyResponse = scenario.resBody === undefined || scenario.status === 204;
-        const reqCopyText = scenario.reqBody !== undefined ? copyBodyText(scenario.reqBody) : null;
-        const showingLive = liveResult && liveResult.id === item.id && liveResult.scenarioIndex === scenarioIndex;
+        const statusText =
+          STATUS[scenario.status] ||
+          item.op.responses?.[String(scenario.status)]?.description ||
+          "";
+        const emptyResponse =
+          scenario.resBody === undefined || scenario.status === 204;
+        const reqCopyText =
+          scenario.reqBody !== undefined
+            ? copyBodyText(scenario.reqBody)
+            : null;
+        const showingLive =
+          liveResult &&
+          liveResult.id === item.id &&
+          liveResult.scenarioIndex === scenarioIndex;
         const displayStatus = showingLive ? liveResult.status : scenario.status;
         const displayBody = showingLive ? liveResult.body : scenario.resBody;
-        const displayOk = showingLive ? liveResult.status >= 200 && liveResult.status < 300 : recordedOk;
-        const displayStatusText = STATUS[displayStatus] || (showingLive ? "" : statusText);
-        const displayEmpty = showingLive ? displayBody === undefined || displayBody === "" : emptyResponse;
+        const displayOk = showingLive
+          ? liveResult.status >= 200 && liveResult.status < 300
+          : recordedOk;
+        const displayStatusText =
+          STATUS[displayStatus] || (showingLive ? "" : statusText);
+        const displayEmpty = showingLive
+          ? displayBody === undefined || displayBody === ""
+          : emptyResponse;
         const resCopyText = displayEmpty ? null : copyBodyText(displayBody);
         const reqPretty = jsonMode.req !== "raw";
         const resPretty = jsonMode.res !== "raw";
-        const recordedBytes = displayEmpty ? 0 : new Blob([typeof displayBody === "string" ? displayBody : JSON.stringify(displayBody)]).size;
-        const bytes = showingLive && liveResult.bytes != null ? liveResult.bytes : recordedBytes;
+        const recordedBytes = displayEmpty
+          ? 0
+          : new Blob([
+              typeof displayBody === "string"
+                ? displayBody
+                : JSON.stringify(displayBody),
+            ]).size;
+        const bytes =
+          showingLive && liveResult.bytes != null
+            ? liveResult.bytes
+            : recordedBytes;
         const ms = showingLive && liveResult.ms != null ? liveResult.ms : null;
         const headersHtml = Object.keys(displayHeaders).length
-          ? Object.entries(displayHeaders).map(([name, value]) => kv(name, value)).join("")
+          ? Object.entries(displayHeaders)
+              .map(([name, value]) => kv(name, value))
+              .join("")
           : `<div class="meta-empty">No headers in this header group</div>`;
         const pathParamsHtml = Object.entries(scenario.pathParams || {})
           .map(([name, value]) => kv(name, value))
@@ -4455,7 +6268,10 @@
               ? `<div class="empty">Empty body</div>`
               : jsonBlock(displayBody, resPretty);
 
-        const schemas = schemasInline(fields, displayEmpty ? undefined : displayBody);
+        const schemas = schemasInline(
+          fields,
+          displayEmpty ? undefined : displayBody,
+        );
         const epName = document.getElementById("ep-name");
         if (epName) {
           const exampleLabel = scenario.name ? scenarioClause(scenario) : "";
@@ -4517,7 +6333,10 @@
         `;
 
         const dock = document.getElementById("ex-dock");
-        if (dock) dock.innerHTML = item.scenarios.length ? groupedDropdown(item.scenarios, scenarioIndex) : "";
+        if (dock)
+          dock.innerHTML = item.scenarios.length
+            ? groupedDropdown(item.scenarios, scenarioIndex)
+            : "";
 
         const scenarioToggle = document.getElementById("scenario-toggle");
         if (scenarioToggle) {
@@ -4568,11 +6387,16 @@
           };
         });
 
-        document.getElementById("copy-curl").onclick = (event) => copy(toCurl(item, scenario), event.currentTarget, "Copy cURL");
+        document.getElementById("copy-curl").onclick = (event) =>
+          copy(toCurl(item, scenario), event.currentTarget, "Copy cURL");
         const copyReq = document.getElementById("copy-req");
-        if (copyReq && reqCopyText) copyReq.onclick = (event) => copy(reqCopyText, event.currentTarget, "Copy body");
+        if (copyReq && reqCopyText)
+          copyReq.onclick = (event) =>
+            copy(reqCopyText, event.currentTarget, "Copy body");
         const copyRes = document.getElementById("copy-res");
-        if (copyRes && resCopyText) copyRes.onclick = (event) => copy(resCopyText, event.currentTarget, "Copy body");
+        if (copyRes && resCopyText)
+          copyRes.onclick = (event) =>
+            copy(resCopyText, event.currentTarget, "Copy body");
 
         const sendBtn = document.getElementById("send");
         if (sendBtn) {
@@ -4590,7 +6414,8 @@
                 bytes: result.bytes,
               };
             } catch (error) {
-              const message = error instanceof Error ? error.message : String(error);
+              const message =
+                error instanceof Error ? error.message : String(error);
               liveResult = {
                 id: item.id,
                 scenarioIndex,
@@ -4598,7 +6423,8 @@
                 body: undefined,
                 error:
                   message +
-                  "\n\nTip: open API docs at the same app port: http://localhost:3000" + docsPathSuffix,
+                  "\n\nTip: open API docs at the same app port: http://localhost:3000" +
+                  docsPathSuffix,
               };
             }
             renderMain();
@@ -4608,7 +6434,8 @@
 
       const select = (id, nextScenarioIndex) => {
         currentId = id;
-        scenarioIndex = typeof nextScenarioIndex === "number" ? nextScenarioIndex : 0;
+        scenarioIndex =
+          typeof nextScenarioIndex === "number" ? nextScenarioIndex : 0;
         liveResult = null;
         exampleOpen = false;
         exampleQuery = "";
@@ -4617,7 +6444,10 @@
           syncHeaderGroupForOp(selected.op);
           expandedExampleOps.add(id);
           const scenario = (selected.scenarios || [])[scenarioIndex];
-          if (scenario) expandedExampleGroups.add(exampleGroupKey(id, scenario.group || "Other"));
+          if (scenario)
+            expandedExampleGroups.add(
+              exampleGroupKey(id, scenario.group || "Other"),
+            );
         }
         renderPrefixBar();
         renderNav();
@@ -4640,15 +6470,22 @@
         if (event.key === "ArrowDown") {
           event.preventDefault();
           searchActiveIndex = (searchActiveIndex + 1) % hits.length;
-          if (panelId === "search-palette-panel") renderPalettePanel(input.value);
+          if (panelId === "search-palette-panel")
+            renderPalettePanel(input.value);
           else renderSearchPanel(input.value);
-          panel.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
+          panel
+            .querySelectorAll(".search-hit")
+            [searchActiveIndex]?.scrollIntoView({ block: "nearest" });
         } else if (event.key === "ArrowUp") {
           event.preventDefault();
-          searchActiveIndex = (searchActiveIndex - 1 + hits.length) % hits.length;
-          if (panelId === "search-palette-panel") renderPalettePanel(input.value);
+          searchActiveIndex =
+            (searchActiveIndex - 1 + hits.length) % hits.length;
+          if (panelId === "search-palette-panel")
+            renderPalettePanel(input.value);
           else renderSearchPanel(input.value);
-          panel.querySelectorAll(".search-hit")[searchActiveIndex]?.scrollIntoView({ block: "nearest" });
+          panel
+            .querySelectorAll(".search-hit")
+            [searchActiveIndex]?.scrollIntoView({ block: "nearest" });
         } else if (event.key === "Enter") {
           event.preventDefault();
           const target = hits[searchActiveIndex] || hits[0];
@@ -4663,32 +6500,52 @@
         searchActiveIndex = 0;
         renderSearchPanel(event.target.value);
       });
-      searchInput.addEventListener("keydown", (event) => handleSearchKeys(event, searchInput, "search-panel"));
+      searchInput.addEventListener("keydown", (event) =>
+        handleSearchKeys(event, searchInput, "search-panel"),
+      );
       paletteInput.addEventListener("input", (event) => {
         searchActiveIndex = 0;
         renderPalettePanel(event.target.value);
       });
-      paletteInput.addEventListener("keydown", (event) => handleSearchKeys(event, paletteInput, "search-palette-panel"));
-      document.getElementById("search-backdrop").addEventListener("click", () => closeSearch({ clear: true }));
-      document.getElementById("search-palette-card").addEventListener("click", (event) => event.stopPropagation());
-      document.getElementById("search-wrap").addEventListener("click", (event) => event.stopPropagation());
+      paletteInput.addEventListener("keydown", (event) =>
+        handleSearchKeys(event, paletteInput, "search-palette-panel"),
+      );
+      document
+        .getElementById("search-backdrop")
+        .addEventListener("click", () => closeSearch({ clear: true }));
+      document
+        .getElementById("search-palette-card")
+        .addEventListener("click", (event) => event.stopPropagation());
+      document
+        .getElementById("search-wrap")
+        .addEventListener("click", (event) => event.stopPropagation());
 
       document.addEventListener("click", () => {
         exampleOpen = false;
-        document.querySelectorAll(".dd.open").forEach((el) => el.classList.remove("open"));
+        document
+          .querySelectorAll(".dd.open")
+          .forEach((el) => el.classList.remove("open"));
         document.getElementById("env-wrap").classList.remove("open");
         setMoreOpen(false);
-        if (document.body.classList.contains("searching")) closeSearch({ clear: true });
+        if (document.body.classList.contains("searching"))
+          closeSearch({ clear: true });
       });
 
       document.addEventListener("keydown", (event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === "k"
+        ) {
           event.preventDefault();
-          if (document.body.classList.contains("search-palette")) closeSearch({ clear: true });
+          if (document.body.classList.contains("search-palette"))
+            closeSearch({ clear: true });
           else openPalette();
           return;
         }
-        if (event.key === "Escape" && document.body.classList.contains("search-palette")) {
+        if (
+          event.key === "Escape" &&
+          document.body.classList.contains("search-palette")
+        ) {
           event.preventDefault();
           closeSearch({ clear: true });
           return;
@@ -4698,9 +6555,20 @@
           setMoreOpen(false);
           return;
         }
-        if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (
+          event.key === "/" &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey
+        ) {
           const tag = (event.target && event.target.tagName) || "";
-          if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || event.target?.isContentEditable) return;
+          if (
+            tag === "INPUT" ||
+            tag === "TEXTAREA" ||
+            tag === "SELECT" ||
+            event.target?.isContentEditable
+          )
+            return;
           event.preventDefault();
           document.getElementById("search")?.focus();
         }
@@ -4727,7 +6595,8 @@
         const selected = ops.find((entry) => entry.id === currentId);
         if (selected) syncHeaderGroupForOp(selected.op);
         syncEnvTrigger();
-        if (document.getElementById("env-wrap")?.classList.contains("open")) renderEnvPop();
+        if (document.getElementById("env-wrap")?.classList.contains("open"))
+          renderEnvPop();
         renderMain();
       });
     </script>

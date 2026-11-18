@@ -55,6 +55,13 @@ export type Scenario = {
   resBody?: unknown;
 };
 
+export type LastRunMeta = {
+  at: string;
+  mode: MergeMode;
+  testFiles: string[];
+  operations: string[];
+};
+
 type OpenApiSpec = {
   openapi: string;
   info: Record<string, unknown>;
@@ -62,7 +69,7 @@ type OpenApiSpec = {
   tags: unknown[];
   paths: Record<string, Record<string, unknown>>;
   components: Record<string, unknown>;
-  'x-viewer'?: ReturnType<typeof viewerTreeConfig>;
+  'x-viewer'?: ReturnType<typeof viewerTreeConfig> & { lastRun?: LastRunMeta };
 };
 
 export type BuildResult = {
@@ -1030,7 +1037,10 @@ function viewerTemplateNewerThanHtml(): boolean {
 }
 
 function resolveViewerMeta(spec: OpenApiSpec): OpenApiSpec {
-  const viewer = { ...viewerTreeConfig() };
+  const viewer: ReturnType<typeof viewerTreeConfig> & { lastRun?: LastRunMeta } = {
+    ...viewerTreeConfig(),
+    ...(spec['x-viewer']?.lastRun ? { lastRun: spec['x-viewer'].lastRun } : {}),
+  };
   const fn = getConfig().headerVariable;
   if (fn) {
     const resolved: Record<string, string> = { ...(viewer.headerVariables ?? {}) };
@@ -1083,6 +1093,24 @@ export function mergeHitsWithExisting(existingHits: RecordedHit[] | null, newHit
   return [...existingHits.filter((hit) => !hit.testFile || !updatedFiles.has(hit.testFile)), ...newHits];
 }
 
+function extractLastRunMeta(recordedHits: RecordedHit[], mode: MergeMode): LastRunMeta | undefined {
+  if (!recordedHits.length) return undefined;
+  const lastSpec = buildSpec(recordedHits);
+  const operations: string[] = [];
+  for (const [urlPath, pathItem] of Object.entries(lastSpec.paths ?? {})) {
+    for (const method of ['get', 'post', 'put', 'patch', 'delete', 'options', 'head']) {
+      if (pathItem?.[method]) operations.push(`${method}:${urlPath}`);
+    }
+  }
+  const testFiles = [...new Set(recordedHits.map((hit) => hit.testFile).filter((file): file is string => Boolean(file)))];
+  return {
+    at: new Date().toISOString(),
+    mode,
+    testFiles,
+    operations,
+  };
+}
+
 export function buildDaxtaSpec(
   options: { silent?: boolean; requireHits?: boolean; html?: boolean; clearWorkers?: boolean; uiOnly?: boolean } = {},
 ): BuildResult {
@@ -1106,9 +1134,10 @@ export function buildDaxtaSpec(
     };
   }
 
+  const mergeMode = readRunMergeMode();
   const recordedHits = loadHits();
   const existingHits = readJson<RecordedHit[]>(getHitsJsonPath());
-  const hits = mergeHitsWithExisting(existingHits, recordedHits, readRunMergeMode());
+  const hits = mergeHitsWithExisting(existingHits, recordedHits, mergeMode);
   const writeHtml = options.html !== false;
   const seededStore = ensureViewerStoreSeeded();
   if (seededStore && !options.silent) {
@@ -1131,7 +1160,11 @@ export function buildDaxtaSpec(
 
   const freshSpec = applyViewerMeta(buildSpec(hits));
   const { spec: merged, updated, unchanged, changed: operationsChanged } = mergeSpecs(existingSpec, freshSpec);
-  const spec = applyViewerMeta(merged);
+  const lastRun = extractLastRunMeta(recordedHits, mergeMode) ?? existingSpec?.['x-viewer']?.lastRun;
+  const spec = applyViewerMeta({
+    ...merged,
+    ...(lastRun ? { 'x-viewer': { ...(merged['x-viewer'] ?? viewerTreeConfig()), lastRun } } : {}),
+  });
   const hitsChanged = !hitsStructureSame(existingHits, hits);
   const metaChanged =
     !existingSpec ||
