@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 import * as path from 'path';
@@ -16,41 +17,47 @@ export type RecordedHit = {
   pathParams?: Record<string, string>;
   headers?: Record<string, string>;
   test?: string;
+  testFile?: string;
 };
 
 type GlobalHits = typeof globalThis & {
   __DAXTA_HITS__?: RecordedHit[];
-  __DAXTA_SUITE_SEQ__?: number;
+  __DAXTA_SUITE_ID__?: string;
   __DAXTA_FLUSH_HOOK__?: boolean;
   __DAXTA_FETCH_PATCHED__?: boolean;
 };
 
-type ProcessSeq = NodeJS.Process & {
-  __DAXTA_SUITE_SEQ__?: number;
+type HostProcessState = NodeJS.Process & {
+  __DAXTA_EXIT_HOOK__?: boolean;
+  __DAXTA_ACTIVE_FLUSH__?: () => void;
 };
+
+const nodeRequire = createRequire(__filename);
+// `jest-environment-node` shallow-clones `global.process` (`Object.create(realProcess)`) per test file,
+// so properties written onto `global.process` are lost between suites! `nodeRequire('process')` returns
+// the real singleton host `NodeJS.Process` shared across every VM context in this worker.
+const hostProcess = nodeRequire('process') as HostProcessState;
 
 const g = globalThis as GlobalHits;
 const hits: RecordedHit[] = (g.__DAXTA_HITS__ ??= []);
-// Jest isolates globalThis per test file (VM context) while reusing the worker process.
-// Tag each VM context with a process-wide sequence number so later suites never overwrite earlier ones.
-const suiteSeq: number = (g.__DAXTA_SUITE_SEQ__ ??= (() => {
-  const proc = process as ProcessSeq;
-  proc.__DAXTA_SUITE_SEQ__ = (proc.__DAXTA_SUITE_SEQ__ ?? 0) + 1;
-  return proc.__DAXTA_SUITE_SEQ__;
-})());
-const nodeRequire = createRequire(__filename);
+// Unique random id per Jest VM context so suites in the same worker PID never overwrite each other's hit file.
+const suiteId: string = (g.__DAXTA_SUITE_ID__ ??= randomBytes(6).toString('hex'));
 const SKIP_HEADERS = new Set(['host', 'accept-encoding', 'connection', 'content-length', 'user-agent', 'accept']);
 
 function outDir() {
   return getConfig().outDir;
 }
 
-function currentTestName(): string | undefined {
+function currentTestState(): { test?: string; testFile?: string } {
   try {
-    const jestExpect = (globalThis as { expect?: { getState?: () => { currentTestName?: string } } }).expect;
-    return jestExpect?.getState?.().currentTestName;
+    const jestExpect = (globalThis as { expect?: { getState?: () => { currentTestName?: string; testPath?: string } } }).expect;
+    const state = jestExpect?.getState?.();
+    const test = state?.currentTestName;
+    const rawPath = state?.testPath;
+    const testFile = rawPath ? path.relative(process.cwd(), rawPath).split(path.sep).join('/') : undefined;
+    return { test, testFile };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -102,7 +109,7 @@ function recordHttpHit(params: {
   headers?: Record<string, string>;
 }) {
   const url = new URL(params.rawUrl, 'http://localhost');
-  const test = currentTestName();
+  const { test, testFile } = currentTestState();
   const method = (params.method || 'GET').toLowerCase();
   const pathTemplate = templatize(url.pathname, test, method);
   if (!pathTemplate) return;
@@ -119,6 +126,7 @@ function recordHttpHit(params: {
     pathParams: Object.keys(pathParams).length ? pathParams : undefined,
     headers: params.headers,
     test,
+    ...(testFile ? { testFile } : {}),
   });
 }
 
@@ -137,10 +145,20 @@ function recordFromSuperagent(
 }
 
 function patchFetch() {
-  if (g.__DAXTA_FETCH_PATCHED__ || typeof globalThis.fetch !== 'function') return;
+  if (typeof globalThis.fetch !== 'function') return;
+  const currentFetch = globalThis.fetch as typeof globalThis.fetch & {
+    __daxtaPatched?: boolean;
+    __daxtaRecordHttp?: typeof recordHttpHit;
+  };
+  currentFetch.__daxtaRecordHttp = recordHttpHit;
+  if (g.__DAXTA_FETCH_PATCHED__ || currentFetch.__daxtaPatched) {
+    g.__DAXTA_FETCH_PATCHED__ = true;
+    return;
+  }
   g.__DAXTA_FETCH_PATCHED__ = true;
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async function daxtaFetch(
+  const wrappedFetch = async function daxtaFetch(
+    this: unknown,
     input: Parameters<typeof originalFetch>[0],
     init?: RequestInit,
   ): Promise<Response> {
@@ -159,7 +177,7 @@ function patchFetch() {
       } catch {
         // ignore unread/uncloneable body
       }
-      recordHttpHit({
+      (wrappedFetch as unknown as { __daxtaRecordHttp?: typeof recordHttpHit }).__daxtaRecordHttp?.({
         method,
         rawUrl,
         status: response.status,
@@ -171,15 +189,24 @@ function patchFetch() {
       // recording must never fail a test
     }
     return response;
-  };
+  } as typeof globalThis.fetch & { __daxtaPatched?: boolean; __daxtaRecordHttp?: typeof recordHttpHit };
+  wrappedFetch.__daxtaPatched = true;
+  wrappedFetch.__daxtaRecordHttp = recordHttpHit;
+  globalThis.fetch = wrappedFetch;
 }
 
-function patchSuperagent(superagent: { Request?: { prototype?: { end?: unknown; __daxtaPatched?: boolean } } }) {
-  const proto = superagent.Request?.prototype as {
+function patchSuperagent(superagent: { Request?: { prototype?: { end?: unknown; __daxtaPatched?: boolean; __daxtaRecord?: typeof recordFromSuperagent } } }) {
+  const proto = superagent?.Request?.prototype as {
     end: (callback?: (err: unknown, res: unknown) => void) => unknown;
     __daxtaPatched?: boolean;
+    __daxtaRecord?: typeof recordFromSuperagent;
   };
-  if (!proto?.end || proto.__daxtaPatched) return false;
+  if (!proto?.end) return false;
+  // Always rebind to the active Jest VM suite's recorder: `superagent` loaded via
+  // `createRequire` is shared across all suites in a worker process, while each suite
+  // gets a fresh VM `globalThis` (`expect`, `hits`, `suiteSeq`).
+  proto.__daxtaRecord = recordFromSuperagent;
+  if (proto.__daxtaPatched) return true;
   proto.__daxtaPatched = true;
 
   const originalEnd = proto.end;
@@ -189,7 +216,7 @@ function patchSuperagent(superagent: { Request?: { prototype?: { end?: unknown; 
   ) {
     return originalEnd.call(this, (err: unknown, res: unknown) => {
       try {
-        if (res) recordFromSuperagent(this, res as { status?: number; body?: unknown });
+        if (res) proto.__daxtaRecord?.(this, res as { status?: number; body?: unknown });
       } catch {
         // recording must never fail a test
       }
@@ -212,6 +239,13 @@ export function install() {
   } catch {
     // ignore
   }
+  try {
+    const cwdReq = createRequire(path.join(process.cwd(), 'package.json'));
+    const supertestDir = path.dirname(cwdReq.resolve('supertest'));
+    candidates.add(cwdReq.resolve('superagent', { paths: [supertestDir] }));
+  } catch {
+    // ignore
+  }
 
   for (const candidate of candidates) {
     try {
@@ -219,26 +253,36 @@ export function install() {
     } catch {
       // ignore
     }
+    try {
+      // Also patch Jest's sandboxed module instance if isolated from nodeRequire
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      patchSuperagent(require(candidate));
+    } catch {
+      // ignore
+    }
   }
 
   patchFetch();
 
-  if (!g.__DAXTA_FLUSH_HOOK__) {
-    g.__DAXTA_FLUSH_HOOK__ = true;
-    const flushSafe = () => {
+  hostProcess.__DAXTA_ACTIVE_FLUSH__ = flush;
+  if (!hostProcess.__DAXTA_EXIT_HOOK__) {
+    hostProcess.__DAXTA_EXIT_HOOK__ = true;
+    const flushActiveSafe = () => {
       try {
-        flush();
+        hostProcess.__DAXTA_ACTIVE_FLUSH__?.();
       } catch {
         // ignore
       }
     };
-    process.once('beforeExit', flushSafe);
-    process.once('exit', flushSafe);
+    hostProcess.once('beforeExit', flushActiveSafe);
+    hostProcess.once('exit', flushActiveSafe);
   }
 }
 
 /** Hit files carry the run id so a later build can never pick up an earlier run's traffic. */
-export const HIT_FILE_PATTERN = /^hits-(?:r([A-Za-z0-9]+)-)?w[^-]+-p\d+(?:-s\d+)?\.json$/;
+export const HIT_FILE_PATTERN = /^hits-(?:r([A-Za-z0-9]+)-)?w[^-]+-p\d+(?:-s[A-Za-z0-9]+)?\.json$/;
+
+export type MergeMode = 'none' | 'suite' | 'case';
 
 export function readRunId(): string | null {
   try {
@@ -249,12 +293,23 @@ export function readRunId(): string | null {
   }
 }
 
+export function readRunMergeMode(): MergeMode {
+  try {
+    const marker = JSON.parse(readFileSync(getRunMarkerPath(), 'utf8')) as { mergeMode?: unknown };
+    if (marker.mergeMode === 'suite' || marker.mergeMode === 'case') return marker.mergeMode;
+    return 'none';
+  } catch {
+    return 'none';
+  }
+}
+
 /** Called once per Jest run (global setup) so every worker tags its hits identically. */
-export function startRun(): string {
+export function startRun(options: { mergeMode?: MergeMode } = {}): string {
   const dir = outDir();
   mkdirSync(dir, { recursive: true });
   const runId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-  writeFileSync(getRunMarkerPath(), `${JSON.stringify({ runId, startedAt: new Date().toISOString() }, null, 2)}\n`);
+  const mergeMode: MergeMode = options.mergeMode ?? 'none';
+  writeFileSync(getRunMarkerPath(), `${JSON.stringify({ runId, mergeMode, startedAt: new Date().toISOString() }, null, 2)}\n`);
   return runId;
 }
 
@@ -270,7 +325,7 @@ function hitFilePath() {
   const workerId = process.env.JEST_WORKER_ID ?? '0';
   const runId = readRunId();
   const prefix = runId ? `hits-r${runId}-` : 'hits-';
-  return path.join(outDir(), `${prefix}w${workerId}-p${process.pid}-s${suiteSeq}.json`);
+  return path.join(outDir(), `${prefix}w${workerId}-p${process.pid}-s${suiteId}.json`);
 }
 
 export function flush() {

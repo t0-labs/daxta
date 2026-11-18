@@ -27,18 +27,51 @@ function printDocsReady(hits: number, operations: number): void {
   }
 }
 
+type JestGlobalConfig = {
+  testPathPattern?: string;
+  testNamePattern?: string;
+  nonFlagArgs?: string[];
+  shard?: unknown;
+  onlyChanged?: boolean;
+  onlyFailures?: boolean;
+};
+
+function detectMergeMode(globalConfig?: JestGlobalConfig): 'none' | 'suite' | 'case' {
+  if (!globalConfig) return 'none';
+  if (globalConfig.testNamePattern) return 'case';
+  if (
+    globalConfig.testPathPattern ||
+    (Array.isArray(globalConfig.nonFlagArgs) && globalConfig.nonFlagArgs.length > 0) ||
+    globalConfig.shard ||
+    globalConfig.onlyChanged ||
+    globalConfig.onlyFailures
+  ) {
+    return 'suite';
+  }
+  return 'none';
+}
+
 /**
  * Jest reporter — only generates API docs when the full run completes.
  * During the run we only record hits (superagent hook + flush); no mid-run rebuilds.
  */
 class DaxtaJestReporter {
+  private readonly mergeMode: 'none' | 'suite' | 'case';
+
+  constructor(globalConfig?: JestGlobalConfig) {
+    this.mergeMode = detectMergeMode(globalConfig);
+  }
+
   /** Stamp the run before workers start so this run's docs only reflect this run's traffic. */
   onRunStart(): void {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const recorder = require('../recorder') as { clearWorkerHits: () => void; startRun: () => string };
+      const recorder = require('../recorder') as {
+        clearWorkerHits: () => void;
+        startRun: (opts?: { mergeMode?: 'none' | 'suite' | 'case' }) => string;
+      };
       recorder.clearWorkerHits();
-      recorder.startRun();
+      recorder.startRun({ mergeMode: this.mergeMode });
     } catch {
       // never fail the test run
     }

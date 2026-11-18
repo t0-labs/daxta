@@ -7,7 +7,7 @@ import { caseGroup, CASE_GROUP_ORDER, declaredMethods, exampleLabel, parseCaseSe
 import { getConfig, normalizeTreeLayout, serversFromEnvPresets } from '../config';
 import { dtoRequired } from '../fields/dto-fields';
 import { extractPathParams, materializePath, pathParamNames, templatize } from '../path.util';
-import { clearWorkerHits, HIT_FILE_PATTERN, readRunId, type RecordedHit } from '../recorder';
+import { clearWorkerHits, HIT_FILE_PATTERN, type MergeMode, readRunId, readRunMergeMode, type RecordedHit } from '../recorder';
 import { getFaviconAssetPath, getFaviconLightAssetPath, getHitsJsonPath, getHtmlPath, getOutDir, getSpecJsonPath, getViewerAssetPath } from '../serve/paths';
 import { ensureViewerStoreSeeded } from '../serve/viewer-store';
 
@@ -209,7 +209,16 @@ function exampleKeyForHit(hit: RecordedHit, index: number): string {
 }
 
 function isSuccessStatus(status: number): boolean {
-  return status >= 200 && status < 300;
+  return status >= 200 && status < 400;
+}
+
+function isUnexpectedCrashHit(hit: RecordedHit): boolean {
+  if (hit.status !== 0 && hit.status < 500) return false;
+  return !/\b(5\d\d|internal\s+server\s+error)\b/i.test(hit.test ?? '');
+}
+
+function testCaseKey(hit: RecordedHit): string {
+  return `${hit.testFile ?? ''}::${hit.method} ${hit.path}::${hit.test ?? ''}`;
 }
 
 /**
@@ -224,9 +233,10 @@ function selectHitsForDocs(hits: RecordedHit[]): RecordedHit[] {
       unlabeled.push(hit);
       continue;
     }
-    const list = byTest.get(hit.test) ?? [];
+    const key = testCaseKey(hit);
+    const list = byTest.get(key) ?? [];
     list.push(hit);
-    byTest.set(hit.test, list);
+    byTest.set(key, list);
   }
 
   const selected: RecordedHit[] = [...unlabeled];
@@ -277,9 +287,20 @@ function sameRoute(declaredPath: string, hitPath: string): boolean {
  * makes to *other* endpoints share the same Jest name, so they are filtered out here —
  * otherwise those setup routes show up as their own operations carrying this test's case label.
  */
-function isPrimaryHit(hit: RecordedHit): boolean {
+function isEligibleHit(hit: RecordedHit): boolean {
   if (!hit.test) return false;
+  if (isUnexpectedCrashHit(hit)) return false;
   if (getConfig().includeHit?.(hit.method, hit.path, hit.test) === false) return false;
+  return true;
+}
+
+function hasDeclaredTarget(hit: RecordedHit): boolean {
+  if (!hit.test) return false;
+  return Boolean(parseOperationLabel(hit.test)?.path || declaredMethods(hit.test));
+}
+
+function matchesDeclaredTarget(hit: RecordedHit): boolean {
+  if (!hit.test) return false;
   const label = parseOperationLabel(hit.test);
   if (label?.path && !sameRoute(label.path, hit.path)) return false;
   const methods = declaredMethods(hit.test);
@@ -288,11 +309,23 @@ function isPrimaryHit(hit: RecordedHit): boolean {
 }
 
 const CASE_TAIL_RE =
-  /\s+((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\b[\s\S]*$/i;
+  /(?:^|\s+)((?:FALSE\s+)?POSITIVE CASES|SEMANTIC ERROR CASES(?:\s*-\s*AUTH)?|INVALID CASES|OMITTED(?: FIELD)? CASES)\b[\s\S]*$/i;
 
-/** All case sections of one describe collapse to the same suite, e.g. "Onboard Tr Merchant API". */
-function suiteKey(test: string): string {
-  return test.replace(CASE_TAIL_RE, '').trim() || test;
+function testInstanceKey(hit: RecordedHit): string {
+  return `${hit.testFile ?? ''}::${hit.test ?? ''}`;
+}
+
+/**
+ * Group all case sections of one suite together while isolating separate test files so
+ * untitled `describe('POSITIVE CASES', …)` suites in different files never collide,
+ * and mixed-title cases within one `.test.ts` file stay unified under that file.
+ */
+function suiteKeyForHit(hit: RecordedHit): string | null {
+  if (hit.testFile) return hit.testFile;
+  const test = hit.test ?? '';
+  const hasSection = CASE_TAIL_RE.test(test);
+  const prefix = hasSection ? test.replace(CASE_TAIL_RE, '').trim() : '';
+  return prefix || null;
 }
 
 function routeKey(hit: RecordedHit): string {
@@ -300,24 +333,34 @@ function routeKey(hit: RecordedHit): string {
 }
 
 /**
- * When the test title does not name a path, infer the endpoint under test: the Act call
- * is the last request an it() makes, so each case votes with its final route and the
- * suite's winner wins. Arrange helpers (`insertMerchantWithKyc`, checkout flows, …) only
- * ever appear mid-test, so they lose and stay out of the docs.
+ * When the test title does not name a path (or has a stale/typo path that matches zero
+ * recorded requests in that suite), infer the endpoint under test: the Act call is the
+ * last request an it() makes, so each case votes with its final route and the suite's
+ * winner wins. Arrange helpers only appear mid-test, so they lose and stay out of docs.
  */
-function subjectRouteBySuite(hits: RecordedHit[]): Map<string, string> {
-  const finalRouteByTest = new Map<string, string>();
+function subjectRouteBySuite(
+  hits: RecordedHit[],
+  isAuthoritativeLabel: (hit: RecordedHit) => boolean,
+): {
+  winners: Map<string, string>;
+  finalRouteByTest: Map<string, string>;
+} {
+  const finalByTest = new Map<string, { hit: RecordedHit; route: string }>();
   for (const hit of hits) {
     if (!hit.test) continue;
-    if (parseOperationLabel(hit.test)?.path) continue;
-    finalRouteByTest.set(hit.test, routeKey(hit));
+    if (isAuthoritativeLabel(hit)) continue;
+    finalByTest.set(testInstanceKey(hit), { hit, route: routeKey(hit) });
   }
 
   const votes = new Map<string, Map<string, number>>();
-  for (const [test, route] of finalRouteByTest) {
-    const suite = votes.get(suiteKey(test)) ?? new Map<string, number>();
-    suite.set(route, (suite.get(route) ?? 0) + 1);
-    votes.set(suiteKey(test), suite);
+  const finalRouteByTest = new Map<string, string>();
+  for (const [instanceKey, { hit, route }] of finalByTest) {
+    finalRouteByTest.set(instanceKey, route);
+    const suite = suiteKeyForHit(hit);
+    if (!suite) continue;
+    const suiteVotes = votes.get(suite) ?? new Map<string, number>();
+    suiteVotes.set(route, (suiteVotes.get(route) ?? 0) + 1);
+    votes.set(suite, suiteVotes);
   }
 
   const winners = new Map<string, string>();
@@ -325,17 +368,42 @@ function subjectRouteBySuite(hits: RecordedHit[]): Map<string, string> {
     const best = [...routes.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0];
     if (best) winners.set(suite, best[0]);
   }
-  return winners;
+  return { winners, finalRouteByTest };
 }
 
-/** `isPrimaryHit` plus the inferred-subject pass for suites whose titles carry no path. */
+/**
+ * Filter setup/teardown calls: honor declared title paths/methods when at least one hit
+ * in the suite matches them, and fall back to final-call suite voting otherwise.
+ */
 function primaryHits(hits: RecordedHit[]): RecordedHit[] {
-  const allowed = hits.filter(isPrimaryHit);
-  const winners = subjectRouteBySuite(allowed);
-  if (!winners.size) return allowed;
+  const eligible = hits.filter(isEligibleHit);
+  const suitesWithMatchedLabel = new Set<string>();
+  const testsWithMatchedLabel = new Set<string>();
+
+  for (const hit of eligible) {
+    if (!hasDeclaredTarget(hit) || !matchesDeclaredTarget(hit)) continue;
+    const suite = suiteKeyForHit(hit);
+    if (suite) suitesWithMatchedLabel.add(suite);
+    testsWithMatchedLabel.add(testInstanceKey(hit));
+  }
+
+  const isAuthoritativeLabel = (hit: RecordedHit): boolean => {
+    if (!hasDeclaredTarget(hit)) return false;
+    const suite = suiteKeyForHit(hit);
+    return suite ? suitesWithMatchedLabel.has(suite) : testsWithMatchedLabel.has(testInstanceKey(hit));
+  };
+
+  const allowed = eligible.filter((hit) => !isAuthoritativeLabel(hit) || matchesDeclaredTarget(hit));
+  const { winners, finalRouteByTest } = subjectRouteBySuite(allowed, isAuthoritativeLabel);
+
   return allowed.filter((hit) => {
-    const winner = hit.test ? winners.get(suiteKey(hit.test)) : undefined;
-    return !winner || routeKey(hit) === winner;
+    if (!hit.test || isAuthoritativeLabel(hit)) return true;
+    const suite = suiteKeyForHit(hit);
+    if (suite && winners.has(suite)) {
+      return routeKey(hit) === winners.get(suite);
+    }
+    const fallbackRoute = finalRouteByTest.get(testInstanceKey(hit));
+    return !fallbackRoute || routeKey(hit) === fallbackRoute;
   });
 }
 
@@ -578,14 +646,10 @@ function currentRunWorkerFiles(outDir: string): string[] {
     pool = fresh.length ? fresh : tagged;
   }
 
-  const newestByWorker = new Map<string, { fileName: string; mtime: number }>();
-  for (const { fileName } of pool) {
-    const workerId = fileName.match(/w([^-]+)-p\d+\.json$/)?.[1] ?? fileName;
-    const mtime = statSync(path.join(outDir, fileName)).mtimeMs;
-    const prev = newestByWorker.get(workerId);
-    if (!prev || mtime >= prev.mtime) newestByWorker.set(workerId, { fileName, mtime });
-  }
-  return [...newestByWorker.values()].map((entry) => entry.fileName);
+  return pool
+    .map((entry) => ({ fileName: entry.fileName, mtime: statSync(path.join(outDir, entry.fileName)).mtimeMs }))
+    .sort((left, right) => left.mtime - right.mtime || left.fileName.localeCompare(right.fileName))
+    .map((entry) => entry.fileName);
 }
 
 function readHitFile(filePath: string, label: string): RecordedHit[] {
@@ -879,6 +943,7 @@ function hitSignature(hit: RecordedHit): string {
     path: hit.path,
     status: hit.status,
     test: hit.test,
+    testFile: hit.testFile,
     queryKeys: sortedKeys(hit.query),
     pathParamKeys: sortedKeys(hit.pathParams),
     headerKeys: sortedKeys(hit.headers),
@@ -1002,6 +1067,22 @@ function applyViewerMeta(spec: OpenApiSpec): OpenApiSpec {
   };
 }
 
+export function mergeHitsWithExisting(existingHits: RecordedHit[] | null, newHits: RecordedHit[], mergeMode: MergeMode): RecordedHit[] {
+  if (!existingHits?.length || mergeMode === 'none') return newHits;
+
+  if (mergeMode === 'case') {
+    const updatedCases = new Set(newHits.map((hit) => `${hit.testFile ?? ''}::${hit.test ?? ''}`));
+    return [
+      ...existingHits.filter((hit) => !updatedCases.has(`${hit.testFile ?? ''}::${hit.test ?? ''}`)),
+      ...newHits,
+    ];
+  }
+
+  const updatedFiles = new Set(newHits.map((hit) => hit.testFile).filter((file): file is string => Boolean(file)));
+  if (!updatedFiles.size) return newHits;
+  return [...existingHits.filter((hit) => !hit.testFile || !updatedFiles.has(hit.testFile)), ...newHits];
+}
+
 export function buildDaxtaSpec(
   options: { silent?: boolean; requireHits?: boolean; html?: boolean; clearWorkers?: boolean; uiOnly?: boolean } = {},
 ): BuildResult {
@@ -1025,8 +1106,9 @@ export function buildDaxtaSpec(
     };
   }
 
-  const hits = loadHits();
+  const recordedHits = loadHits();
   const existingHits = readJson<RecordedHit[]>(getHitsJsonPath());
+  const hits = mergeHitsWithExisting(existingHits, recordedHits, readRunMergeMode());
   const writeHtml = options.html !== false;
   const seededStore = ensureViewerStoreSeeded();
   if (seededStore && !options.silent) {

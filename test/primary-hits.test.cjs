@@ -158,3 +158,185 @@ test('exports one example per Jest case when a case calls its endpoint twice', (
   assert.strictEqual(responseExamples.length, 3);
   assert.deepStrictEqual(scenarios.map((scenario) => scenario.reqBody.subscriptionId).sort(), ['source-2', 'source-4', 'target-2']);
 });
+
+test('isolates untitled suites with identical test names across separate test files', () => {
+  const sharedPositive = 'POSITIVE CASES should return items successfully';
+  const sharedMissingHeaders = 'SEMANTIC ERROR CASES returns error when headers are missing';
+
+  const spec = buildSpecIn([
+    // File A: arrange POST + act GET /v1/me/branches
+    {
+      method: 'post',
+      path: '/v1/me/merchant/onboarding-info',
+      status: 201,
+      reqBody: { taxId: '1' },
+      resBody: {},
+      test: sharedPositive,
+      testFile: 'test/modules/branch/get-branch.test.ts',
+    },
+    {
+      method: 'get',
+      path: '/v1/me/branches',
+      status: 200,
+      reqBody: undefined,
+      resBody: { items: ['branch-1'] },
+      test: sharedPositive,
+      testFile: 'test/modules/branch/get-branch.test.ts',
+    },
+    {
+      method: 'get',
+      path: '/v1/me/branches',
+      status: 401,
+      reqBody: undefined,
+      resBody: { error: 'unauthorized' },
+      test: sharedMissingHeaders,
+      testFile: 'test/modules/branch/get-branch.test.ts',
+    },
+    // File B: identical test names, different endpoint GET /v1/me/shopping-cart
+    {
+      method: 'get',
+      path: '/v1/me/shopping-cart',
+      status: 200,
+      reqBody: undefined,
+      resBody: { items: ['cart-1'] },
+      test: sharedPositive,
+      testFile: 'test/modules/shopping-cart/get-cart.test.ts',
+    },
+    {
+      method: 'get',
+      path: '/v1/me/shopping-cart',
+      status: 401,
+      reqBody: undefined,
+      resBody: { error: 'unauthorized' },
+      test: sharedMissingHeaders,
+      testFile: 'test/modules/shopping-cart/get-cart.test.ts',
+    },
+  ]);
+
+  assert.deepStrictEqual(Object.keys(spec.paths).sort(), ['/v1/me/branches', '/v1/me/shopping-cart']);
+  assert.strictEqual(spec.paths['/v1/me/branches'].get['x-scenarios'].length, 2);
+  assert.strictEqual(spec.paths['/v1/me/shopping-cart'].get['x-scenarios'].length, 2);
+});
+
+test('drops unexpected 500 crash responses unless the test explicitly expects 5xx', () => {
+  const spec = buildSpecIn([
+    {
+      method: 'post',
+      path: '/v1/public/checkouts/{id}/complete',
+      pathParams: { id: '6a3fbef3-6590-4f7c-8d50-e156be524f98' },
+      status: 500,
+      reqBody: { bad: true },
+      resBody: { message: 'Internal server error' },
+      test: 'INVALID CASES kycInfo.email - should not be uppercase email',
+      testFile: 'test/modules/external-checkout/complete.test.ts',
+    },
+    {
+      method: 'post',
+      path: '/v1/public/checkouts/{id}/complete',
+      pathParams: { id: '6a3fbef3-6590-4f7c-8d50-e156be524f98' },
+      status: 200,
+      reqBody: { ok: true },
+      resBody: { completed: true },
+      test: 'POSITIVE CASES completes external checkout',
+      testFile: 'test/modules/external-checkout/complete.test.ts',
+    },
+    {
+      method: 'get',
+      path: '/v1/admin/health-fail',
+      status: 500,
+      reqBody: undefined,
+      resBody: { message: 'Internal server error' },
+      test: 'SEMANTIC ERROR CASES should return 500 internal server error on downstream crash',
+      testFile: 'test/modules/health/fail.test.ts',
+    },
+  ]);
+
+  const completeOp = spec.paths['/v1/public/checkouts/{checkoutId}/complete'].post;
+  assert.deepStrictEqual(Object.keys(completeOp.responses), ['200']);
+  assert.strictEqual(completeOp['x-scenarios'].length, 1);
+
+  const expected500Op = spec.paths['/v1/admin/health-fail'].get;
+  assert.deepStrictEqual(Object.keys(expected500Op.responses), ['500']);
+});
+
+test('falls back to suite voting when TEST_TITLE has a typo path that matches no recorded hits', () => {
+  const typoTitle = 'Find One Checkout By Id — GET /v1/public/checkout/:id';
+  const case1 = `${typoTitle} POSITIVE CASES returns record when initialized`;
+  const case2 = `${typoTitle} POSITIVE CASES returns record when completed`;
+
+  const spec = buildSpecIn([
+    {
+      method: 'post',
+      path: '/v1/integrator/checkouts',
+      status: 201,
+      reqBody: { a: 1 },
+      resBody: { id: '1' },
+      test: case1,
+      testFile: 'test/modules/checkout/find-checkout.test.ts',
+    },
+    {
+      method: 'get',
+      path: '/v1/public/checkouts/{id}',
+      pathParams: { id: '6a3fbef3-6590-4f7c-8d50-e156be524f98' },
+      status: 200,
+      reqBody: undefined,
+      resBody: { id: '1' },
+      test: case1,
+      testFile: 'test/modules/checkout/find-checkout.test.ts',
+    },
+    {
+      method: 'post',
+      path: '/v1/integrator/checkouts',
+      status: 201,
+      reqBody: { a: 1 },
+      resBody: { id: '2' },
+      test: case2,
+      testFile: 'test/modules/checkout/find-checkout.test.ts',
+    },
+    {
+      method: 'get',
+      path: '/v1/public/checkouts/{id}',
+      pathParams: { id: '6a3fbef3-6590-4f7c-8d50-e156be524f98' },
+      status: 200,
+      reqBody: undefined,
+      resBody: { id: '2' },
+      test: case2,
+      testFile: 'test/modules/checkout/find-checkout.test.ts',
+    },
+  ]);
+
+  assert.deepStrictEqual(Object.keys(spec.paths), ['/v1/public/checkouts/{checkoutId}']);
+  assert.strictEqual(spec.paths['/v1/public/checkouts/{checkoutId}'].get['x-scenarios'].length, 2);
+});
+
+test('mergeHitsWithExisting replaces full run, updates single suite, and updates single case', () => {
+  const { mergeHitsWithExisting } = require(path.join(root, 'dist/build/build-spec.js'));
+  const existing = [
+    { method: 'get', path: '/v1/a', status: 200, resBody: { v: 1 }, test: 'POSITIVE CASES a1', testFile: 'a.test.ts' },
+    { method: 'get', path: '/v1/a', status: 400, resBody: { v: 1 }, test: 'INVALID CASES a2', testFile: 'a.test.ts' },
+    { method: 'get', path: '/v1/b', status: 200, resBody: { v: 1 }, test: 'POSITIVE CASES b1', testFile: 'b.test.ts' },
+  ];
+
+  // Full run replaces everything
+  const fullOnly = [{ method: 'get', path: '/v1/c', status: 200, resBody: { v: 2 }, test: 'POSITIVE CASES c1', testFile: 'c.test.ts' }];
+  assert.deepStrictEqual(
+    mergeHitsWithExisting(existing, fullOnly, 'none').map((h) => h.path),
+    ['/v1/c'],
+  );
+
+  // Suite-filtered run replaces only a.test.ts and preserves b.test.ts
+  const suiteUpdate = [{ method: 'get', path: '/v1/a', status: 200, resBody: { v: 2 }, test: 'POSITIVE CASES a1', testFile: 'a.test.ts' }];
+  const afterSuite = mergeHitsWithExisting(existing, suiteUpdate, 'suite');
+  assert.deepStrictEqual(
+    afterSuite.map((h) => `${h.testFile}:${h.resBody.v}`),
+    ['b.test.ts:1', 'a.test.ts:2'],
+  );
+
+  // Case-filtered (-t) run replaces only the matching case in a.test.ts
+  const caseUpdate = [{ method: 'get', path: '/v1/a', status: 200, resBody: { v: 3 }, test: 'POSITIVE CASES a1', testFile: 'a.test.ts' }];
+  const afterCase = mergeHitsWithExisting(existing, caseUpdate, 'case');
+  assert.deepStrictEqual(
+    afterCase.map((h) => `${h.test}:${h.resBody.v}`),
+    ['INVALID CASES a2:1', 'POSITIVE CASES b1:1', 'POSITIVE CASES a1:3'],
+  );
+});
