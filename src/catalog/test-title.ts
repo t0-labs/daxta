@@ -5,26 +5,29 @@ const METHODS = HTTP_VERBS;
 /** Trailing qualifiers such as `(integration)` or `(solution partner)`. */
 const QUALIFIER = '(?:\\s+\\([^)]*\\))*';
 
+/** Path token with or without a leading slash, e.g. `/v1/users` or `v1/external/checkout/complete`. */
+const PATH_TOKEN = '(?:\\/|[a-zA-Z0-9._-]+\\/)\\S+';
+
 const PATH_ONLY_BRACKET_RE = new RegExp(
-  `^(?<path>\\/\\S+)\\s+\\[(?<method>${METHODS})\\]${QUALIFIER}\\s*$`,
+  `^(?<path>${PATH_TOKEN})\\s+\\[(?<method>${METHODS})\\]${QUALIFIER}\\s*$`,
   'i',
 );
 const TITLE_BRACKET_RE = new RegExp(
-  `^(?<title>.+?)\\s+(?<path>\\/\\S+)\\s+\\[(?<method>${METHODS})\\]${QUALIFIER}\\s*$`,
+  `^(?<title>.+?)\\s+(?<path>${PATH_TOKEN})\\s+\\[(?<method>${METHODS})\\]${QUALIFIER}\\s*$`,
   'i',
 );
 /** `Create Mock Tbs — POST /v1/admin/mock-tbs` */
 const TITLE_DASH_RE = new RegExp(
-  `^(?<title>.+?)\\s+[—–-]\\s+(?<method>${METHODS})\\s+(?<path>\\/\\S+)${QUALIFIER}\\s*$`,
+  `^(?<title>.+?)\\s+[—–-]\\s+(?<method>${METHODS})\\s+(?<path>${PATH_TOKEN})${QUALIFIER}\\s*$`,
   'i',
 );
 /** `POST /v1/admin/mock-tbs — Create Mock Tbs` */
 const METHOD_PATH_TITLE_RE = new RegExp(
-  `^(?<method>${METHODS})\\s+(?<path>\\/\\S+)\\s+[—–-]\\s+(?<title>.+?)${QUALIFIER}\\s*$`,
+  `^(?<method>${METHODS})\\s+(?<path>${PATH_TOKEN})\\s+[—–-]\\s+(?<title>.+?)${QUALIFIER}\\s*$`,
   'i',
 );
 const PATH_ONLY_DASH_RE = new RegExp(
-  `^(?<method>${METHODS})\\s+(?<path>\\/\\S+)${QUALIFIER}\\s*$`,
+  `^(?<method>${METHODS})\\s+(?<path>${PATH_TOKEN})${QUALIFIER}\\s*$`,
   'i',
 );
 
@@ -146,9 +149,10 @@ export function parseOperationLabel(raw?: string): ParsedOperationLabel | undefi
   const integration = /\(integration\)/i.test(cut);
 
   const fromGroups = (match: RegExpMatchArray | null): ParsedOperationLabel | undefined => {
-    const path = match?.groups?.path;
+    const rawPath = match?.groups?.path;
     const method = match?.groups?.method;
-    if (!path || !method) return undefined;
+    if (!rawPath || !method) return undefined;
+    const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
     const title = match.groups?.title?.trim();
     return {
       title: isHumanOperationTitle(title) ? title : undefined,

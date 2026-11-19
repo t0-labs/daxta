@@ -32,4 +32,19 @@ describe('title and template parsing', () => {
     assert.equal(docsScenarioClause('creates user with valid payload'), 'valid payload');
     assert.equal(docsScenarioClause('returns error if token is expired'), 'token is expired');
   });
+
+  it('parses paths without a leading slash and normalizes them', () => {
+    assert.deepEqual(parseOperationLabel('v1/external/checkout/complete [POST] (integration)'), {
+      title: undefined,
+      path: '/v1/external/checkout/complete',
+      method: 'POST',
+      integration: true,
+    });
+    assert.deepEqual(parseOperationLabel('Complete Checkout — POST v1/external/checkout/complete'), {
+      title: 'Complete Checkout',
+      path: '/v1/external/checkout/complete',
+      method: 'POST',
+      integration: false,
+    });
+  });
 });

@@ -112,7 +112,7 @@ function applyAllRecommended(
 
   // Converge in the same run if earlier rewrites exposed or shifted another auto-fixable case.
   if (fromTitleIndex === 0 && fromCaseIndex === 0 && (titlesWritten > 0 || casesWritten > 0)) {
-    for (let pass = 0; pass < 2; pass += 1) {
+    for (let pass = 0; pass < 10; pass += 1) {
       const next = scanTestNaming(cwd);
       let passWritten = 0;
       let passSkipped = 0;
