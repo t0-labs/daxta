@@ -303,7 +303,7 @@ function isEligibleHit(hit: RecordedHit): boolean {
 
 function hasDeclaredTarget(hit: RecordedHit): boolean {
   if (!hit.test) return false;
-  return Boolean(parseOperationLabel(hit.test)?.path || declaredMethods(hit.test));
+  return Boolean(parseOperationLabel(hit.test)?.path);
 }
 
 function matchesDeclaredTarget(hit: RecordedHit): boolean {

@@ -340,3 +340,13 @@ test('mergeHitsWithExisting replaces full run, updates single suite, and updates
     ['INVALID CASES a2:1', 'POSITIVE CASES b1:1', 'POSITIVE CASES a1:3'],
   );
 });
+
+test('does not leak same-method setup calls when title has [METHOD] without a parsed path', () => {
+  const testTitle = 'v1/admin/terminals/available-terminals [GET] (integration) should return terminals';
+  const testFile = 'find-available-merchant-terminals.integration.test.ts';
+  const spec = buildSpecIn([
+    { ...hit('get', '/v1/me/shopping-cart/agreements'), test: testTitle, testFile },
+    { ...hit('get', '/v1/admin/terminals/available-terminals'), test: testTitle, testFile },
+  ]);
+  assert.deepStrictEqual(Object.keys(spec.paths), ['/v1/admin/terminals/available-terminals']);
+});
