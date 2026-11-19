@@ -77,6 +77,7 @@ function applyAllRecommended(
   let written = 0;
   let skipped = 0;
   const pending: TitleFinding[] = [];
+  let titlesWritten = 0;
   for (let i = fromTitleIndex; i < titles.length; i += 1) {
     if (!titles[i].auto || !titles[i].suggestions[0]) {
       pending.push(titles[i]);
@@ -85,20 +86,61 @@ function applyAllRecommended(
     if (writeTitle(cwd, titles[i])) {
       console.log(`  ${c.mint('✔')} ${titles[i].suggestions[0]}  ${c.dim(titles[i].file + ':' + titles[i].line)}`);
       written += 1;
+      titlesWritten += 1;
     } else skipped += 1;
   }
+
+  // Re-scan cases if titles changed so line numbers and describe context stay fresh.
+  const initialCases =
+    fromTitleIndex === 0 && fromCaseIndex === 0 && titlesWritten > 0 ? scanTestNaming(cwd).cases : cases;
   const caseStart = fromTitleIndex < titles.length ? 0 : fromCaseIndex;
-  for (let i = caseStart; i < cases.length; i += 1) {
-    if (!cases[i].auto || !cases[i].suggestions[0]) {
-      skipped += 1;
+  let casesWritten = 0;
+  let caseSkipped = 0;
+  for (let i = caseStart; i < initialCases.length; i += 1) {
+    if (!initialCases[i].auto || !initialCases[i].suggestions[0]) {
+      caseSkipped += 1;
       continue;
     }
-    if (writeIt(cwd, cases[i])) {
-      console.log(`  ${c.mint('✔')} ${cases[i].suggestions[0]}  ${c.dim(cases[i].file + ':' + cases[i].line)}`);
+    if (writeIt(cwd, initialCases[i])) {
+      console.log(
+        `  ${c.mint('✔')} ${initialCases[i].suggestions[0]}  ${c.dim(initialCases[i].file + ':' + initialCases[i].line)}`,
+      );
       written += 1;
-    } else skipped += 1;
+      casesWritten += 1;
+    } else caseSkipped += 1;
   }
-  return { written, skipped, pending };
+
+  // Converge in the same run if earlier rewrites exposed or shifted another auto-fixable case.
+  if (fromTitleIndex === 0 && fromCaseIndex === 0 && (titlesWritten > 0 || casesWritten > 0)) {
+    for (let pass = 0; pass < 2; pass += 1) {
+      const next = scanTestNaming(cwd);
+      let passWritten = 0;
+      let passSkipped = 0;
+      for (const title of next.titles) {
+        if (!title.auto || !title.suggestions[0]) continue;
+        if (writeTitle(cwd, title)) {
+          console.log(`  ${c.mint('✔')} ${title.suggestions[0]}  ${c.dim(title.file + ':' + title.line)}`);
+          written += 1;
+          passWritten += 1;
+        } else passSkipped += 1;
+      }
+      for (const item of next.cases) {
+        if (!item.auto || !item.suggestions[0]) {
+          passSkipped += 1;
+          continue;
+        }
+        if (writeIt(cwd, item)) {
+          console.log(`  ${c.mint('✔')} ${item.suggestions[0]}  ${c.dim(item.file + ':' + item.line)}`);
+          written += 1;
+          passWritten += 1;
+        } else passSkipped += 1;
+      }
+      caseSkipped = passSkipped;
+      if (passWritten === 0) break;
+    }
+  }
+
+  return { written, skipped: skipped + caseSkipped, pending };
 }
 
 export async function runTitleCheck(options: {
