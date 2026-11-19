@@ -1,6 +1,6 @@
 {
   "name": "@t0.labs/daxta",
-  "version": "1.2.23",
+  "version": "1.2.24",
   "description": "DAxTA — Tested behavior. Trusted API docs. Generate API documentation from observed test execution.",
   "license": "MIT",
   "author": {
