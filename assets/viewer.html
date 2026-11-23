@@ -4333,7 +4333,7 @@
           }
           if (!treeSegments) treeSegments = urlPath.split("/").filter(Boolean);
 
-          const exportPath = exportPathFromTree(urlPath, treeSegments);
+          const exportPath = urlPath;
           const itemOut = { ...(pathsOut[exportPath] || {}) };
           let addedMethod = false;
 
@@ -4372,7 +4372,6 @@
             cleaned.tags = [tag];
             cleaned["x-tree-segments"] = segments;
             tagNames.add(tag);
-            if (exportPath !== urlPath) cleaned["x-daxta-url-path"] = urlPath;
             itemOut[method] = cleaned;
           }
           if (addedMethod || Object.keys(pathsOut[exportPath] || {}).length) {
