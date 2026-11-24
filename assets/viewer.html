@@ -3752,9 +3752,9 @@
         return state;
       };
 
-      // Prefer disk (shared across browsers / deploy), then localStorage, then defaults.
-      let store = applyServingBaseUrl(loadLocalStore() || buildDefaultStore());
-      let persistTimer = null;
+      // Browser-local store (localStorage) takes precedence; server env.json only seeds defaults.
+      const initialLocalStore = loadLocalStore();
+      let store = applyServingBaseUrl(initialLocalStore || buildDefaultStore());
 
       const writeLocalStore = () => {
         try {
@@ -3762,29 +3762,12 @@
         } catch {}
       };
 
-      const writeServerStore = async () => {
-        try {
-          const res = await fetch(ENV_STORE_URL, {
-            method: "PUT",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(store),
-          });
-          if (!res.ok) return;
-        } catch {
-          /* offline / file:// — localStorage still works */
-        }
-      };
-
       const persistStore = () => {
         writeLocalStore();
-        if (persistTimer) clearTimeout(persistTimer);
-        persistTimer = setTimeout(() => {
-          persistTimer = null;
-          writeServerStore();
-        }, 250);
       };
 
       const hydrateStoreFromServer = async () => {
+        if (initialLocalStore) return false;
         try {
           const res = await fetch(ENV_STORE_URL, { cache: "no-store" });
           if (!res.ok) return false;

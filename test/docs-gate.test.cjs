@@ -50,7 +50,7 @@ test('default config does not hardcode localhost:3000 and uses relative server "
   }
 });
 
-test('apiDocsHandler disables /__proxy by default and infers live gateway origin for openapi.json', async () => {
+test('apiDocsHandler disables /__proxy by default and keeps /docs/env.json read-only', async () => {
   const handler = apiDocsHandler({ basePath: '/docs' });
   let nextCalled = false;
   await handler(
@@ -61,6 +61,18 @@ test('apiDocsHandler disables /__proxy by default and infers live gateway origin
     },
   );
   assert.strictEqual(nextCalled, true, '/__proxy should fall through to next() when enableProxy is not true');
+
+  for (const method of ['PUT', 'POST']) {
+    let envWriteNext = false;
+    await handler(
+      { method, url: '/docs/env.json', headers: {}, body: { envs: { dev: { variables: [] } } } },
+      { setHeader() {}, end() {} },
+      () => {
+        envWriteNext = true;
+      },
+    );
+    assert.strictEqual(envWriteNext, true, `${method} /docs/env.json should not be handled (env edits stay browser-only)`);
+  }
 });
 
 test('viewer.html inline scripts compile without syntax errors', () => {

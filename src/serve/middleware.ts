@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { getDocsBasePath, getHtmlPath, readEmptyDocsHtml } from './paths';
 import { CORS_PREFLIGHT_HEADERS, forwardProxyRequest } from './proxy';
 import { readStrippedOpenApiJson } from './spec-utils';
-import { readViewerEnvStore, writeViewerEnvStore } from './viewer-store';
+import { readViewerEnvStore } from './viewer-store';
 
 export type ApiDocsOptions = {
   /** URL prefix for the API docs viewer. Default from config (`docsPath`) / `DAXTA_DOCS_PATH` or `/docs`. */
@@ -84,42 +84,6 @@ function bodyToBuffer(body: unknown): Buffer | undefined {
   return Buffer.from(JSON.stringify(body));
 }
 
-async function readRequestJson(req: LooseRequest): Promise<unknown> {
-  if (req.body != null && req.body !== '') {
-    if (typeof req.body === 'string') {
-      try {
-        return JSON.parse(req.body);
-      } catch {
-        return null;
-      }
-    }
-    if (Buffer.isBuffer(req.body)) {
-      try {
-        return JSON.parse(req.body.toString('utf8'));
-      } catch {
-        return null;
-      }
-    }
-    return req.body;
-  }
-
-  const stream = req as unknown as NodeJS.ReadableStream & { readableEnded?: boolean };
-  if (typeof stream.on !== 'function' || stream.readableEnded) return null;
-
-  const chunks: Buffer[] = [];
-  await new Promise<void>((resolve, reject) => {
-    stream.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-    stream.on('end', () => resolve());
-    stream.on('error', reject);
-  });
-  if (!chunks.length) return null;
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  } catch {
-    return null;
-  }
-}
-
 function firstHeaderValue(raw: string | string[] | undefined): string {
   if (!raw) return '';
   const first = Array.isArray(raw) ? raw[0] : raw;
@@ -190,21 +154,6 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
           'content-type': 'application/json; charset=utf-8',
           'cache-control': 'no-store',
         });
-        return;
-      }
-      if (method === 'PUT' || method === 'POST') {
-        try {
-          const payload = await readRequestJson(req);
-          const saved = writeViewerEnvStore(payload);
-          write(res, 200, `${JSON.stringify(saved)}\n`, {
-            'content-type': 'application/json; charset=utf-8',
-            'cache-control': 'no-store',
-          });
-        } catch (error) {
-          write(res, 400, `${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}\n`, {
-            'content-type': 'application/json; charset=utf-8',
-          });
-        }
         return;
       }
       next();
