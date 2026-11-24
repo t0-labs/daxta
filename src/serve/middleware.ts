@@ -8,10 +8,13 @@ import { readViewerEnvStore, writeViewerEnvStore } from './viewer-store';
 export type ApiDocsOptions = {
   /** URL prefix for the API docs viewer. Default from config (`docsPath`) / `DAXTA_DOCS_PATH` or `/docs`. */
   basePath?: string;
+  /** Opt-in outbound `/__proxy` route (disabled by default so deployed services never expose an open proxy). */
+  enableProxy?: boolean;
 };
 
 type LooseRequest = {
   method?: string;
+  protocol?: string;
   path?: string;
   url?: string;
   originalUrl?: string;
@@ -117,23 +120,46 @@ async function readRequestJson(req: LooseRequest): Promise<unknown> {
   }
 }
 
+function firstHeaderValue(raw: string | string[] | undefined): string {
+  if (!raw) return '';
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  return String(first || '').split(',')[0].trim();
+}
+
+function inferRequestBaseUrl(req: LooseRequest, basePath: string): string | undefined {
+  const headers = req.headers ?? {};
+  const host = firstHeaderValue(headers['x-forwarded-host']) || firstHeaderValue(headers.host);
+  if (!host) return undefined;
+  const proto = firstHeaderValue(headers['x-forwarded-proto']) || req.protocol || 'http';
+  const forwardedPrefix = firstHeaderValue(headers['x-forwarded-prefix']).replace(/\/$/, '');
+  const pathname = requestPathname(req);
+  let pathPrefix = '';
+  const idx = pathname.indexOf(basePath);
+  if (idx > 0) {
+    pathPrefix = pathname.slice(0, idx).replace(/\/$/, '');
+  }
+  const prefix = forwardedPrefix || pathPrefix;
+  return `${proto}://${host}${prefix}`.replace(/\/$/, '');
+}
+
 /**
  * Express / Nest handler that serves generated API docs under `/docs`
- * (or `basePath`), Try-it proxy at `/__proxy`, and env store at `{base}/env.json`.
+ * (or `basePath`) and env store at `{base}/env.json`.
  */
 export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
   const basePath = (options.basePath ?? getDocsBasePath()).replace(/\/$/, '') || '/docs';
+  const enableProxy = options.enableProxy === true;
 
   return async (req, res, next) => {
     const method = (req.method || 'GET').toUpperCase();
     const pathname = requestPathname(req);
 
-    if (method === 'OPTIONS' && (pathname === '/__proxy' || pathname.startsWith(basePath))) {
+    if (method === 'OPTIONS' && ((enableProxy && pathname === '/__proxy') || pathname.startsWith(basePath))) {
       write(res, 204, '', { ...CORS_PREFLIGHT_HEADERS });
       return;
     }
 
-    if (pathname === '/__proxy') {
+    if (enableProxy && pathname === '/__proxy') {
       const target =
         typeof req.query?.target === 'string'
           ? req.query.target
@@ -191,7 +217,7 @@ export function apiDocsHandler(options: ApiDocsOptions = {}): ApiDocsHandler {
     }
 
     if (isDocsSpec) {
-      const body = readStrippedOpenApiJson();
+      const body = readStrippedOpenApiJson(inferRequestBaseUrl(req, basePath));
       if (!body) {
         write(res, 404, 'openapi.json not found. Run `daxta generate` first.', { 'content-type': 'text/plain; charset=utf-8' });
         return;

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'fs';
 
+import { envNameFromUrl } from '../config';
 import { getSpecJsonPath } from './paths';
 
 const VIEWER_EXTENSION_KEYS = new Set(['x-viewer', 'x-docs', 'x-scenarios', 'x-tree-segments', 'x-workspace']);
@@ -171,9 +172,19 @@ export function toTreeOrderedOpenApi(raw: Record<string, unknown>): Record<strin
   };
 }
 
-export function readStrippedOpenApiJson(): string | null {
+export function readStrippedOpenApiJson(inferredBaseUrl?: string): string | null {
   const specPath = getSpecJsonPath();
   if (!existsSync(specPath)) return null;
   const raw = JSON.parse(readFileSync(specPath, 'utf8')) as Record<string, unknown>;
-  return `${JSON.stringify(toTreeOrderedOpenApi(raw), null, 2)}\n`;
+  const exported = toTreeOrderedOpenApi(raw);
+  if (inferredBaseUrl) {
+    const cleanBase = inferredBaseUrl.replace(/\/$/, '');
+    const currentServers = Array.isArray(exported.servers) ? (exported.servers as Array<{ url?: string; description?: string }>) : [];
+    const onlyRelativeOrEmpty =
+      currentServers.length === 0 || currentServers.every((s) => !s?.url || s.url === '/');
+    if (onlyRelativeOrEmpty && cleanBase) {
+      exported.servers = [{ url: cleanBase, description: envNameFromUrl(cleanBase) }];
+    }
+  }
+  return `${JSON.stringify(exported, null, 2)}\n`;
 }

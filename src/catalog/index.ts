@@ -139,14 +139,14 @@ export function viewerTreeConfig() {
   const config = getConfig();
   return {
     workspace: config.workspace,
-    baseUrl: config.baseUrl,
+    ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
     docsPath: config.docsPath,
     treeLayout: normalizeTreeLayout(config.treeLayout),
     treeSkipParams: config.treeSkipParams !== false,
     treeCollapseSingle: config.treeCollapseSingle !== false,
     treePathOverrides: config.treePathOverrides,
     exampleLabelStyle: config.exampleLabelStyle ?? 'status-title-case',
-    envPresets: config.envPresets,
+    ...(config.envPresets && Object.keys(config.envPresets).length ? { envPresets: config.envPresets } : {}),
     headerVarStyle: config.headerVarStyle ?? 'camel',
     headerVariables: config.headerVariables ?? {},
   };

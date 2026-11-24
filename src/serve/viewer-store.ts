@@ -95,7 +95,11 @@ export function ensureViewerStoreSeeded(): string | null {
   if (existsSync(filePath)) return null;
 
   const config = getConfig();
-  const presets = config.envPresets ?? { local: { baseUrl: config.baseUrl } };
+  const configuredPresets = config.envPresets ?? {};
+  if (!Object.keys(configuredPresets).length && !config.baseUrl) {
+    return null;
+  }
+  const presets = Object.keys(configuredPresets).length ? configuredPresets : { local: { baseUrl: config.baseUrl } };
   const envs: Record<string, ViewerEnvConfig> = {};
 
   for (const [name, preset] of Object.entries(presets)) {

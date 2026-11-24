@@ -127,7 +127,8 @@ function applyPathParams(template: string, params?: Record<string, string>): str
 }
 
 export async function executeCall(values: CallValues, extraHeaders: Record<string, string> = {}): Promise<void> {
-  const baseUrl = getConfig().baseUrl.replace(/\/$/, '');
+  const fallbackOrigin = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const baseUrl = (getConfig().baseUrl || fallbackOrigin).replace(/\/$/, '');
   const url = new URL(applyPathParams(values.path, values.pathParams), `${baseUrl}/`);
   for (const [key, value] of Object.entries(values.query ?? {})) url.searchParams.set(key, value);
 

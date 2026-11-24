@@ -130,7 +130,6 @@ export default defineConfig({
     // version defaults to package.json version automatically
   }),
   workspace: '${safeName}',
-  baseUrl: 'http://localhost:3000',
   controllersRoot: 'src',
   outDir: '.daxta/out',
   docsPath: '/docs',
@@ -140,8 +139,8 @@ export default defineConfig({
   exampleLabelStyle: 'status-title-case',
   fieldsFile: '.daxta/out/fields.json',
   viewerStoreFile: '.daxta/viewer-store.json',
-  // Try-it envs are derived from baseUrl / spec servers. Add envPresets only to
-  // override or add extra environments:
+  // Serving origin & Gateway prefix are auto-detected at runtime.
+  // Set baseUrl or envPresets only when you want fixed named environments:
   // envPresets: { staging: { baseUrl: 'https://api.staging.example.com' } },
 });
 `;
@@ -151,7 +150,13 @@ export default defineConfig({
 
 function ensureGitignore(cwd: string, dryRun: boolean): string[] {
   const gitignorePath = path.join(cwd, '.gitignore');
-  const entries = ['.daxta/out/', '.daxta/viewer-store.json', '**/.jest.daxta.runtime.json'];
+  const entries = [
+    '.daxta/out/openapi.html',
+    '.daxta/out/partial.json',
+    '.daxta/out/*worker*.json',
+    '.daxta/viewer-store.json',
+    '**/.jest.daxta.runtime.json',
+  ];
   if (!existsSync(gitignorePath)) {
     if (!dryRun) writeFileSync(gitignorePath, `${entries.join('\n')}\n`);
     return entries.map((e) => `created .gitignore (+ ${e})`);

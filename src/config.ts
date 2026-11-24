@@ -155,7 +155,7 @@ export type ResolvedDaxtaConfig = Required<
 
 const DEFAULTS: ResolvedDaxtaConfig = {
   workspace: 'API',
-  baseUrl: 'http://localhost:3000',
+  baseUrl: '',
   controllersRoot: 'src',
   outDir: '.daxta/out',
   treeLayout: 'role-resource',
@@ -172,9 +172,7 @@ const DEFAULTS: ResolvedDaxtaConfig = {
   fieldsFile: '.daxta/out/fields.json',
   docsPath: '/docs',
   viewerStoreFile: '.daxta/viewer-store.json',
-  envPresets: {
-    local: { baseUrl: 'http://localhost:3000' },
-  },
+  envPresets: {},
 };
 
 let cached: ResolvedDaxtaConfig | null = null;
@@ -286,19 +284,23 @@ export function envNameFromUrl(url: string): string {
 export function serversFromEnvPresets(
   presets: Record<string, EnvPreset> | undefined,
   fallbackBaseUrl: string,
-): Array<{ url: string; description: string }> {
+): Array<{ url: string; description?: string }> {
   const normalized = normalizeEnvPresets(presets, fallbackBaseUrl);
   const seen = new Set<string>();
-  const servers: Array<{ url: string; description: string }> = [];
+  const servers: Array<{ url: string; description?: string }> = [];
   for (const [name, preset] of Object.entries(normalized)) {
-    const url = String(preset.baseUrl).replace(/\/$/, '');
+    const url = String(preset.baseUrl || '').replace(/\/$/, '');
     if (!url || seen.has(url)) continue;
     seen.add(url);
     servers.push({ url, description: name });
   }
   if (!servers.length) {
-    const url = String(fallbackBaseUrl).replace(/\/$/, '') || 'http://localhost:3000';
-    servers.push({ url, description: envNameFromUrl(url) });
+    const url = String(fallbackBaseUrl || '').replace(/\/$/, '');
+    if (url) {
+      servers.push({ url, description: envNameFromUrl(url) });
+    } else {
+      servers.push({ url: '/' });
+    }
   }
   return servers;
 }
@@ -311,7 +313,8 @@ function normalizeEnvPresets(
   const out: Record<string, EnvPreset> = {};
   for (const [name, preset] of Object.entries(input)) {
     if (!name.trim() || !preset || typeof preset !== 'object') continue;
-    const baseUrl = String(preset.baseUrl || fallbackBaseUrl).replace(/\/$/, '') || fallbackBaseUrl;
+    const baseUrl = String(preset.baseUrl || fallbackBaseUrl || '').replace(/\/$/, '');
+    if (!baseUrl && !preset.variables && !preset.baseUrlKey) continue;
     const variables: Record<string, string> = {};
     if (preset.variables && typeof preset.variables === 'object') {
       for (const [key, value] of Object.entries(preset.variables)) {
@@ -327,8 +330,10 @@ function normalizeEnvPresets(
     };
   }
   if (!Object.keys(out).length) {
-    const baseUrl = String(fallbackBaseUrl).replace(/\/$/, '') || 'http://localhost:3000';
-    out[envNameFromUrl(baseUrl)] = { baseUrl };
+    const baseUrl = String(fallbackBaseUrl || '').replace(/\/$/, '');
+    if (baseUrl) {
+      out[envNameFromUrl(baseUrl)] = { baseUrl };
+    }
   }
   return out;
 }

@@ -33,6 +33,16 @@
         --warn: #d4a017;
         --err: #f07171;
         --err-bg: #3a1818;
+        --m-get-bg: #122634;
+        --m-get-fg: #58b9f7;
+        --m-post-bg: #142c1e;
+        --m-post-fg: #3dcc70;
+        --m-put-bg: #2d220d;
+        --m-put-fg: #e5a922;
+        --m-patch-bg: #231938;
+        --m-patch-fg: #b497ff;
+        --m-del-bg: #361616;
+        --m-del-fg: #f07171;
         --sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
         --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
         --radius: 2px;
@@ -139,6 +149,16 @@
         --warn: #b45309;
         --err: #b42318;
         --err-bg: #fbeaea;
+        --m-get-bg: #eaf5fe;
+        --m-get-fg: #0369a1;
+        --m-post-bg: #e8f8ee;
+        --m-post-fg: #15803d;
+        --m-put-bg: #fef6e0;
+        --m-put-fg: #b45309;
+        --m-patch-bg: #f3eeff;
+        --m-patch-fg: #6d28d9;
+        --m-del-bg: #fbeaea;
+        --m-del-fg: #b42318;
         --ring: 0 0 0 1px #e6e6e6;
         --ghost: 0 0 0 1px #e6e6e6;
       }
@@ -1467,6 +1487,69 @@
         gap: 10px;
         background: var(--inset);
       }
+      input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        margin: 0;
+        flex: none;
+        display: inline-grid;
+        place-content: center;
+        border: 1px solid color-mix(in srgb, var(--stone) 45%, var(--hairline));
+        border-radius: 3px;
+        background: var(--white);
+        cursor: pointer;
+        transition:
+          background 0.14s ease,
+          border-color 0.14s ease,
+          box-shadow 0.14s ease;
+      }
+      input[type="checkbox"]::after {
+        content: "";
+        display: block;
+        opacity: 0;
+        transform: scale(0.75);
+        transition:
+          opacity 0.12s ease,
+          transform 0.12s ease;
+      }
+      input[type="checkbox"]:hover:not(:disabled) {
+        border-color: var(--charcoal);
+        background: var(--inset);
+      }
+      input[type="checkbox"]:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--obsidian) 22%, transparent);
+      }
+      input[type="checkbox"]:checked:not(:indeterminate) {
+        background: var(--obsidian);
+        border-color: var(--obsidian);
+      }
+      input[type="checkbox"]:checked:not(:indeterminate)::after {
+        width: 7.5px;
+        height: 4px;
+        border-left: 1.6px solid var(--canvas);
+        border-bottom: 1.6px solid var(--canvas);
+        opacity: 1;
+        transform: translateY(-0.8px) rotate(-45deg) scale(1);
+      }
+      input[type="checkbox"]:indeterminate {
+        background: color-mix(in srgb, var(--obsidian) 14%, var(--inset));
+        border-color: color-mix(in srgb, var(--obsidian) 65%, var(--hairline));
+      }
+      input[type="checkbox"]:indeterminate::after {
+        width: 7px;
+        height: 1.6px;
+        border-radius: 1px;
+        background: var(--obsidian);
+        opacity: 1;
+        transform: scale(1);
+      }
+      input[type="checkbox"]:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
       .export-check {
         display: flex;
         align-items: flex-start;
@@ -1476,7 +1559,7 @@
         cursor: pointer;
         line-height: 1.35;
       }
-      .export-check input {
+      .export-check input[type="checkbox"] {
         margin-top: 2px;
       }
       .export-tryit-meta {
@@ -1868,7 +1951,7 @@
         color: var(--charcoal);
         line-height: 1.35;
       }
-      .export-ex input {
+      .export-ex input[type="checkbox"] {
         margin-top: 2px;
       }
       .export-ex label {
@@ -1901,29 +1984,30 @@
         letter-spacing: 0.04em;
         text-transform: uppercase;
         box-shadow: none;
-        border: 0;
-        background: #e4e4e7;
-        color: #27272a;
+        border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+        flex: none;
+        background: var(--inset);
+        color: var(--charcoal);
       }
       .method.get {
-        background: #f4f4f5;
-        color: #52525b;
-      }
-      .method.patch {
-        background: #d4d4d8;
-        color: #18181b;
-      }
-      .method.put {
-        background: #a1a1aa;
-        color: #fafafa;
+        background: var(--m-get-bg);
+        color: var(--m-get-fg);
       }
       .method.post {
-        background: #3f3f46;
-        color: #fafafa;
+        background: var(--m-post-bg);
+        color: var(--m-post-fg);
+      }
+      .method.put {
+        background: var(--m-put-bg);
+        color: var(--m-put-fg);
+      }
+      .method.patch {
+        background: var(--m-patch-bg);
+        color: var(--m-patch-fg);
       }
       .method.delete {
-        background: #111111;
-        color: #ffffff;
+        background: var(--m-del-bg);
+        color: var(--m-del-fg);
       }
       .schema-block {
         padding: 10px 12px 12px;
@@ -2263,6 +2347,162 @@
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .draft-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--hairline));
+        background: color-mix(in srgb, var(--warn) 12%, var(--paper));
+        color: var(--warn);
+        font: 500 10px/1.3 var(--mono);
+        letter-spacing: 0.02em;
+        text-transform: none;
+      }
+      .draft-pill[hidden],
+      .draft-action[hidden] {
+        display: none;
+      }
+      .draft-action {
+        height: 24px;
+        padding: 0 9px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--white);
+        color: var(--charcoal);
+        font: 500 11px/1 var(--sans);
+        cursor: pointer;
+        transition:
+          background 0.12s ease,
+          border-color 0.12s ease,
+          color 0.12s ease;
+      }
+      .draft-action:hover {
+        background: var(--inset);
+        color: var(--obsidian);
+      }
+      .draft-action.on {
+        background: var(--obsidian);
+        border-color: var(--obsidian);
+        color: var(--white);
+      }
+      .draft-action.reset:hover {
+        border-color: color-mix(in srgb, var(--err) 55%, var(--hairline));
+        color: var(--err);
+      }
+      .draft-kv-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .draft-kv-row {
+        display: grid;
+        grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.6fr) 24px;
+        gap: 6px;
+        align-items: center;
+      }
+      .draft-kv-row.path-row {
+        grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.6fr);
+      }
+      .draft-input {
+        width: 100%;
+        min-width: 0;
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--inset);
+        color: var(--obsidian);
+        font: 12px/1 var(--mono);
+        transition: border-color 0.12s ease, background 0.12s ease;
+      }
+      .draft-input:focus {
+        outline: none;
+        border-color: var(--stone);
+        background: var(--white);
+      }
+      .draft-input[readonly] {
+        color: var(--stone);
+        background: transparent;
+        border-color: transparent;
+        padding-left: 2px;
+      }
+      .draft-del-btn {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--smoke);
+        font: 14px/1 var(--mono);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .draft-del-btn:hover {
+        border-color: var(--hairline);
+        background: var(--inset);
+        color: var(--err);
+      }
+      .draft-add-btn {
+        margin-top: 6px;
+        height: 24px;
+        padding: 0 8px;
+        border: 1px dashed var(--hairline);
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--stone);
+        font: 500 11px/1 var(--mono);
+        cursor: pointer;
+      }
+      .draft-add-btn:hover {
+        border-style: solid;
+        border-color: var(--stone);
+        color: var(--obsidian);
+        background: var(--inset);
+      }
+      .draft-body-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .draft-body-input {
+        width: 100%;
+        min-height: 180px;
+        padding: 10px 12px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--inset);
+        color: var(--obsidian);
+        font: 12px/1.55 var(--mono);
+        resize: vertical;
+        tab-size: 2;
+      }
+      .draft-body-input:focus {
+        outline: none;
+        border-color: var(--stone);
+        background: var(--white);
+      }
+      .draft-body-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font: 11px/1.3 var(--mono);
+        color: var(--smoke);
+      }
+      .draft-json-state.ok {
+        color: var(--ok);
+      }
+      .draft-json-state.warn {
+        color: var(--warn);
       }
       .card-head-actions {
         display: flex;
@@ -2838,10 +3078,12 @@
       const viewer = spec["x-viewer"] || {};
       const workspace =
         (spec.info && spec.info["x-workspace"]) || viewer.workspace || "";
+      const rawSpecServerUrl =
+        spec.servers && spec.servers[0] && spec.servers[0].url
+          ? String(spec.servers[0].url)
+          : "";
       const defaultBaseUrlFromSpec = String(
-        viewer.baseUrl ||
-          (spec.servers && spec.servers[0] && spec.servers[0].url) ||
-          "http://localhost:3000",
+        viewer.baseUrl || (rawSpecServerUrl !== "/" ? rawSpecServerUrl : ""),
       ).replace(/\/$/, "");
       const docsPathSuffix =
         String(viewer.docsPath || "/docs").replace(/\/$/, "") || "/docs";
@@ -2872,6 +3114,7 @@
       const defaultBaseUrl = locationBaseUrl || defaultBaseUrlFromSpec;
       const title = (spec.info && spec.info.title) || "API Documentation";
       const STORE_KEY = "openapi-docs-env:" + (workspace || "default");
+      const DRAFT_STORE_KEY = "openapi-docs-drafts:" + (workspace || "default");
       const SIDEBAR_STORE_KEY =
         "openapi-docs-sidebar:" + (workspace || "default");
       const SIDEBAR_MIN = 200;
@@ -3471,11 +3714,31 @@
         return null;
       };
 
+      const hasExplicitPresets = Boolean(
+        viewer.baseUrl ||
+          (viewer.envPresets && Object.keys(viewer.envPresets).length) ||
+          (Array.isArray(spec.servers) &&
+            spec.servers.some((s) => s && s.url && s.url !== "/")),
+      );
+
       /**
-       * Only rewrite baseUrl for local-ish presets so staging/production stay intact.
+       * Keep baseUrl synced to the serving origin/prefix when no fixed presets
+       * were configured; otherwise only rewrite local-ish presets.
        */
       const applyServingBaseUrl = (state) => {
         if (!locationBaseUrl || !state || !state.envs) return state;
+        if (!hasExplicitPresets) {
+          const servingName = envNameFromUrl(locationBaseUrl);
+          if (!state.envs[servingName]) {
+            const seed = cloneDefaultEnv();
+            setEnvBaseUrl(seed, locationBaseUrl);
+            state.envs[servingName] = seed;
+          } else {
+            setEnvBaseUrl(state.envs[servingName], locationBaseUrl);
+          }
+          state.activeEnv = servingName;
+          return state;
+        }
         const preferred = ["local", "development", "dev"].find(
           (name) => state.envs[name],
         );
@@ -5416,32 +5679,47 @@
         } catch {}
       };
 
-      const resolvedUrl = (item, scenario) => {
-        const vars = varMap();
-        let path = item.path;
-        for (const [name, value] of Object.entries(scenario.pathParams || {})) {
-          const fromVar = vars[name]
-            ? String(interpolate(vars[name], vars))
-            : value;
-          path = path.replace(
-            "{" + name + "}",
-            encodeURIComponent(fromVar ?? ""),
-          );
-        }
-        const query = { ...(scenario.query || {}) };
-        for (const key of Object.keys(query)) {
-          if (vars[key]) query[key] = String(interpolate(vars[key], vars));
-        }
-        const qs = new URLSearchParams(query).toString();
-        return currentBaseUrl() + path + (qs ? "?" + qs : "");
-      };
-
       /**
-       * Active Try-it header group wins: switching the group at the top overwrites
-       * the example request headers (Send + cURL + Headers panel).
-       * If the group is empty, fall back to what was recorded.
+       * Tab-scoped temporary request overrides (sessionStorage ONLY — wiped when tab closes).
        */
-      const requestHeadersForScenario = (scenario) => {
+      let reqEditOpen = false;
+      const loadSessionDrafts = () => {
+        try {
+          const raw = sessionStorage.getItem(DRAFT_STORE_KEY);
+          const parsed = raw ? JSON.parse(raw) : null;
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch {
+          return {};
+        }
+      };
+      let requestDrafts = loadSessionDrafts();
+      const saveSessionDrafts = () => {
+        try {
+          if (!Object.keys(requestDrafts).length) {
+            sessionStorage.removeItem(DRAFT_STORE_KEY);
+          } else {
+            sessionStorage.setItem(DRAFT_STORE_KEY, JSON.stringify(requestDrafts));
+          }
+        } catch {}
+      };
+      const draftKeyFor = (opId, scIdx = scenarioIndex) =>
+        String(opId) + "::" + String(scIdx);
+      const getScenarioDraft = (opId, scIdx = scenarioIndex) =>
+        requestDrafts[draftKeyFor(opId, scIdx)] || null;
+      const clearScenarioDraft = (opId, scIdx = scenarioIndex) => {
+        delete requestDrafts[draftKeyFor(opId, scIdx)];
+        saveSessionDrafts();
+      };
+      const extractPathParamNames = (pathTemplate) => {
+        const names = [];
+        const re = /\{([^}]+)\}/g;
+        let match;
+        while ((match = re.exec(String(pathTemplate || "")))) {
+          if (match[1] && !names.includes(match[1])) names.push(match[1]);
+        }
+        return names;
+      };
+      const baseHeadersForScenario = (scenario) => {
         const vars = varMap();
         const envHeaders = resolvedHeaders();
         if (Object.keys(envHeaders).length) {
@@ -5458,18 +5736,132 @@
         }
         return out;
       };
+      const basePathParamsForScenario = (item, scenario) => {
+        const vars = varMap();
+        const out = {};
+        for (const name of extractPathParamNames(item.path)) {
+          const raw = scenario.pathParams && name in scenario.pathParams ? scenario.pathParams[name] : "";
+          out[name] = vars[name] ? String(interpolate(vars[name], vars)) : String(raw ?? "");
+        }
+        return out;
+      };
+      const baseQueryForScenario = (scenario) => {
+        const vars = varMap();
+        const out = {};
+        for (const [key, val] of Object.entries(scenario.query || {})) {
+          out[key] = vars[key] ? String(interpolate(vars[key], vars)) : String(val ?? "");
+        }
+        return out;
+      };
+      const baseBodyTextForScenario = (scenario) => {
+        if (scenario.reqBody === undefined) return "";
+        const interpolated = interpolate(scenario.reqBody, varMap());
+        return typeof interpolated === "string"
+          ? interpolated
+          : JSON.stringify(interpolated, null, 2);
+      };
+      const baseSnapshotForScenario = (item, scenario) => ({
+        headers: Object.entries(baseHeadersForScenario(scenario)).map(([k, v]) => ({ key: k, value: String(v ?? "") })),
+        pathParams: basePathParamsForScenario(item, scenario),
+        query: Object.entries(baseQueryForScenario(scenario)).map(([k, v]) => ({ key: k, value: String(v ?? "") })),
+        bodyText: baseBodyTextForScenario(scenario),
+      });
+      const ensureDraftInitialized = (item, scenario, scIdx = scenarioIndex) => {
+        const key = draftKeyFor(item.id, scIdx);
+        if (!requestDrafts[key]) {
+          requestDrafts[key] = baseSnapshotForScenario(item, scenario);
+          saveSessionDrafts();
+        }
+        return requestDrafts[key];
+      };
+      const isDraftModified = (item, scenario, scIdx = scenarioIndex) => {
+        const draft = getScenarioDraft(item.id, scIdx);
+        if (!draft) return false;
+        const base = baseSnapshotForScenario(item, scenario);
+        return JSON.stringify(draft) !== JSON.stringify(base);
+      };
+      const pruneUnchangedDraft = (item, scenario, scIdx = scenarioIndex) => {
+        if (!isDraftModified(item, scenario, scIdx)) {
+          clearScenarioDraft(item.id, scIdx);
+        }
+      };
+      const parseDraftBody = (bodyText) => {
+        if (bodyText === undefined || bodyText === null) {
+          return { value: undefined, isJson: false, valid: true, empty: true };
+        }
+        const trimmed = String(bodyText).trim();
+        if (!trimmed) {
+          return { value: undefined, isJson: false, valid: true, empty: true };
+        }
+        try {
+          return { value: JSON.parse(bodyText), isJson: true, valid: true, empty: false };
+        } catch {
+          return { value: String(bodyText), isJson: false, valid: false, empty: false };
+        }
+      };
+
+      const resolvedUrl = (item, scenario, scIdx = scenarioIndex) => {
+        const vars = varMap();
+        const draft = item ? getScenarioDraft(item.id, scIdx) : null;
+        let path = item.path;
+        const paramMap = draft?.pathParams || basePathParamsForScenario(item, scenario);
+        for (const [name, value] of Object.entries(paramMap)) {
+          const resolvedVal = String(interpolate(String(value ?? ""), vars));
+          path = path.replace("{" + name + "}", encodeURIComponent(resolvedVal));
+        }
+        const searchParams = new URLSearchParams();
+        if (draft && Array.isArray(draft.query)) {
+          for (const row of draft.query) {
+            const k = String(row?.key || "").trim();
+            if (!k) continue;
+            searchParams.append(k, String(interpolate(String(row?.value ?? ""), vars)));
+          }
+        } else {
+          for (const [k, v] of Object.entries(baseQueryForScenario(scenario))) {
+            searchParams.append(k, v);
+          }
+        }
+        const qs = searchParams.toString();
+        return currentBaseUrl() + path + (qs ? "?" + qs : "");
+      };
+
+      /**
+       * Active Try-it header group wins unless a tab-local draft overrides headers.
+       */
+      const requestHeadersForScenario = (scenario, opId = currentId, scIdx = scenarioIndex) => {
+        const vars = varMap();
+        const draft = opId ? getScenarioDraft(opId, scIdx) : null;
+        if (draft && Array.isArray(draft.headers)) {
+          const out = {};
+          for (const row of draft.headers) {
+            const name = String(row?.key || "").trim();
+            if (!name) continue;
+            out[name] = String(interpolate(String(row?.value ?? ""), vars));
+          }
+          return out;
+        }
+        return baseHeadersForScenario(scenario);
+      };
+
+      const effectiveRequestBody = (scenario, opId = currentId, scIdx = scenarioIndex) => {
+        const draft = opId ? getScenarioDraft(opId, scIdx) : null;
+        if (draft && typeof draft.bodyText === "string") {
+          const parsed = parseDraftBody(draft.bodyText);
+          return parsed.empty ? undefined : interpolate(parsed.value, varMap());
+        }
+        return scenario.reqBody !== undefined
+          ? interpolate(scenario.reqBody, varMap())
+          : undefined;
+      };
 
       const toCurl = (item, scenario) => {
-        const headers = requestHeadersForScenario(scenario);
-        const body =
-          scenario.reqBody !== undefined
-            ? interpolate(scenario.reqBody, varMap())
-            : undefined;
+        const headers = requestHeadersForScenario(scenario, item.id, scenarioIndex);
+        const body = effectiveRequestBody(scenario, item.id, scenarioIndex);
         const lines = [
           "curl -X " +
             item.method.toUpperCase() +
             " '" +
-            resolvedUrl(item, scenario).replace(/'/g, "'\\''") +
+            resolvedUrl(item, scenario, scenarioIndex).replace(/'/g, "'\\''") +
             "'",
         ];
         for (const [name, value] of Object.entries(headers)) {
@@ -5477,12 +5869,10 @@
             "  -H '" + name + ": " + String(value).replace(/'/g, "'\\''") + "'",
           );
         }
-        if (body !== undefined && item.method !== "get") {
-          lines.push(
-            "  -d '" +
-              JSON.stringify(body, null, 2).replace(/'/g, "'\\''") +
-              "'",
-          );
+        if (body !== undefined && item.method !== "get" && item.method !== "head") {
+          const serialized =
+            typeof body === "string" ? body : JSON.stringify(body, null, 2);
+          lines.push("  -d '" + serialized.replace(/'/g, "'\\''") + "'");
         }
         return lines.join(" \\\n");
       };
@@ -5492,19 +5882,19 @@
           const absolute = new URL(target, location.href);
           if (absolute.origin === location.origin) return absolute.href;
         } catch {}
-        if (location.protocol === "http:" || location.protocol === "https:") {
+        if (
+          viewer.proxyEnabled === true &&
+          (location.protocol === "http:" || location.protocol === "https:")
+        ) {
           return "/__proxy?target=" + encodeURIComponent(target);
         }
         return target;
       };
 
       const sendRequest = async (item, scenario) => {
-        const target = resolvedUrl(item, scenario);
-        const headers = { ...requestHeadersForScenario(scenario) };
-        const body =
-          scenario.reqBody !== undefined
-            ? interpolate(scenario.reqBody, varMap())
-            : undefined;
+        const target = resolvedUrl(item, scenario, scenarioIndex);
+        const headers = { ...requestHeadersForScenario(scenario, item.id, scenarioIndex) };
+        const body = effectiveRequestBody(scenario, item.id, scenarioIndex);
         if (
           body !== undefined &&
           !headers["content-type"] &&
@@ -6204,7 +6594,12 @@
         };
         const fields = item.docs.fields || [];
         ensureRequiredHeaderGroup(item.op);
-        const displayHeaders = requestHeadersForScenario(scenario);
+        const activeDraft = reqEditOpen
+          ? ensureDraftInitialized(item, scenario, scenarioIndex)
+          : getScenarioDraft(item.id, scenarioIndex);
+        const hasDraft = isDraftModified(item, scenario, scenarioIndex);
+        const displayHeaders = requestHeadersForScenario(scenario, item.id, scenarioIndex);
+        const currentEffectiveBody = effectiveRequestBody(scenario, item.id, scenarioIndex);
         const recordedOk = scenario.status >= 200 && scenario.status < 300;
         const statusText =
           STATUS[scenario.status] ||
@@ -6213,8 +6608,8 @@
         const emptyResponse =
           scenario.resBody === undefined || scenario.status === 204;
         const reqCopyText =
-          scenario.reqBody !== undefined
-            ? copyBodyText(scenario.reqBody)
+          currentEffectiveBody !== undefined
+            ? copyBodyText(currentEffectiveBody)
             : null;
         const showingLive =
           liveResult &&
@@ -6245,20 +6640,77 @@
             ? liveResult.bytes
             : recordedBytes;
         const ms = showingLive && liveResult.ms != null ? liveResult.ms : null;
-        const headersHtml = Object.keys(displayHeaders).length
-          ? Object.entries(displayHeaders)
+
+        const pathParamNames = extractPathParamNames(item.path);
+        const effectivePathParams = activeDraft?.pathParams || basePathParamsForScenario(item, scenario);
+        const effectiveQueryEntries = activeDraft?.query
+          ? activeDraft.query.filter((r) => String(r?.key || "").trim())
+          : Object.entries(baseQueryForScenario(scenario)).map(([key, value]) => ({ key, value }));
+
+        const headersHtml = reqEditOpen
+          ? `<div class="draft-kv-list" id="draft-headers-list">${(activeDraft.headers || [])
+              .map(
+                (row, idx) => `<div class="draft-kv-row" data-draft-header="${idx}">
+                  <input class="draft-input" data-field="key" placeholder="header-name" spellcheck="false" value="${escapeAttr(row.key)}" />
+                  <input class="draft-input" data-field="value" placeholder="value or {{var}}" spellcheck="false" value="${escapeAttr(row.value)}" />
+                  <button type="button" class="draft-del-btn" data-remove-header="${idx}" title="Remove header">×</button>
+                </div>`,
+              )
+              .join("")}</div>
+            <button type="button" class="draft-add-btn" id="draft-add-header">+ Add header</button>`
+          : Object.keys(displayHeaders).length
+            ? Object.entries(displayHeaders)
+                .map(([name, value]) => kv(name, value))
+                .join("")
+            : `<div class="meta-empty">No headers in this header group</div>`;
+
+        const pathParamsHtml = reqEditOpen
+          ? pathParamNames.length
+            ? `<div class="draft-kv-list" id="draft-path-list">${pathParamNames
+                .map(
+                  (name) => `<div class="draft-kv-row path-row" data-draft-path="${escapeAttr(name)}">
+                    <input class="draft-input" readonly tabindex="-1" value="${escapeAttr(name)}" />
+                    <input class="draft-input" data-path-name="${escapeAttr(name)}" placeholder="value" spellcheck="false" value="${escapeAttr(effectivePathParams[name] ?? "")}" />
+                  </div>`,
+                )
+                .join("")}</div>`
+            : ""
+          : Object.entries(effectivePathParams)
               .map(([name, value]) => kv(name, value))
-              .join("")
-          : `<div class="meta-empty">No headers in this header group</div>`;
-        const pathParamsHtml = Object.entries(scenario.pathParams || {})
-          .map(([name, value]) => kv(name, value))
-          .join("");
-        const queryHtml = Object.entries(scenario.query || {})
-          .map(([name, value]) => kv(name, value))
-          .join("");
-        const bodyHtml =
-          scenario.reqBody !== undefined
-            ? jsonBlock(scenario.reqBody, reqPretty)
+              .join("");
+
+        const queryHtml = reqEditOpen
+          ? `<div class="draft-kv-list" id="draft-query-list">${(activeDraft.query || [])
+              .map(
+                (row, idx) => `<div class="draft-kv-row" data-draft-query="${idx}">
+                  <input class="draft-input" data-field="key" placeholder="param" spellcheck="false" value="${escapeAttr(row.key)}" />
+                  <input class="draft-input" data-field="value" placeholder="value" spellcheck="false" value="${escapeAttr(row.value)}" />
+                  <button type="button" class="draft-del-btn" data-remove-query="${idx}" title="Remove query param">×</button>
+                </div>`,
+              )
+              .join("")}</div>
+            <button type="button" class="draft-add-btn" id="draft-add-query">+ Add query param</button>`
+          : effectiveQueryEntries
+              .map((entry) => kv(entry.key, entry.value))
+              .join("");
+
+        const draftBodyParsed = reqEditOpen ? parseDraftBody(activeDraft.bodyText) : null;
+        const bodyHtml = reqEditOpen
+          ? `<div class="draft-body-wrap">
+              <textarea class="draft-body-input" id="draft-body-input" spellcheck="false" placeholder='{"key": "value"}'>${escapeHtml(activeDraft.bodyText ?? "")}</textarea>
+              <div class="draft-body-foot">
+                <span class="draft-json-state ${draftBodyParsed.empty ? "" : draftBodyParsed.valid ? "ok" : "warn"}" id="draft-json-state">${
+                  draftBodyParsed.empty
+                    ? "Empty body"
+                    : draftBodyParsed.valid
+                      ? "Valid JSON · tab-only override"
+                      : "Raw text (invalid JSON)"
+                }</span>
+                <span>⌘/Ctrl + Enter to Send</span>
+              </div>
+            </div>`
+          : currentEffectiveBody !== undefined
+            ? jsonBlock(currentEffectiveBody, reqPretty)
             : `<div class="meta-empty">No JSON body</div>`;
         const resHtml =
           showingLive && liveResult.error
@@ -6283,27 +6735,34 @@
 
         document.getElementById("main").innerHTML = `
           <div class="urlbar">
-            <div class="url"><span class="method ${item.method}">${item.method}</span><span>${resolvedUrl(item, scenario)}</span></div>
+            <div class="url"><span class="method ${item.method}">${item.method}</span><span id="live-resolved-url">${escapeHtml(resolvedUrl(item, scenario, scenarioIndex))}</span></div>
             <button class="btn" id="copy-curl" type="button">Copy cURL</button>
             <button class="btn primary" id="send" type="button">Send</button>
           </div>
           <div class="pair">
             <section class="card" id="request-card">
               <div class="card-head">
-                <h2>Request</h2>
+                <h2>Request <span class="draft-pill" id="req-draft-pill" title="Stored only in this browser tab; resets when tab closes" ${hasDraft ? "" : "hidden"}>Modified · tab only</span></h2>
                 <div class="card-head-actions">
-                  <div class="mode-toggle">
-                    <button type="button" data-json="req" data-mode="pretty" class="${reqPretty ? "on" : ""}">Pretty</button>
-                    <button type="button" data-json="req" data-mode="raw" class="${reqPretty ? "" : "on"}">Raw</button>
-                  </div>
+                  <button type="button" class="draft-action reset" id="reset-req-draft" title="Discard temporary changes for this example" ${hasDraft ? "" : "hidden"}>Reset</button>
+                  ${reqEditOpen ? `<button type="button" class="draft-action" id="format-req-body" title="Format JSON body">Format</button>` : ""}
+                  <button type="button" class="draft-action ${reqEditOpen ? "on" : ""}" id="toggle-req-edit" title="Temporarily edit headers, params, and body (not saved to server)">${reqEditOpen ? "Done" : "Edit"}</button>
+                  ${
+                    !reqEditOpen
+                      ? `<div class="mode-toggle">
+                          <button type="button" data-json="req" data-mode="pretty" class="${reqPretty ? "on" : ""}">Pretty</button>
+                          <button type="button" data-json="req" data-mode="raw" class="${reqPretty ? "" : "on"}">Raw</button>
+                        </div>`
+                      : ""
+                  }
                   <button class="btn sm icon" id="copy-req" type="button" title="Copy body" aria-label="Copy body" ${reqCopyText ? "" : "disabled"}>${copyIcon}</button>
                 </div>
               </div>
               <div class="card-body">
                 ${metaBlock("Headers", headersHtml, requiredAuthHint(item.op), { always: true })}
-                ${metaBlock("Path", pathParamsHtml)}
-                ${metaBlock("Query", queryHtml)}
-                ${metaBlock("Body", `<div class="json-pane">${bodyHtml}</div>`, "", { always: true })}
+                ${metaBlock("Path", pathParamsHtml, "", { always: reqEditOpen && pathParamNames.length > 0 })}
+                ${metaBlock("Query", queryHtml, "", { always: reqEditOpen })}
+                ${metaBlock("Body", `<div class="json-pane" id="request-body-pane">${bodyHtml}</div>`, "", { always: true })}
                 ${schemas.request}
               </div>
             </section>
@@ -6386,12 +6845,182 @@
           };
         });
 
+        const syncDraftIndicators = () => {
+          const urlSpan = document.getElementById("live-resolved-url");
+          if (urlSpan) urlSpan.textContent = resolvedUrl(item, scenario, scenarioIndex);
+          const modified = isDraftModified(item, scenario, scenarioIndex);
+          const pill = document.getElementById("req-draft-pill");
+          if (pill) pill.hidden = !modified;
+          const resetBtn = document.getElementById("reset-req-draft");
+          if (resetBtn) resetBtn.hidden = !modified;
+          const copyBtn = document.getElementById("copy-req");
+          if (copyBtn) {
+            const effBody = effectiveRequestBody(scenario, item.id, scenarioIndex);
+            copyBtn.disabled = effBody === undefined;
+          }
+        };
+
+        const toggleEditBtn = document.getElementById("toggle-req-edit");
+        if (toggleEditBtn) {
+          toggleEditBtn.onclick = () => {
+            reqEditOpen = !reqEditOpen;
+            if (reqEditOpen) ensureDraftInitialized(item, scenario, scenarioIndex);
+            else pruneUnchangedDraft(item, scenario, scenarioIndex);
+            renderMain();
+          };
+        }
+
+        const resetDraftBtn = document.getElementById("reset-req-draft");
+        if (resetDraftBtn) {
+          resetDraftBtn.onclick = () => {
+            clearScenarioDraft(item.id, scenarioIndex);
+            reqEditOpen = false;
+            renderMain();
+          };
+        }
+
+        const formatBodyBtn = document.getElementById("format-req-body");
+        if (formatBodyBtn) {
+          formatBodyBtn.onclick = () => {
+            const draft = ensureDraftInitialized(item, scenario, scenarioIndex);
+            const parsed = parseDraftBody(draft.bodyText);
+            if (parsed.valid && !parsed.empty) {
+              draft.bodyText = JSON.stringify(parsed.value, null, 2);
+              saveSessionDrafts();
+              const ta = document.getElementById("draft-body-input");
+              if (ta) ta.value = draft.bodyText;
+            }
+          };
+        }
+
+        if (!reqEditOpen) {
+          const bodyPane = document.getElementById("request-body-pane");
+          if (bodyPane) {
+            bodyPane.ondblclick = () => {
+              reqEditOpen = true;
+              ensureDraftInitialized(item, scenario, scenarioIndex);
+              renderMain();
+              document.getElementById("draft-body-input")?.focus();
+            };
+          }
+        } else {
+          const draft = ensureDraftInitialized(item, scenario, scenarioIndex);
+
+          document.querySelectorAll("[data-draft-header]").forEach((rowEl) => {
+            const idx = Number(rowEl.dataset.draftHeader);
+            rowEl.querySelectorAll("input[data-field]").forEach((inp) => {
+              inp.oninput = () => {
+                if (!draft.headers[idx]) return;
+                draft.headers[idx][inp.dataset.field] = inp.value;
+                saveSessionDrafts();
+                syncDraftIndicators();
+              };
+            });
+          });
+          document.querySelectorAll("[data-remove-header]").forEach((btn) => {
+            btn.onclick = () => {
+              draft.headers.splice(Number(btn.dataset.removeHeader), 1);
+              saveSessionDrafts();
+              renderMain();
+            };
+          });
+          const addHeaderBtn = document.getElementById("draft-add-header");
+          if (addHeaderBtn) {
+            addHeaderBtn.onclick = () => {
+              draft.headers.push({ key: "", value: "" });
+              saveSessionDrafts();
+              renderMain();
+              const rows = document.querySelectorAll("[data-draft-header] input[data-field='key']");
+              rows[rows.length - 1]?.focus();
+            };
+          }
+
+          document.querySelectorAll("[data-path-name]").forEach((inp) => {
+            inp.oninput = () => {
+              draft.pathParams[inp.dataset.pathName] = inp.value;
+              saveSessionDrafts();
+              syncDraftIndicators();
+            };
+          });
+
+          document.querySelectorAll("[data-draft-query]").forEach((rowEl) => {
+            const idx = Number(rowEl.dataset.draftQuery);
+            rowEl.querySelectorAll("input[data-field]").forEach((inp) => {
+              inp.oninput = () => {
+                if (!draft.query[idx]) return;
+                draft.query[idx][inp.dataset.field] = inp.value;
+                saveSessionDrafts();
+                syncDraftIndicators();
+              };
+            });
+          });
+          document.querySelectorAll("[data-remove-query]").forEach((btn) => {
+            btn.onclick = () => {
+              draft.query.splice(Number(btn.dataset.removeQuery), 1);
+              saveSessionDrafts();
+              renderMain();
+            };
+          });
+          const addQueryBtn = document.getElementById("draft-add-query");
+          if (addQueryBtn) {
+            addQueryBtn.onclick = () => {
+              draft.query.push({ key: "", value: "" });
+              saveSessionDrafts();
+              renderMain();
+              const rows = document.querySelectorAll("[data-draft-query] input[data-field='key']");
+              rows[rows.length - 1]?.focus();
+            };
+          }
+
+          const bodyInput = document.getElementById("draft-body-input");
+          if (bodyInput) {
+            bodyInput.oninput = () => {
+              draft.bodyText = bodyInput.value;
+              saveSessionDrafts();
+              syncDraftIndicators();
+              const st = document.getElementById("draft-json-state");
+              if (st) {
+                const parsed = parseDraftBody(draft.bodyText);
+                st.className = "draft-json-state " + (parsed.empty ? "" : parsed.valid ? "ok" : "warn");
+                st.textContent = parsed.empty
+                  ? "Empty body"
+                  : parsed.valid
+                    ? "Valid JSON · tab-only override"
+                    : "Raw text (invalid JSON)";
+              }
+            };
+            bodyInput.onkeydown = (event) => {
+              if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                event.preventDefault();
+                document.getElementById("send")?.click();
+                return;
+              }
+              if (event.key === "Tab") {
+                event.preventDefault();
+                const start = bodyInput.selectionStart;
+                const end = bodyInput.selectionEnd;
+                bodyInput.value =
+                  bodyInput.value.slice(0, start) +
+                  "  " +
+                  bodyInput.value.slice(end);
+                bodyInput.selectionStart = bodyInput.selectionEnd = start + 2;
+                bodyInput.dispatchEvent(new Event("input"));
+              }
+            };
+          }
+        }
+
         document.getElementById("copy-curl").onclick = (event) =>
           copy(toCurl(item, scenario), event.currentTarget, "Copy cURL");
         const copyReq = document.getElementById("copy-req");
-        if (copyReq && reqCopyText)
-          copyReq.onclick = (event) =>
-            copy(reqCopyText, event.currentTarget, "Copy body");
+        if (copyReq) {
+          copyReq.onclick = (event) => {
+            const effBody = effectiveRequestBody(scenario, item.id, scenarioIndex);
+            if (effBody !== undefined) {
+              copy(copyBodyText(effBody), event.currentTarget, "Copy body");
+            }
+          };
+        }
         const copyRes = document.getElementById("copy-res");
         if (copyRes && resCopyText)
           copyRes.onclick = (event) =>
@@ -6422,7 +7051,8 @@
                 body: undefined,
                 error:
                   message +
-                  "\n\nTip: open API docs at the same app port: http://localhost:3000" +
+                  "\n\nTip: open API docs at the same app origin: " +
+                  (locationBaseUrl || "http://localhost:3000") +
                   docsPathSuffix,
               };
             }
