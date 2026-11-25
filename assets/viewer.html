@@ -4717,13 +4717,107 @@
         500: "Internal Server Error",
       };
 
-      const postmanUrlFromPath = (serverUrl, pathTemplate) => {
+      const normalizePostmanQueryEntries = (query) => {
+        if (!query) return [];
+        if (Array.isArray(query)) {
+          return query
+            .filter((entry) => entry && entry.key)
+            .map((entry) => ({
+              key: String(entry.key),
+              value: entry.value != null ? String(entry.value) : "",
+              ...(entry.disabled ? { disabled: true } : {}),
+            }));
+        }
+        return Object.entries(query)
+          .filter(([key]) => Boolean(key))
+          .map(([key, value]) => ({
+            key: String(key),
+            value: value != null ? String(value) : "",
+          }));
+      };
+
+      const buildCollectionQueryEntries = (
+        operation,
+        origScenarios,
+        primaryQuery,
+      ) => {
+        const byKey = new Map();
+        for (const [key, value] of Object.entries(primaryQuery || {})) {
+          if (!key) continue;
+          byKey.set(key, {
+            key: String(key),
+            value: value != null ? String(value) : "",
+          });
+        }
+        for (const param of (operation && operation.parameters) || []) {
+          if (!param || param.in !== "query" || !param.name) continue;
+          if (byKey.has(param.name)) continue;
+          byKey.set(param.name, {
+            key: String(param.name),
+            value: param.example != null ? String(param.example) : "",
+            ...(param.required ? {} : { disabled: true }),
+          });
+        }
+        for (const scenario of origScenarios || []) {
+          for (const [key, value] of Object.entries(
+            (scenario && scenario.query) || {},
+          )) {
+            if (!key || byKey.has(key)) continue;
+            byKey.set(key, {
+              key: String(key),
+              value: value != null ? String(value) : "",
+              disabled: true,
+            });
+          }
+        }
+        return [...byKey.values()];
+      };
+
+      const buildCollectionPathParams = (operation, primaryPathParams) => {
+        const out = {};
+        for (const param of (operation && operation.parameters) || []) {
+          if (param && param.in === "path" && param.name && param.example != null) {
+            out[param.name] = String(param.example);
+          }
+        }
+        for (const [key, value] of Object.entries(primaryPathParams || {})) {
+          if (key && value != null) out[key] = String(value);
+        }
+        return out;
+      };
+
+      const postmanUrlFromPath = (
+        serverUrl,
+        pathTemplate,
+        pathParams,
+        query,
+      ) => {
         const base = String(serverUrl || "{{baseUrl}}").replace(/\/$/, "");
-        const path = String(pathTemplate || "/");
-        const segments = path.split("/").filter(Boolean);
-        const pathParams = [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
+        const cleanPath = String(pathTemplate || "/").startsWith("/")
+          ? String(pathTemplate || "/")
+          : "/" + String(pathTemplate || "");
+        const segments = cleanPath.split("/").filter(Boolean);
+        const paramKeys = [...cleanPath.matchAll(/\{([^}]+)\}/g)].map(
+          (m) => m[1],
+        );
+        const queryEntries = normalizePostmanQueryEntries(query);
+        const enabledQuery = queryEntries.filter((q) => !q.disabled);
+        const querySuffix = enabledQuery.length
+          ? "?" +
+            enabledQuery
+              .map(
+                (q) =>
+                  encodeURIComponent(q.key) +
+                  "=" +
+                  encodeURIComponent(q.value),
+              )
+              .join("&")
+          : "";
         return {
-          raw: base + (path.startsWith("/") ? path : "/" + path),
+          raw:
+            base +
+            cleanPath.replace(/\{([^}]+)\}/g, ":$1") +
+            querySuffix,
           host: base.startsWith("{{")
             ? [base]
             : [base.replace(/^https?:\/\//, "").split("/")[0]],
@@ -4732,7 +4826,18 @@
               ? ":" + seg.slice(1, -1)
               : seg,
           ),
-          variable: pathParams.map((key) => ({ key, value: "" })),
+          ...(queryEntries.length ? { query: queryEntries } : {}),
+          ...(paramKeys.length
+            ? {
+                variable: paramKeys.map((key) => ({
+                  key,
+                  value:
+                    pathParams && pathParams[key] != null
+                      ? String(pathParams[key])
+                      : "",
+                })),
+              }
+            : {}),
         };
       };
 
@@ -4852,6 +4957,26 @@
             const operation = pathItem[method];
             if (!operation || typeof operation !== "object") continue;
             const requestPath = operation["x-daxta-url-path"] || urlPath;
+            const origOp =
+              spec && spec.paths && spec.paths[requestPath]
+                ? spec.paths[requestPath][method]
+                : null;
+            const origScenarios = Array.isArray(origOp && origOp["x-scenarios"])
+              ? origOp["x-scenarios"]
+              : [];
+            const primaryScenario =
+              origScenarios.find(
+                (sc) => sc && sc.status >= 200 && sc.status < 300,
+              ) || origScenarios[0];
+            const basePathParams = buildCollectionPathParams(
+              operation,
+              primaryScenario && primaryScenario.pathParams,
+            );
+            const baseQueryEntries = buildCollectionQueryEntries(
+              operation,
+              origScenarios,
+              primaryScenario && primaryScenario.query,
+            );
             const requestHeaders = collectionRequestHeaders(operation);
 
             const reqExamples =
@@ -4868,7 +4993,12 @@
             const baseRequest = {
               method: method.toUpperCase(),
               header: requestHeaders,
-              url: postmanUrlFromPath(serverUrl, requestPath),
+              url: postmanUrlFromPath(
+                serverUrl,
+                requestPath,
+                basePathParams,
+                baseQueryEntries,
+              ),
               description: operation.summary || "",
             };
             if (defaultBody !== undefined) {
@@ -4919,9 +5049,23 @@
                   exKey;
                 const reqMatch =
                   reqExamples[exKey] || reqExamples[name] || firstReq;
+                const matchedScenario = origScenarios.find(
+                  (sc) =>
+                    sc &&
+                    String(sc.status) === String(status) &&
+                    sc.name === name,
+                );
                 const requestForExample = {
                   ...baseRequest,
                   header: [...(baseRequest.header || [])],
+                  url: matchedScenario
+                    ? postmanUrlFromPath(
+                        serverUrl,
+                        requestPath,
+                        matchedScenario.pathParams || basePathParams,
+                        matchedScenario.query,
+                      )
+                    : baseRequest.url,
                 };
                 if (reqMatch && reqMatch.value !== undefined) {
                   const raw =

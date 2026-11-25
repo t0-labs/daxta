@@ -58,6 +58,12 @@ export type PostmanHeader = {
   type?: string;
 };
 
+export type PostmanQueryParam = {
+  key: string;
+  value: string;
+  disabled?: boolean;
+};
+
 export type PostmanRequest = {
   method: string;
   header: PostmanHeader[];
@@ -65,7 +71,7 @@ export type PostmanRequest = {
     raw: string;
     host: string[];
     path: string[];
-    query?: Array<{ key: string; value: string }>;
+    query?: PostmanQueryParam[];
     variable?: Array<{ key: string; value: string }>;
   };
   body?: {
@@ -116,23 +122,91 @@ export type PostmanEnvironment = {
   _postman_exported_using: string;
 };
 
+function normalizeQueryEntries(
+  query?: Record<string, string> | PostmanQueryParam[],
+): PostmanQueryParam[] {
+  if (!query) return [];
+  if (Array.isArray(query)) {
+    return query
+      .filter((entry) => entry && entry.key)
+      .map((entry) => ({
+        key: String(entry.key),
+        value: entry.value != null ? String(entry.value) : '',
+        ...(entry.disabled ? { disabled: true } : {}),
+      }));
+  }
+  return Object.entries(query).map(([key, value]) => ({
+    key,
+    value: value != null ? String(value) : '',
+  }));
+}
+
+function buildOperationQueryEntries(
+  operation: OpenApiOperation,
+  primaryQuery?: Record<string, string>,
+): PostmanQueryParam[] {
+  const byKey = new Map<string, PostmanQueryParam>();
+
+  for (const [key, value] of Object.entries(primaryQuery ?? {})) {
+    if (!key) continue;
+    byKey.set(key, { key, value: value != null ? String(value) : '' });
+  }
+
+  for (const param of operation.parameters ?? []) {
+    if (param?.in !== 'query' || !param.name) continue;
+    if (byKey.has(param.name)) continue;
+    byKey.set(param.name, {
+      key: param.name,
+      value: param.example != null ? String(param.example) : '',
+      ...(param.required ? {} : { disabled: true }),
+    });
+  }
+
+  for (const scenario of operation['x-scenarios'] ?? []) {
+    for (const [key, value] of Object.entries(scenario.query ?? {})) {
+      if (!key || byKey.has(key)) continue;
+      byKey.set(key, {
+        key,
+        value: value != null ? String(value) : '',
+        disabled: true,
+      });
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+function buildOperationPathParams(
+  operation: OpenApiOperation,
+  primaryPathParams?: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const param of operation.parameters ?? []) {
+    if (param?.in === 'path' && param.name && param.example != null) {
+      out[param.name] = String(param.example);
+    }
+  }
+  for (const [key, value] of Object.entries(primaryPathParams ?? {})) {
+    if (key && value != null) out[key] = String(value);
+  }
+  return out;
+}
+
 function postmanUrl(
   serverUrl: string,
   pathTemplate: string,
   pathParams?: Record<string, string>,
-  query?: Record<string, string>,
+  query?: Record<string, string> | PostmanQueryParam[],
 ): PostmanRequest['url'] {
   const base = (serverUrl || '{{baseUrl}}').replace(/\/$/, '');
   const cleanPath = pathTemplate.startsWith('/') ? pathTemplate : `/${pathTemplate}`;
   const segments = cleanPath.split('/').filter(Boolean);
   const paramKeys = [...cleanPath.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
 
-  const queryEntries = Object.entries(query ?? {}).map(([key, value]) => ({
-    key,
-    value: value ?? '',
-  }));
-  const querySuffix = queryEntries.length
-    ? `?${queryEntries.map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`).join('&')}`
+  const queryEntries = normalizeQueryEntries(query);
+  const enabledQuery = queryEntries.filter((q) => !q.disabled);
+  const querySuffix = enabledQuery.length
+    ? `?${enabledQuery.map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`).join('&')}`
     : '';
 
   return {
@@ -278,7 +352,12 @@ export function buildPostmanCollection(
       const baseRequest: PostmanRequest = {
         method: method.toUpperCase(),
         header: buildHeaders(operation, primaryScenario?.headers, hasDefaultBody),
-        url: postmanUrl(serverUrl, requestPath, primaryScenario?.pathParams, primaryScenario?.query),
+        url: postmanUrl(
+          serverUrl,
+          requestPath,
+          buildOperationPathParams(operation, primaryScenario?.pathParams),
+          buildOperationQueryEntries(operation, primaryScenario?.query),
+        ),
         description: operation.summary || operation.description || '',
         ...(hasDefaultBody
           ? {

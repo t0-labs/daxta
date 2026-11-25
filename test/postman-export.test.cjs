@@ -62,6 +62,52 @@ describe('postman export', () => {
     assert.equal(reqItem.response[1].code, 400);
   });
 
+  it('includes all operation query parameters even when primary scenario has none', () => {
+    const spec = {
+      info: { title: 'Payments API', version: '1.0.0' },
+      paths: {
+        '/v1/admin/payments': {
+          get: {
+            summary: 'Find All Payments',
+            parameters: [
+              { name: 'limit', in: 'query', required: false, example: '10' },
+              { name: 'skip', in: 'query', required: false, example: '0' },
+              { name: 'searchText', in: 'query', required: false, example: 'token' },
+            ],
+            'x-tree-segments': ['v1', 'payments', 'admin'],
+            'x-scenarios': [
+              {
+                name: '200 — all payments without filters',
+                status: 200,
+                resBody: { items: [] },
+              },
+              {
+                name: '200 — paginated with limit and skip',
+                status: 200,
+                query: { limit: '10', skip: '0' },
+                resBody: { items: [] },
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const { collection } = buildPostmanCollection(spec);
+    const reqItem = collection.item[0].item[0].item[0].item[0];
+    assert.deepEqual(reqItem.request.url.query, [
+      { key: 'limit', value: '10', disabled: true },
+      { key: 'skip', value: '0', disabled: true },
+      { key: 'searchText', value: 'token', disabled: true },
+    ]);
+    assert.equal(reqItem.request.url.raw, '{{baseUrl}}/v1/admin/payments');
+    assert.deepEqual(reqItem.response[1].originalRequest.url.query, [
+      { key: 'limit', value: '10' },
+      { key: 'skip', value: '0' },
+    ]);
+    assert.equal(reqItem.response[1].originalRequest.url.raw, '{{baseUrl}}/v1/admin/payments?limit=10&skip=0');
+  });
+
   it('builds Postman Environment from default config', () => {
     const env = buildPostmanEnvironment();
     assert.equal(env._postman_variable_scope, 'environment');
